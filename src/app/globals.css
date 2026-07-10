@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── خلفية المنصة: تدرّج كريمي هادئ مع لمسات Sage ناعمة ── */
+body {
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(122, 158, 126, 0.14), transparent 60%),
+    radial-gradient(900px 450px at -10% 110%, rgba(201, 168, 76, 0.10), transparent 55%),
+    #faf8f3;
+  background-attachment: fixed;
+}
+
+/* ── وضوح التركيز للوحة المفاتيح ── */
+:focus-visible {
+  outline: 3px solid rgba(201, 168, 76, 0.65);
+  outline-offset: 3px;
+  border-radius: 0.75rem;
+}
+
+/* ── احترام تفضيل تقليل الحركة ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  /* بطاقة ثلاثية الأبعاد ناعمة — العنصر الأساسي في هوية المنصة */
+  .card-3d {
+    @apply bg-white/80 backdrop-blur-sm rounded-card shadow-soft shadow-inset3d border border-white/60 transition-all duration-300;
+  }
+  .card-3d:hover {
+    @apply shadow-lift -translate-y-1;
+  }
+
+  /* شريط ذهبي رفيع أعلى البطاقات — توقيع «غراس» */
+  .gold-thread {
+    background: linear-gradient(90deg, transparent, #c9a84c 20%, #f2e8cf 50%, #c9a84c 80%, transparent);
+    height: 3px;
+    border-radius: 999px;
+  }
+}
