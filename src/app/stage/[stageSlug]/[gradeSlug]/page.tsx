@@ -46,7 +46,7 @@ export default async function GradePage({
           {subjects.map((subject, i) => (
             <Link
               key={subject.id}
-              href={`/login?stage=${stage.slug}&grade=${grade.slug}&subject=${subject.slug}`}
+              href={`/stage/${stage.slug}/${grade.slug}/${subject.slug}`}
               className="card-3d group relative overflow-hidden p-6 flex items-center gap-4 animate-float-in"
               style={{ animationDelay: `${0.12 + i * 0.06}s` }}
             >

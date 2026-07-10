@@ -1,36 +1,94 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { createClient, usernameToEmail } from '@/lib/supabase/client';
 
 /**
- * بوابة تسجيل الدخول
- * الواجهة جاهزة بالكامل — يُربط التحقق الفعلي مع Supabase Auth
- * في المرحلة الثانية (نظام الدخول والصلاحيات).
- *
- * ملاحظات مهمة لتجربة الآيفون والآيباد:
- * - autoCapitalize/autoCorrect معطّلة لتجنب مشكلة التصحيح التلقائي
- *   التي واجهناها سابقاً في لعبة «عالم القلوب».
+ * بوابة تسجيل الدخول — المرحلة الثانية (نظام حقيقي):
+ * 1) التحقق من اسم المستخدم وكلمة المرور عبر Supabase Auth
+ * 2) التحقق من حالة الحساب (فعال / منتهٍ / موقوف)
+ * 3) تسجيل عملية الدخول وتحديث آخر نشاط
+ * 4) التوجيه للصفحة المطلوبة
  */
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const subject = searchParams.get('subject');
-  const grade = searchParams.get('grade');
-  const stage = searchParams.get('stage');
+  const next = searchParams.get('next') || '/';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (loading) return;
     if (!username.trim() || !password) {
       setMessage('يرجى إدخال اسم المستخدم وكلمة المرور');
       return;
     }
-    // ── المرحلة 2: هنا يتم الاتصال بـ Supabase Auth والتحقق من الصلاحيات ──
-    setMessage('نظام الدخول سيُفعَّل في المرحلة الثانية من البناء 🌱');
+
+    setLoading(true);
+    setMessage(null);
+    const supabase = createClient();
+
+    // 1) محاولة الدخول
+    const { data: auth, error } = await supabase.auth.signInWithPassword({
+      email: usernameToEmail(username),
+      password,
+    });
+
+    if (error || !auth.user) {
+      setMessage('اسم المستخدم أو كلمة المرور غير صحيحة');
+      setLoading(false);
+      return;
+    }
+
+    // 2) قراءة الملف الشخصي والتحقق من الحالة والاشتراك
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, status, sub_end')
+      .eq('id', auth.user.id)
+      .single();
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      setMessage('الحساب غير مُهيأ بعد — يرجى التواصل مع إدارة المنصة');
+      setLoading(false);
+      return;
+    }
+
+    const expired =
+      profile.sub_end && new Date(profile.sub_end) < new Date(new Date().toDateString());
+
+    if (profile.status === 'suspended') {
+      await supabase.auth.signOut();
+      setMessage('هذا الحساب موقوف — يرجى التواصل مع إدارة المنصة');
+      setLoading(false);
+      return;
+    }
+
+    if (profile.status === 'expired' || expired) {
+      await supabase.auth.signOut();
+      setMessage('انتهى الاشتراك — يرجى التجديد للاستمرار في استخدام المنصة');
+      setLoading(false);
+      return;
+    }
+
+    // 3) تسجيل الدخول الناجح وتحديث آخر نشاط (دون تعطيل المستخدم)
+    void supabase.from('login_logs').insert({
+      user_id: auth.user.id,
+      username: username.trim().toLowerCase(),
+      success: true,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    });
+    void supabase.rpc('touch_last_active');
+
+    // 4) التوجيه
+    router.push(next);
+    router.refresh();
   }
 
   return (
@@ -110,26 +168,20 @@ function LoginForm() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="w-full rounded-xl bg-sage hover:bg-sage-dark active:scale-[0.98] text-white font-extrabold text-lg py-3.5 shadow-soft transition-all"
+            disabled={loading}
+            className="w-full rounded-xl bg-sage hover:bg-sage-dark active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait text-white font-extrabold text-lg py-3.5 shadow-soft transition-all"
           >
-            دخول
+            {loading ? 'جارٍ التحقق…' : 'دخول'}
           </button>
         </div>
-
-        {stage && grade && (
-          <p className="mt-5 text-center text-xs text-ink/45">
-            الوجهة بعد الدخول: {stage === 'primary' ? 'الابتدائية' : 'المتوسطة'} ·{' '}
-            {grade.replace('grade-', 'الصف ')} · {subject}
-          </p>
-        )}
       </div>
 
       <Link
-        href={stage && grade ? `/stage/${stage}/${grade}` : '/'}
+        href="/"
         className="mt-6 text-sm text-ink/55 hover:text-sage-dark transition-colors animate-float-in"
         style={{ animationDelay: '0.2s' }}
       >
-        ← الرجوع للمواد
+        ← العودة للرئيسية
       </Link>
     </main>
   );
