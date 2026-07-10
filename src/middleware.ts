@@ -1,10 +1,13 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * وسيط الجلسات — يجدّد رمز الدخول تلقائياً مع كل طلب
  * حتى لا تنقطع جلسة المستخدم أثناء التصفح.
  */
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -16,7 +19,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -37,7 +40,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // كل المسارات ما عدا الملفات الثابتة والأيقونات
     '/((?!_next/static|_next/image|favicon.ico|icons|logo.png|manifest.json).*)',
   ],
 };
