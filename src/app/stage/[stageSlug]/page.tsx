@@ -31,7 +31,7 @@ export default async function StagePage({
           className="mt-2 text-ink/60 animate-float-in"
           style={{ animationDelay: '0.08s' }}
         >
-          اختاري الصف للانتقال إلى مواده
+          اختر الصف للانتقال إلى مواده
         </p>
 
         <div className="mt-8 grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">

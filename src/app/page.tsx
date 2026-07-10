@@ -40,7 +40,7 @@ export default async function HomePage() {
         >
           مكتبة الألعاب التعليمية التفاعلية
           <br />
-          للمعلمين والمعلمات — اختاري المرحلة وابدئي
+          للمعلمين والمعلمات — اختر المرحلة وابدأ
         </p>
 
         {/* ── بطاقتا المرحلتين ── */}
@@ -89,7 +89,7 @@ export default async function HomePage() {
                     isPrimary ? 'text-sage-dark' : 'text-gold-dark'
                   }`}
                 >
-                  ادخلي المرحلة
+                  دخول المرحلة
                   <span
                     aria-hidden="true"
                     className="transition-transform group-hover:-translate-x-1"

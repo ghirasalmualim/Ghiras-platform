@@ -39,7 +39,7 @@ export default async function GradePage({
           className="mt-2 text-ink/60 animate-float-in"
           style={{ animationDelay: '0.08s' }}
         >
-          اختاري المادة — سيُطلب تسجيل الدخول قبل فتح الألعاب
+          اختر المادة — سيُطلب تسجيل الدخول قبل فتح الألعاب
         </p>
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
