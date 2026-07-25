@@ -15,7 +15,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-dvh flex flex-col">
-      {/* ── البطل: الشعار والرسالة ── */}
+      {/* البطل: الشعار والرسالة */}
       <section className="flex-1 flex flex-col items-center justify-center px-5 pt-16 pb-10 text-center">
         <div className="animate-float-in">
           <Logo size={110} />
@@ -40,7 +40,7 @@ export default async function HomePage() {
           للمعلمين والمعلمات — اختر المرحلة وابدأ
         </p>
 
-        {/* ── بطاقتا المرحلتين ── */}
+        {/* بطاقتا المرحلتين */}
         <div className="mt-12 grid gap-6 sm:grid-cols-2 w-full max-w-2xl">
           {stages.map((stage, i) => {
             const meta = STAGE_META[stage.slug] ?? { desc: '', grades: '' };
@@ -52,7 +52,6 @@ export default async function HomePage() {
                 className="card-3d group relative overflow-hidden p-8 text-right animate-float-in"
                 style={{ animationDelay: `${0.35 + i * 0.12}s` }}
               >
-                {/* خلفية لونية ناعمة تميز كل مرحلة */}
                 <div
                   aria-hidden="true"
                   className={`absolute inset-x-0 top-0 h-1.5 ${
@@ -96,8 +95,8 @@ export default async function HomePage() {
           })}
         </div>
 
-        {/* ── أداة سجل الدرجات الذكي ── */}
-        
+        {/* أداة سجل الدرجات الذكي */}
+        <a
           href="https://ghiras-games.vercel.app/gradebook/full-review"
           target="_blank"
           rel="noopener noreferrer"
