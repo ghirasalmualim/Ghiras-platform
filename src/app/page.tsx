@@ -95,9 +95,9 @@ export default async function HomePage() {
           })}
         </div>
 
-        {/* أداة سجل الدرجات الذكي */}
+        {/* أداة سجل الدرجات الذكي — تُفتح عبر مُصدِّر التصاريح (للمشترِكات فقط) */}
         <a
-          href="https://ghiras-games.vercel.app/gradebook/full-review"
+          href="/api/tool-access?tool=gradebook"
           target="_blank"
           rel="noopener noreferrer"
           className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
