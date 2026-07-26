@@ -1,32 +1,25 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
-
 /**
- * زر تشغيل اللعبة — يسجّل الزيارة في الإحصائيات ثم يفتح اللعبة
- * في تبويب جديد.
+ * زر تشغيل اللعبة — يفتح اللعبة عبر مُصدِّر التصاريح على المنصة،
+ * الذي يتحقق من الاشتراك والصلاحية ثم يوجّه للعبة بتوكن موقّع.
+ * لا تُفتح أي لعبة إلا من هنا (الرابط المباشر محميّ بالحارس).
  */
 export default function GameLauncher({
   gameId,
-  url,
   accent,
 }: {
   gameId: string;
-  url: string;
+  url?: string; // لم يعد يُفتح مباشرة — يُمرَّر عبر مُصدِّر التصاريح
   accent: string;
 }) {
   function launch() {
-    // تسجيل الزيارة (دون انتظار — لا يؤخر فتح اللعبة)
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        void supabase
-          .from('game_visits')
-          .insert({ game_id: gameId, user_id: data.user.id });
-      }
-    });
-
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // يمرّ الفتح عبر مُصدِّر التصاريح (يسجّل الزيارة ويصدر التوكن على الخادم)
+    window.open(
+      `/api/game-access?g=${encodeURIComponent(gameId)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   }
 
   return (
