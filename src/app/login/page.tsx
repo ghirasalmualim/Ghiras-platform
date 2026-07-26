@@ -7,12 +7,23 @@ import Logo from '@/components/Logo';
 import { createClient, usernameToEmail } from '@/lib/supabase/client';
 
 /**
- * بوابة تسجيل الدخول — المرحلة الثانية (نظام حقيقي):
- * 1) التحقق من اسم المستخدم وكلمة المرور عبر Supabase Auth
+ * بوابة تسجيل الدخول — الدخول برقم الجوال (يُستخدم كاسم مستخدم).
+ * 1) التحقق من رقم الجوال وكلمة المرور عبر Supabase Auth
  * 2) التحقق من حالة الحساب (فعال / منتهٍ / موقوف)
  * 3) تسجيل عملية الدخول وتحديث آخر نشاط
  * 4) التوجيه للصفحة المطلوبة
  */
+function phoneToUsername(phone: string) {
+  let d = (phone || '').replace(/\D/g, '');
+  if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
+  return d;
+}
+/** الأدمِن يدخل باسم مستخدم نصي (ghiras)، والمعلمات برقم الجوال. */
+function toUsername(input: string) {
+  const raw = input.trim();
+  return /^[\d+\s()\-]+$/.test(raw) ? phoneToUsername(raw) : raw;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,22 +37,23 @@ function LoginForm() {
   async function handleSubmit() {
     if (loading) return;
     if (!username.trim() || !password) {
-      setMessage('يرجى إدخال اسم المستخدم وكلمة المرور');
+      setMessage('يرجى إدخال رقم الجوال وكلمة المرور');
       return;
     }
 
     setLoading(true);
     setMessage(null);
     const supabase = createClient();
+    const uname = toUsername(username);
 
     // 1) محاولة الدخول
     const { data: auth, error } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(username),
+      email: usernameToEmail(uname),
       password,
     });
 
     if (error || !auth.user) {
-      setMessage('اسم المستخدم أو كلمة المرور غير صحيحة');
+      setMessage('رقم الجوال أو كلمة المرور غير صحيحة');
       setLoading(false);
       return;
     }
@@ -80,7 +92,7 @@ function LoginForm() {
     // 3) تسجيل الدخول الناجح وتحديث آخر نشاط (دون تعطيل المستخدم)
     void supabase.from('login_logs').insert({
       user_id: auth.user.id,
-      username: username.trim().toLowerCase(),
+      username: uname,
       success: true,
       user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     });
@@ -116,7 +128,7 @@ function LoginForm() {
               htmlFor="username"
               className="block text-sm font-bold text-ink/80 mb-1.5"
             >
-              اسم المستخدم
+              رقم الجوال
             </label>
             <input
               id="username"
@@ -130,7 +142,7 @@ function LoginForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full rounded-xl border border-sage/30 bg-white px-4 py-3 text-left focus:border-sage focus:ring-2 focus:ring-sage/25 outline-none transition"
-              placeholder="username"
+              placeholder="٩٩١٢٣٤٥٦"
             />
           </div>
 
@@ -173,6 +185,16 @@ function LoginForm() {
           >
             {loading ? 'جارٍ التحقق…' : 'دخول'}
           </button>
+
+          <p className="text-center text-sm text-ink/60">
+            ليس لديك حساب؟{' '}
+            <Link href="/register" className="font-bold text-sage-dark hover:underline">
+              إنشاء حساب
+            </Link>
+          </p>
+          <p className="text-center text-xs text-ink/45">
+            نسيتِ كلمة السر؟ تواصلي مع إدارة غراس المعلم
+          </p>
         </div>
       </div>
 
