@@ -1,9 +1,13 @@
+// جسر الذكاء الاصطناعي لأدوات غراس (دفتر التقييم + التحضير الكتابي)
+// يحمل المفتاح على الخادم بأمان. المفتاح يُضبط من إعدادات Vercel كمتغيّر ANTHROPIC_API_KEY.
+
 const ALLOWED_ORIGINS = [
   "https://ghiras-games.vercel.app",
   "https://ghiras-platform.vercel.app",
 ];
-const MODEL = process.env.GRADEBOOK_MODEL || "claude-haiku-4-5";
-const MAX_TOKENS = 1500;
+const MODEL = process.env.GRADEBOOK_MODEL || "claude-sonnet-5";
+const MAX_TOKENS_CAP = 8192;
+const MAX_TOKENS_DEFAULT = 1500;
 
 function corsHeaders(origin: string | null) {
   const allow =
@@ -56,6 +60,12 @@ export async function POST(req: Request) {
     );
   }
 
+  const reqTokens = parseInt(body?.max_tokens, 10);
+  const maxTokens = Math.min(
+    MAX_TOKENS_CAP,
+    Math.max(256, isFinite(reqTokens) ? reqTokens : MAX_TOKENS_DEFAULT)
+  );
+
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -64,7 +74,7 @@ export async function POST(req: Request) {
         "x-api-key": key,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, messages }),
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages }),
     });
     const data = await res.text();
     return new Response(data, { status: res.status, headers });
