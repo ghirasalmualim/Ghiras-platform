@@ -73,7 +73,10 @@ export async function GET(req: NextRequest) {
       profile.status !== 'suspended' &&
       profile.gradebook_until &&
       new Date(profile.gradebook_until) > new Date());
-  if (!active) return home(req); // ليست مشترِكة في الدفتر (أو انتهى/موقوف)
+  if (!active) {
+    // ليست مشترِكة في الدفتر — صفحة توضيحية بدل التوجيه الصامت
+    return NextResponse.redirect(new URL('/gradebook-locked', req.url));
+  }
 
   // إصدار التوكن المربوط بمجلّد الأداة
   const exp = Date.now() + TOKEN_TTL_MS;
