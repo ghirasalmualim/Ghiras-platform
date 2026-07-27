@@ -3,9 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
  * مُصدِّر تصاريح الأدوات المحمية (دفتر التقييم الذكي).
- * يتأكد من تسجيل الدخول + اشتراك الأداة السارّي، ثم يُصدر توكناً موقّعاً قصير العمر
- * ويوجّه المعلمة لرابط الأداة. الحارس على مستودع الألعاب يتحقق من التوكن.
- * بدون اشتراك سارٍ + توكن، لا تُفتح الأداة (لا من البطاقة ولا من الرابط المباشر).
+ * يتأكد من تسجيل الدخول + اشتراك الأداة + حدّ الجهازين، ثم يُصدر توكناً موقّعاً.
  */
 
 export const runtime = 'nodejs';
@@ -14,7 +12,6 @@ export const dynamic = 'force-dynamic';
 const TOKEN_TTL_MS = 2 * 60 * 1000; // عمر التوكن: دقيقتان
 const enc = new TextEncoder();
 
-// الأدوات المحمية: المفتاح -> رابط الأداة ومجلّدها (slug)
 const TOOLS: Record<string, { url: string; slug: string }> = {
   gradebook: {
     url: 'https://ghiras-games.vercel.app/gradebook/full-review',
@@ -59,7 +56,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // اشتراك الدفتر مستقل: صلاحيته في عمود gradebook_until. والأدمِن يفتح كل شيء.
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, status, gradebook_until')
@@ -74,15 +70,37 @@ export async function GET(req: NextRequest) {
       profile.gradebook_until &&
       new Date(profile.gradebook_until) > new Date());
   if (!active) {
-    // ليست مشترِكة في الدفتر — صفحة توضيحية بدل التوجيه الصامت
     return NextResponse.redirect(new URL('/gradebook-locked', req.url));
   }
 
-  // إصدار التوكن المربوط بمجلّد الأداة
+  // حدّ الجهازين (للمشترِكات فقط، الأدمِن مُعفى)
+  let newDevice = false;
+  let deviceId = req.cookies.get('gg_device')?.value || '';
+  if (!isAdmin) {
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      newDevice = true;
+    }
+    const { data: dv } = await supabase.rpc('register_device', { p_device: deviceId });
+    if (dv === 'limit') {
+      return NextResponse.redirect(new URL('/device-limit', req.url));
+    }
+  }
+
   const exp = Date.now() + TOKEN_TTL_MS;
   const sig = await hmac(`t|${tool.slug}|${exp}`);
   const dest = new URL(tool.url);
   dest.searchParams.set('t', `${exp}.${sig}`);
 
-  return NextResponse.redirect(dest.toString());
+  const res = NextResponse.redirect(dest.toString());
+  if (newDevice) {
+    res.cookies.set('gg_device', deviceId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return res;
 }
