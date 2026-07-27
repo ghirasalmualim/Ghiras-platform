@@ -114,6 +114,11 @@ export default function AdminPanel() {
     const supabase = createClient();
     act(id, () => supabase.rpc('admin_set_status', { p_user: id, p_status: 'active' }), 'تم إعادة تفعيل الحساب');
   };
+  const resetDevices = (id: string) => {
+    if (!confirm('تصفير أجهزة هذا الحساب؟ ستُحذف الأجهزة المسجّلة ويقدر يفتح من جهازين جديدين.')) return;
+    const supabase = createClient();
+    act(id, () => supabase.rpc('admin_reset_devices', { p_user: id }), 'تم تصفير الأجهزة');
+  };
 
   const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString('ar-KW') : '—');
   const stillValid = (s: string | null) => !!s && new Date(s) > new Date();
@@ -262,6 +267,10 @@ export default function AdminPanel() {
                     إيقاف
                   </button>
                 )}
+                <button disabled={isBusy} onClick={() => resetDevices(r.id)}
+                  className="rounded-lg border border-gray-200 bg-white hover:border-sage text-ink/70 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  📱 تصفير الأجهزة
+                </button>
                 {isBusy && <span className="text-sm text-ink/50 self-center">جارٍ…</span>}
               </div>
             </div>
