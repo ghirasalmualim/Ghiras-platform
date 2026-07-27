@@ -45,7 +45,8 @@ export default function AdminPanel() {
     load();
   }, [load]);
 
-  async function act(id: string, run: () => Promise<{ error: { message: string } | null }>, ok: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function act(id: string, run: () => any, ok: string) {
     setBusy(id);
     setMsg(null);
     const { error } = await run();
