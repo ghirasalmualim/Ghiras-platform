@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
- * مُصدِّر تصاريح الأدوات المحمية (دفتر التقييم الذكي).
- * يتأكد من تسجيل الدخول + اشتراك الأداة + حدّ الجهازين، ثم يُصدر توكناً موقّعاً.
+ * مُصدِّر تصاريح الأدوات المحمية (دفتر التقييم الذكي + الورش التعليمية).
+ * يتأكد من تسجيل الدخول + اشتراك الأداة السارّي، ثم يُصدر توكناً موقّعاً قصير العمر
+ * ويوجّه المعلمة لرابط الأداة. الحارس على مستودع الألعاب يتحقق من التوكن.
+ * بدون اشتراك سارٍ + توكن، لا تُفتح الأداة (لا من البطاقة ولا من الرابط المباشر).
  */
 
 export const runtime = 'nodejs';
@@ -12,10 +14,29 @@ export const dynamic = 'force-dynamic';
 const TOKEN_TTL_MS = 2 * 60 * 1000; // عمر التوكن: دقيقتان
 const enc = new TextEncoder();
 
-const TOOLS: Record<string, { url: string; slug: string }> = {
+type ToolCfg = {
+  url: string; // رابط الأداة على مستودع الألعاب
+  slug: string; // المجلّد (لربط التوكن)
+  until: 'gradebook_until' | 'workshops_until'; // عمود صلاحية الاشتراك
+  lock: string; // صفحة «خاص بالمشتركين»
+  deviceLimit: boolean; // هل تُطبّق قاعدة الجهازين؟
+};
+
+// الأدوات المحمية
+const TOOLS: Record<string, ToolCfg> = {
   gradebook: {
     url: 'https://ghiras-games.vercel.app/gradebook/full-review',
     slug: 'gradebook',
+    until: 'gradebook_until',
+    lock: '/gradebook-locked',
+    deviceLimit: true,
+  },
+  workshops: {
+    url: 'https://ghiras-games.vercel.app/workshops/',
+    slug: 'workshops',
+    until: 'workshops_until',
+    lock: '/workshops-locked',
+    deviceLimit: false,
   },
 };
 
@@ -56,27 +77,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
+  // صلاحية اشتراك الأداة في عمودها الخاص. والأدمِن يفتح كل شيء.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, status, gradebook_until')
+    .select(`role, status, ${tool.until}`)
     .eq('id', user.id)
     .single();
 
-  const isAdmin = profile?.role === 'admin';
+  const p = profile as { role?: string; status?: string; [k: string]: unknown } | null;
+  const isAdmin = p?.role === 'admin';
+  const until = p ? (p[tool.until] as string | null) : null;
   const active =
     isAdmin ||
-    (profile &&
-      profile.status !== 'suspended' &&
-      profile.gradebook_until &&
-      new Date(profile.gradebook_until) > new Date());
+    (p && p.status !== 'suspended' && until && new Date(until) > new Date());
   if (!active) {
-    return NextResponse.redirect(new URL('/gradebook-locked', req.url));
+    // ليست مشترِكة في هذه الأداة — صفحة توضيحية بدل التوجيه الصامت
+    return NextResponse.redirect(new URL(tool.lock, req.url));
   }
 
-  // حدّ الجهازين (للمشترِكات فقط، الأدمِن مُعفى)
+  // حدّ الجهازين (للأدوات المُفعّل عليها فقط، الأدمِن مُعفى)
   let newDevice = false;
   let deviceId = req.cookies.get('gg_device')?.value || '';
-  if (!isAdmin) {
+  if (tool.deviceLimit && !isAdmin) {
     if (!deviceId) {
       deviceId = crypto.randomUUID();
       newDevice = true;
@@ -87,6 +109,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // إصدار التوكن المربوط بمجلّد الأداة
   const exp = Date.now() + TOKEN_TTL_MS;
   const sig = await hmac(`t|${tool.slug}|${exp}`);
   const dest = new URL(tool.url);
