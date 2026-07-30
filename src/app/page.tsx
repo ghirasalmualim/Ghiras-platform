@@ -11,7 +11,7 @@ const SHOW_WORKSHOPS = false;
 const SHOW_MILLIONAIRE = false;
 
 // إظهار بطاقة «سجل الحضور الذكي». مخفية الآن — بدّليها إلى true للإظهار.
-const SHOW_ATTENDANCE = false;
+const SHOW_ATTENDANCE = true;
 
 /** أوصاف قصيرة تظهر تحت اسم كل مرحلة */
 const STAGE_META: Record<string, { desc: string; grades: string }> = {
