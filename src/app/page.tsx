@@ -8,7 +8,10 @@ export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين �
 const SHOW_WORKSHOPS = false;
 
 // إظهار بطاقة «من سيربح المليون». مخفية الآن — بدّليها إلى true للإظهار.
-const SHOW_MILLIONAIRE = true;
+const SHOW_MILLIONAIRE = false;
+
+// إظهار بطاقة «سجل الحضور الذكي». مخفية الآن — بدّليها إلى true للإظهار.
+const SHOW_ATTENDANCE = false;
 
 /** أوصاف قصيرة تظهر تحت اسم كل مرحلة */
 const STAGE_META: Record<string, { desc: string; grades: string }> = {
@@ -117,13 +120,87 @@ export default async function HomePage() {
           })}
         </div>
 
-        {/* أداة سجل الدرجات الذكي — تُفتح عبر مُصدِّر التصاريح (للمشترِكات فقط) */}
+        {/* ترتيب الأدوات: ١) من سيربح المليون  ٢) سجل الحضور  ٣) سجل الدرجات */}
+
+        {/* ١) مولّد «من سيربح المليون» — أداة مدفوعة برصيد. مخفية حالياً. */}
+        {SHOW_MILLIONAIRE && (
+          <Link
+            href="/millionaire"
+            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
+            style={{ animationDelay: '0.6s' }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5 bg-gold"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-gold"
+            />
+            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-gold-light text-gold-dark">
+              لعبة تفاعلية
+            </span>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">
+              من سيربح المليون
+            </h2>
+            <p className="mt-1.5 text-ink/60">
+              صوّري درسك، والذكاء يبني لك لعبة مسابقات جاهزة للصف
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
+              افتح المولّد
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-1"
+              >
+                ←
+              </span>
+            </span>
+          </Link>
+        )}
+
+        {/* ٢) سجل الحضور الذكي — بيانات سحابية، للمشتركات. مخفية حالياً. */}
+        {SHOW_ATTENDANCE && (
+          <Link
+            href="/attendance"
+            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
+            style={{ animationDelay: '0.7s' }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5 bg-sage"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-sage"
+            />
+            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-sage-light text-sage-deep">
+              أداة المعلم
+            </span>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">
+              سجل الحضور الذكي
+            </h2>
+            <p className="mt-1.5 text-ink/60">
+              تسجيل الحضور والغياب بضغطة، وتقارير ونسب لكل طالب
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 font-bold text-sage-dark">
+              فتح السجل
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-1"
+              >
+                ←
+              </span>
+            </span>
+          </Link>
+        )}
+
+        {/* ٣) أداة سجل الدرجات الذكي — تُفتح عبر مُصدِّر التصاريح (للمشترِكات فقط) */}
         <a
           href="/api/tool-access?tool=gradebook"
           target="_blank"
           rel="noopener noreferrer"
           className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
-          style={{ animationDelay: '0.6s' }}
+          style={{ animationDelay: '0.8s' }}
         >
           <div
             aria-hidden="true"
@@ -153,14 +230,14 @@ export default async function HomePage() {
           </span>
         </a>
 
-        {/* الورش التعليمية — تُفتح عبر مُصدِّر التصاريح (للمشتركين فقط). مخفية حالياً. */}
+        {/* الورش التعليمية — مخفية حالياً. */}
         {SHOW_WORKSHOPS && (
           <a
             href="/api/tool-access?tool=workshops"
             target="_blank"
             rel="noopener noreferrer"
             className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
-            style={{ animationDelay: '0.7s' }}
+            style={{ animationDelay: '0.9s' }}
           >
             <div
               aria-hidden="true"
@@ -189,42 +266,6 @@ export default async function HomePage() {
               </span>
             </span>
           </a>
-        )}
-
-        {/* مولّد «من سيربح المليون» — أداة مدفوعة برصيد. مخفية حالياً. */}
-        {SHOW_MILLIONAIRE && (
-          <Link
-            href="/millionaire"
-            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
-            style={{ animationDelay: '0.8s' }}
-          >
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-0 top-0 h-1.5 bg-gold"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-gold"
-            />
-            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-gold-light text-gold-dark">
-              لعبة تفاعلية
-            </span>
-            <h2 className="mt-4 text-2xl font-extrabold text-ink">
-              من سيربح المليون
-            </h2>
-            <p className="mt-1.5 text-ink/60">
-              صوّري درسك، والذكاء يبني لك لعبة مسابقات جاهزة للصف
-            </p>
-            <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
-              افتح المولّد
-              <span
-                aria-hidden="true"
-                className="transition-transform group-hover:-translate-x-1"
-              >
-                ←
-              </span>
-            </span>
-          </Link>
         )}
       </section>
 
