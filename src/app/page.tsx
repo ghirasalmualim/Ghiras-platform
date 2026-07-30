@@ -7,6 +7,9 @@ export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين �
 // إظهار بطاقة «الورش التعليمية» في الرئيسية. مخفية الآن — بدّليها إلى true للإظهار.
 const SHOW_WORKSHOPS = false;
 
+// إظهار بطاقة «من سيربح المليون». مخفية الآن — بدّليها إلى true للإظهار.
+const SHOW_MILLIONAIRE = false;
+
 /** أوصاف قصيرة تظهر تحت اسم كل مرحلة */
 const STAGE_META: Record<string, { desc: string; grades: string }> = {
   primary: { desc: 'من الصف الأول إلى الخامس', grades: '٥ صفوف' },
@@ -186,6 +189,42 @@ export default async function HomePage() {
               </span>
             </span>
           </a>
+        )}
+
+        {/* مولّد «من سيربح المليون» — أداة مدفوعة برصيد. مخفية حالياً. */}
+        {SHOW_MILLIONAIRE && (
+          <Link
+            href="/millionaire"
+            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
+            style={{ animationDelay: '0.8s' }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5 bg-gold"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-gold"
+            />
+            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-gold-light text-gold-dark">
+              لعبة تفاعلية
+            </span>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">
+              من سيربح المليون
+            </h2>
+            <p className="mt-1.5 text-ink/60">
+              صوّري درسك، والذكاء يبني لك لعبة مسابقات جاهزة للصف
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
+              افتح المولّد
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-1"
+              >
+                ←
+              </span>
+            </span>
+          </Link>
         )}
       </section>
 
