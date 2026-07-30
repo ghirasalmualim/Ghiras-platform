@@ -8,7 +8,7 @@ export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين �
 const SHOW_WORKSHOPS = false;
 
 // إظهار بطاقة «من سيربح المليون». مخفية الآن — بدّليها إلى true للإظهار.
-const SHOW_MILLIONAIRE = false;
+const SHOW_MILLIONAIRE = true;
 
 // إظهار بطاقة «سجل الحضور الذكي». مخفية الآن — بدّليها إلى true للإظهار.
 const SHOW_ATTENDANCE = true;
