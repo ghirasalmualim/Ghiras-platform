@@ -7,8 +7,8 @@ export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين �
 // إظهار بطاقة «الورش التعليمية» في الرئيسية. مخفية الآن — بدّليها إلى true للإظهار.
 const SHOW_WORKSHOPS = false;
 
-// إظهار بطاقة «من سيربح المليون». مخفية الآن — بدّليها إلى true للإظهار.
-const SHOW_MILLIONAIRE = true;
+// إظهار كرت «ألعاب غراس التفاعلية» الموحّد (يفتح صفحة اختيار اللعبة).
+const SHOW_GAMES = true;
 
 // إظهار بطاقة «سجل الحضور الذكي». مخفية الآن — بدّليها إلى true للإظهار.
 const SHOW_ATTENDANCE = true;
@@ -120,12 +120,12 @@ export default async function HomePage() {
           })}
         </div>
 
-        {/* ترتيب الأدوات: ١) من سيربح المليون  ٢) سجل الحضور  ٣) سجل الدرجات */}
+        {/* ترتيب الأدوات: ١) ألعاب غراس التفاعلية  ٢) سجل الحضور  ٣) سجل الدرجات */}
 
-        {/* ١) مولّد «من سيربح المليون» — أداة مدفوعة برصيد. مخفية حالياً. */}
-        {SHOW_MILLIONAIRE && (
+        {/* ١) كرت «ألعاب غراس التفاعلية» الموحّد — يفتح صفحة اختيار اللعبة. */}
+        {SHOW_GAMES && (
           <Link
-            href="/millionaire"
+            href="/games"
             className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
             style={{ animationDelay: '0.6s' }}
           >
@@ -138,16 +138,16 @@ export default async function HomePage() {
               className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-gold"
             />
             <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-gold-light text-gold-dark">
-              لعبة تفاعلية
+              ألعاب بالذكاء الاصطناعي
             </span>
             <h2 className="mt-4 text-2xl font-extrabold text-ink">
-              من سيربح المليون
+              ألعاب غراس التفاعلية
             </h2>
             <p className="mt-1.5 text-ink/60">
-              صوّري درسك، والذكاء يبني لك لعبة مسابقات جاهزة للصف
+              صوّري درسك، والذكاء يبني لك لعبة جاهزة — من سيربح المليون، السلم والثعبان، والمزيد قريبًا
             </p>
             <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
-              افتح المولّد
+              اختاري لعبتك
               <span
                 aria-hidden="true"
                 className="transition-transform group-hover:-translate-x-1"
