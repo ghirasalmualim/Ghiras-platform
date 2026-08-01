@@ -10,6 +10,9 @@ const SHOW_WORKSHOPS = false;
 // إظهار كرت «ألعاب غراس التفاعلية» الموحّد (يفتح صفحة اختيار اللعبة).
 const SHOW_GAMES = true;
 
+// إظهار كرت «مغامرة المجموعات التفاعلية» (أداة تحفيز صفّي للمشتركات).
+const SHOW_ADVENTURE = true;
+
 // إظهار بطاقة «سجل الحضور الذكي». مخفية الآن — بدّليها إلى true للإظهار.
 const SHOW_ATTENDANCE = true;
 
@@ -148,6 +151,42 @@ export default async function HomePage() {
             </p>
             <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
               اختاري لعبتك
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-1"
+              >
+                ←
+              </span>
+            </span>
+          </Link>
+        )}
+
+        {/* ١.٥) مغامرة المجموعات التفاعلية — أداة تحفيز صفّي سحابية للمشتركات. */}
+        {SHOW_ADVENTURE && (
+          <Link
+            href="/adventure"
+            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
+            style={{ animationDelay: '0.65s' }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5 bg-gold"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-gold"
+            />
+            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-gold-light text-gold-dark">
+              أداة تحفيز صفّي
+            </span>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">
+              مغامرة المجموعات التفاعلية 🚀
+            </h2>
+            <p className="mt-1.5 text-ink/60">
+              حوّلي حصصك إلى مغامرة ممتدة — كل مجموعة تتقدّم، وكل إنجاز يُحفظ للحصة القادمة
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
+              افتحي اللوحة
               <span
                 aria-hidden="true"
                 className="transition-transform group-hover:-translate-x-1"
