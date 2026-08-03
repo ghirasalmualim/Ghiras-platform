@@ -19,6 +19,7 @@ export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى ل
 const FREE_GAMES: Record<string, string> = {
   'arabic|grade-9': 'https://ghiras-games.vercel.app/free-arabic-g9/full-review',
   'arabic|grade-8': 'https://ghiras-games.vercel.app/free-arabic-g8/full-review',
+  'arabic|grade-7': 'https://ghiras-games.vercel.app/free-arabic-g7/full-review',
   'islamic|grade-9': 'https://ghiras-games.vercel.app/free-islamic-g9/full-review',
   'islamic|grade-8': 'https://ghiras-games.vercel.app/free-islamic-g8/full-review',
   'islamic|grade-7': 'https://ghiras-games.vercel.app/free-islamic-g7/full-review',
