@@ -23,6 +23,7 @@ const FREE_GAMES: Record<string, string> = {
   'islamic|grade-6': 'https://ghiras-games.vercel.app/free-islamic-g6/full-review',
   'islamic|grade-5': 'https://ghiras-games.vercel.app/free-islamic-g5/full-review',
   'islamic|grade-4': 'https://ghiras-games.vercel.app/free-islamic-g4/full-review',
+  'islamic|grade-3': 'https://ghiras-games.vercel.app/free-islamic-g3/full-review',
 };
 
 export default async function SubjectPage({
@@ -148,7 +149,7 @@ export default async function SubjectPage({
                   className="inline-flex items-center gap-2 rounded-xl text-white font-extrabold px-8 py-3 shadow-soft transition-all hover:brightness-105"
                   style={{ backgroundColor: '#C9A84C' }}
                 >
-                  🎁 جرب الدرس الأول مجانًا
+                  🎁 جرّب النسخة المجانية
                 </a>
                 <p className="mt-2 text-xs text-ink/45">
                   تجربة مجانية — بدون اشتراك
