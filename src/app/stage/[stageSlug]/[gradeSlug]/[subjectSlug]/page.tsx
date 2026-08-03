@@ -25,6 +25,7 @@ const FREE_GAMES: Record<string, string> = {
   'islamic|grade-4': 'https://ghiras-games.vercel.app/free-islamic-g4/full-review',
   'islamic|grade-3': 'https://ghiras-games.vercel.app/free-islamic-g3/full-review',
   'islamic|grade-2': 'https://ghiras-games.vercel.app/free-islamic-g2/full-review',
+  'islamic|grade-1': 'https://ghiras-games.vercel.app/free-islamic-g1/full-review',
 };
 
 export default async function SubjectPage({
