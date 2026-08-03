@@ -13,6 +13,13 @@ import { Game } from '@/lib/types';
 
 export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى لكل زائر حسب صلاحياته
 
+// ── النسخ المجانية (الدرس الأول) المتوفّرة ──
+// المفتاح: `${subjectSlug}|${gradeSlug}` — القيمة: رابط اللعبة المجانية.
+// لإضافة نسخة مجانية جديدة مستقبلاً: أضِف سطراً هنا فقط.
+const FREE_GAMES: Record<string, string> = {
+  'islamic|grade-9': 'https://ghiras-games.vercel.app/free-islamic-g9/full-review',
+};
+
 export default async function SubjectPage({
   params,
 }: {
@@ -25,32 +32,30 @@ export default async function SubjectPage({
   const subjects = await getSubjects(grade.id);
   const subject = subjects.find((s) => s.slug === params.subjectSlug);
   if (!subject) notFound();
-
   const path = `/stage/${stage.slug}/${grade.slug}/${subject.slug}`;
+
+  // رابط النسخة المجانية لهذه المادة/الصف (إن وُجدت)
+  const freeUrl = FREE_GAMES[`${subject.slug}|${grade.slug}`];
 
   // ── التحقق من تسجيل الدخول ──
   const supabase = createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(path)}`);
   }
-
   // ── الملف الشخصي والحالة ──
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, status, sub_end')
     .eq('id', user.id)
     .single();
-
   const expired =
     profile?.sub_end &&
     new Date(profile.sub_end) < new Date(new Date().toDateString());
   const blocked =
     !profile || profile.status !== 'active' || Boolean(expired);
-
   // ── التحقق من الصلاحية على هذه المادة تحديداً ──
   let canAccess = false;
   if (!blocked) {
@@ -59,7 +64,6 @@ export default async function SubjectPage({
     });
     canAccess = data === true;
   }
-
   // ── جلب الألعاب (سياسات الأمان لا تُعيدها إلا لمن يملك الصلاحية) ──
   let games: Game[] = [];
   if (canAccess) {
@@ -71,7 +75,6 @@ export default async function SubjectPage({
       .order('sort_order');
     games = (data as Game[]) ?? [];
   }
-
   return (
     <main className="min-h-dvh flex flex-col">
       <Header
@@ -81,7 +84,6 @@ export default async function SubjectPage({
           { label: subject.name },
         ]}
       />
-
       <section className="flex-1 w-full max-w-5xl mx-auto px-5 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 animate-float-in">
@@ -101,7 +103,6 @@ export default async function SubjectPage({
               </p>
             </div>
           </div>
-
           <div
             className="flex items-center gap-3 animate-float-in"
             style={{ animationDelay: '0.08s' }}
@@ -114,7 +115,6 @@ export default async function SubjectPage({
             <LogoutButton />
           </div>
         </div>
-
         {/* ── لا يملك صلاحية ── */}
         {!canAccess && (
           <div
@@ -132,15 +132,35 @@ export default async function SubjectPage({
               <br />
               للاشتراك أو الترقية، يرجى التواصل مع إدارة غراس المعلم.
             </p>
-            <Link
-              href={`/stage/${stage.slug}/${grade.slug}`}
-              className="mt-6 inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
-            >
-              العودة للمواد
-            </Link>
+
+            {/* زر التجربة المجانية — يظهر فقط للمواد التي لها نسخة مجانية */}
+            {freeUrl && (
+              <div className="mt-6">
+                <a
+                  href={freeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl text-white font-extrabold px-8 py-3 shadow-soft transition-all hover:brightness-105"
+                  style={{ backgroundColor: '#C9A84C' }}
+                >
+                  🎁 جرّبي الدرس الأول مجانًا
+                </a>
+                <p className="mt-2 text-xs text-ink/45">
+                  تجربة مجانية — بدون اشتراك
+                </p>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <Link
+                href={`/stage/${stage.slug}/${grade.slug}`}
+                className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
+              >
+                العودة للمواد
+              </Link>
+            </div>
           </div>
         )}
-
         {/* ── يملك صلاحية لكن لا توجد ألعاب بعد ── */}
         {canAccess && games.length === 0 && (
           <div
@@ -158,7 +178,6 @@ export default async function SubjectPage({
             </p>
           </div>
         )}
-
         {/* ── قائمة الألعاب ── */}
         {canAccess && games.length > 0 && (
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -188,7 +207,6 @@ export default async function SubjectPage({
                     <span aria-hidden="true">🎮</span>
                   )}
                 </div>
-
                 <div className="p-5 flex-1 flex flex-col">
                   {game.category && (
                     <span
