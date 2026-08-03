@@ -148,7 +148,7 @@ export default async function SubjectPage({
                   className="inline-flex items-center gap-2 rounded-xl text-white font-extrabold px-8 py-3 shadow-soft transition-all hover:brightness-105"
                   style={{ backgroundColor: '#C9A84C' }}
                 >
-                  🎁 جرّبي الدرس الأول مجانًا
+                  🎁 جرب الدرس الأول مجانًا
                 </a>
                 <p className="mt-2 text-xs text-ink/45">
                   تجربة مجانية — بدون اشتراك
