@@ -18,6 +18,7 @@ export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى ل
 // لإضافة نسخة مجانية جديدة مستقبلاً: أضِف سطراً هنا فقط.
 const FREE_GAMES: Record<string, string> = {
   'islamic|grade-9': 'https://ghiras-games.vercel.app/free-islamic-g9/full-review',
+  'islamic|grade-8': 'https://ghiras-games.vercel.app/free-islamic-g8/full-review',
 };
 
 export default async function SubjectPage({
