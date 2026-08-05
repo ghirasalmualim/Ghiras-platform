@@ -24,6 +24,7 @@ const FREE_GAMES: Record<string, string> = {
   'arabic|grade-5': 'https://ghiras-games.vercel.app/free-arabic-g5/full-review',
   'arabic|grade-4': 'https://ghiras-games.vercel.app/free-arabic-g4/full-review',
   'arabic|grade-3': 'https://ghiras-games.vercel.app/free-arabic-g3/full-review',
+  'arabic|grade-2': 'https://ghiras-games.vercel.app/free-arabic-g2/full-review',
   'islamic|grade-9': 'https://ghiras-games.vercel.app/free-islamic-g9/full-review',
   'islamic|grade-8': 'https://ghiras-games.vercel.app/free-islamic-g8/full-review',
   'islamic|grade-7': 'https://ghiras-games.vercel.app/free-islamic-g7/full-review',
