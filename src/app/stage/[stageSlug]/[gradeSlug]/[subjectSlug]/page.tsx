@@ -18,6 +18,7 @@ export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى ل
 // لإضافة نسخة مجانية جديدة مستقبلاً: أضِف سطراً هنا فقط.
 const FREE_GAMES: Record<string, string> = {
   'social|grade-9': 'https://ghiras-games.vercel.app/free-social-g9/full-review',
+  'science|grade-8': 'https://ghiras-games.vercel.app/free-science-g8/full-review',
   'arabic|grade-9': 'https://ghiras-games.vercel.app/free-arabic-g9/full-review',
   'arabic|grade-8': 'https://ghiras-games.vercel.app/free-arabic-g8/full-review',
   'arabic|grade-7': 'https://ghiras-games.vercel.app/free-arabic-g7/full-review',
