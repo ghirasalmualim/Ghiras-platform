@@ -24,6 +24,7 @@ const FREE_GAMES: Record<string, string> = {
   'social|grade-5': 'https://ghiras-games.vercel.app/free-social-g5/full-review',
   'social|grade-4': 'https://ghiras-games.vercel.app/free-social-g4/full-review',
   'social|grade-3': 'https://ghiras-games.vercel.app/free-social-g3/full-review',
+  'social|grade-2': 'https://ghiras-games.vercel.app/free-social-g2/full-review',
   'science|grade-8': 'https://ghiras-games.vercel.app/free-science-g8/full-review',
   'arabic|grade-9': 'https://ghiras-games.vercel.app/free-arabic-g9/full-review',
   'arabic|grade-8': 'https://ghiras-games.vercel.app/free-arabic-g8/full-review',
