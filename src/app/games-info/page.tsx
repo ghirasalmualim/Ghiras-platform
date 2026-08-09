@@ -24,18 +24,23 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
-  // مثال (احذفيه بعد إضافة ألعابك الحقيقية):
-  // {
-  //   title: 'اسم اللعبة',
-  //   info: 'معلومة أو وصف قصير يظهر تحت العنوان',
-  //   href: `${GAMES_BASE}/اسم-المجلد/index.html`,
-  //   badge: 'لعبة',
-  //   tone: 'sage',
-  // },
+  { title: 'سلّم التحدي 🪜', info: 'اصعدوا درجةً درجة — كل إجابة صحيحة ترفعكم، ولا شيء يُخصم أبدًا.', href: '/gi/challenge-ladder.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'المحقق 🕵️', info: 'أربع شهادات وأدلّة تتكشّف — من يصل إلى الحقيقة بأقلّ دليل؟', href: '/gi/detective.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'غرفة الهروب 🔓', info: 'أربعة ألغاز… وباب واحد لا يُفتح إلا بالرمز الصحيح.', href: '/gi/escape-room.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'تحدّي ٥ ثوانٍ ⏱️', info: 'ثلاث إجابات… خمس ثوانٍ… وضغط لا يرحم!', href: '/gi/five-second-rule.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'ذاكرة البرق ⚡', info: 'شاهدوا بسرعة… ثم تذكّروا بدقّة!', href: '/gi/flash-memory.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'شفرة غراس 🔐', info: 'خمسة تحدّيات، كل حلٍّ يكشف حرفًا — من يقرأ الكلمة السرّية أولًا؟', href: '/gi/ghiras-cipher.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'خمّن الصورة 🖼️', info: 'تبدأ ظلًّا… ومن يعرفها مبكرًا يربح أكثر!', href: '/gi/guess-the-picture.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'الصندوق الغامض 🎁', info: 'اختر صندوقًا… ولا أحد يعرف ما بداخله!', href: '/gi/mystery-box.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'فرقِعها! 🎈', info: 'اختاروا بالونًا… وشوفوا وش يطلع منه!', href: '/gi/pop-it.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'اختر مخاطرتك 🎲', info: 'كلما ارتفعت النقاط… اشتدّ التحدّي. فهل تجازفون؟', href: '/gi/risk-board.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'اكتشف المختلف 🔍', info: 'عنصرٌ واحد يختلف عن الباقي… من يجده أولًا؟', href: '/gi/spot-the-odd.html', badge: 'وقت غراس', tone: 'sage' },
+  { title: 'جزيرة المفاجآت 🏝️', info: 'ستة أماكن… وكل مكان يخبّئ مفاجأة!', href: '/gi/surprise-island.html', badge: 'وقت غراس', tone: 'gold' },
+  { title: 'تحدّي الدول والعواصم 🌍', info: 'هل تعرف العالم من أعلامه وعواصمه؟', href: '/gi/world-challenge.html', badge: 'وقت غراس', tone: 'sage' },
 ];
 
 function resolve(href: string) {
-  return href.startsWith('http') ? href : `${GAMES_BASE}/${href.replace(/^\//, '')}`;
+  return href.startsWith('http') || href.startsWith('/') ? href : `${GAMES_BASE}/${href}`;
 }
 
 export default function GamesInfoPage() {
