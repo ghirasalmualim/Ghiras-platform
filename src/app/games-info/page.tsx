@@ -24,6 +24,7 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
+  { title: 'مدينة الحكمة 🏰', info: 'المدينة فقدت سحرها… تجوّل فيها، أعِد إليها الحياة، وابنِ أساسك خطوة بخطوة.', href: '/gi/wisdom-city.html', badge: 'تأسيس الأطفال 🧒', tone: 'gold' },
   { title: 'سلّم التحدي 🪜', info: 'اصعدوا درجةً درجة — كل إجابة صحيحة ترفعكم، ولا شيء يُخصم أبدًا.', href: '/gi/challenge-ladder.html', badge: 'وقت غراس', tone: 'sage' },
   { title: 'المحقق 🕵️', info: 'أربع شهادات وأدلّة تتكشّف — من يصل إلى الحقيقة بأقلّ دليل؟', href: '/gi/detective.html', badge: 'وقت غراس', tone: 'gold' },
   { title: 'غرفة الهروب 🔓', info: 'أربعة ألغاز… وباب واحد لا يُفتح إلا بالرمز الصحيح.', href: '/gi/escape-room.html', badge: 'وقت غراس', tone: 'sage' },
