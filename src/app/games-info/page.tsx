@@ -140,7 +140,7 @@ export default function GamesInfoPage() {
                       isGold ? 'text-gold-dark' : 'text-sage-dark'
                     }`}
                   >
-                    ابدئي اللعب
+                    ابدأ اللعب
                     <span
                       aria-hidden="true"
                       className="transition-transform group-hover:-translate-x-1"
