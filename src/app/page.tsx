@@ -10,6 +10,9 @@ const SHOW_WORKSHOPS = false;
 // إظهار كرت «ألعاب غراس التفاعلية» الموحّد (يفتح صفحة اختيار اللعبة).
 const SHOW_GAMES = true;
 
+// إظهار خانة «ألعاب ومعلومات» — ألعاب ومعلومات تعليمية مجانية للجميع.
+const SHOW_INFO_GAMES = true;
+
 // إظهار كرت «مغامرة المجموعات التفاعلية» (أداة تحفيز صفّي للمشتركات).
 const SHOW_ADVENTURE = true;
 
@@ -151,6 +154,42 @@ export default async function HomePage() {
             </p>
             <span className="mt-6 inline-flex items-center gap-2 font-bold text-gold-dark">
               اختاري لعبتك
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-1"
+              >
+                ←
+              </span>
+            </span>
+          </Link>
+        )}
+
+        {/* ١.٢) خانة «ألعاب ومعلومات» — ألعاب ومعلومات تعليمية مجانية للجميع. */}
+        {SHOW_INFO_GAMES && (
+          <Link
+            href="/games-info"
+            className="card-3d group relative overflow-hidden p-8 text-right animate-float-in block mt-6 w-full max-w-2xl"
+            style={{ animationDelay: '0.62s' }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5 bg-sage"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full blur-2xl opacity-25 transition-opacity group-hover:opacity-40 bg-sage"
+            />
+            <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-sage-light text-sage-deep">
+              مجّاني للجميع
+            </span>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">
+              ألعاب ومعلومات 🎮📚
+            </h2>
+            <p className="mt-1.5 text-ink/60">
+              ألعاب تعليمية جاهزة ومعلومات مفيدة — مفتوحة للجميع بدون اشتراك
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 font-bold text-sage-dark">
+              دخول الخانة
               <span
                 aria-hidden="true"
                 className="transition-transform group-hover:-translate-x-1"
