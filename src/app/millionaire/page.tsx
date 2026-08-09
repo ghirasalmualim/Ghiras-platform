@@ -34,6 +34,7 @@ export default async function MillionairePage() {
 
   return (
     <>
+      <a href="/games" id="ghiras-back-btn" style={{position:'fixed',top:10,left:10,zIndex:2147483647,display:'flex',alignItems:'center',gap:6,background:'rgba(65,96,63,.92)',color:'#fff',fontFamily:"Cairo,'Segoe UI',sans-serif",fontWeight:800,fontSize:13,lineHeight:1,padding:'9px 14px',borderRadius:999,textDecoration:'none',boxShadow:'0 4px 14px rgba(0,0,0,.28)'}}>← ألعاب غراس</a>
       <style dangerouslySetInnerHTML={{ __html: GAME_CSS }} />
       <div dangerouslySetInnerHTML={{ __html: GAME_BODY }} />
       <Script id="mg-boot" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: boot }} />
