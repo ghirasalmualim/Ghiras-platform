@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>مدينة الحكمة — عالم المغامرة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&family=Lalezar&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#F5C542;--rose:#F7A8B8;--mint:#7FD1C1;--cream:#FFF6E8;--ink:#2A1B3D;--plum:#5B3E8E}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#1B1132;font-family:'Tajawal',system-ui,sans-serif;color:var(--cream);user-select:none;touch-action:none}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+.display{font-family:'Lalezar','Tajawal',sans-serif}
+.btn{font-family:'Tajawal';font-weight:700;font-size:17px;border:none;border-radius:999px;padding:14px 28px;cursor:pointer;
+ background:linear-gradient(160deg,#FFD976,#F0A93C);color:#4A2E06;box-shadow:0 8px 20px rgba(0,0,0,.35),inset 0 -3px 0 rgba(0,0,0,.12)}
+.btn:active{transform:translateY(2px) scale(.98)}
+.btn.ghost{background:rgba(255,255,255,.1);color:var(--cream);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.28)}
+.btn:disabled{filter:grayscale(.6);opacity:.7}
+.layer{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:20px;text-align:center}
+.layer.on{display:flex;animation:fade .4s both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.veil{background:radial-gradient(120% 80% at 50% 110%,#7B5BB8,#4E357F 40%,#2B1B4A 75%,#1B1132)}
+
+#title h1{font-size:clamp(36px,10vw,58px);color:var(--gold);margin:6px 0;text-shadow:0 0 34px rgba(245,197,66,.55)}
+#title p{opacity:.85;line-height:1.9;margin:0 0 24px;max-width:420px}
+.crown{font-size:64px;animation:fl 4s ease-in-out infinite}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.cards{display:flex;gap:16px;justify-content:center;margin:18px 0 6px;flex-wrap:wrap}
+.card{width:150px;padding:16px 12px;border-radius:26px;background:rgba(255,255,255,.07);cursor:pointer;
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16);transition:.2s}
+.card canvas{position:static;width:96px;height:110px;margin:auto;display:block}
+.card b{display:block;margin-top:6px;font-size:16px}
+.card small{opacity:.75;font-size:12px}
+.card.sel{background:rgba(245,197,66,.16);box-shadow:inset 0 0 0 2px var(--gold),0 0 30px rgba(245,197,66,.3);transform:translateY(-5px)}
+.field{font-family:'Tajawal';font-size:19px;font-weight:700;text-align:center;padding:13px;border-radius:16px;border:none;
+ background:rgba(255,255,255,.92);color:var(--ink);width:230px;margin:14px 0}
+.pets{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:18px 0;max-width:400px}
+.pet{width:84px;height:92px;border-radius:22px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.2s}
+.pet span{font-size:34px}.pet small{font-size:12px;opacity:.8}
+.pet.sel{background:rgba(245,197,66,.18);box-shadow:inset 0 0 0 2px var(--gold);transform:translateY(-4px)}
+
+#hud{position:fixed;top:0;left:0;right:0;z-index:5;padding:calc(env(safe-area-inset-top) + 10px) 12px 0;pointer-events:none;display:none}
+.hrow{display:flex;gap:7px;align-items:center}
+.chip{display:flex;gap:5px;align-items:center;background:rgba(20,12,38,.6);backdrop-filter:blur(8px);border-radius:999px;
+ padding:6px 11px;font-weight:900;font-size:13.5px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.chip b{color:var(--gold)}
+.hbtn{pointer-events:auto;background:rgba(20,12,38,.6);border:none;color:var(--cream);width:36px;height:36px;
+ border-radius:12px;font-size:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+#gear{margin-inline-start:auto}
+#energy{margin-top:8px;height:8px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden}
+#energy i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--mint),var(--gold));
+ box-shadow:0 0 14px rgba(245,197,66,.7);transition:width .9s cubic-bezier(.2,.9,.3,1)}
+#eventBar{margin-top:8px;font-size:12.5px;background:rgba(20,12,38,.55);backdrop-filter:blur(8px);border-radius:14px;
+ padding:8px 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);line-height:1.6}
+
+#prompt{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 24px);left:50%;transform:translateX(-50%) translateY(18px);
+ z-index:6;opacity:0;transition:.25s;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px}
+#prompt.on{opacity:1;transform:translateX(-50%);pointer-events:auto}
+#promptName{font-size:13.5px;font-weight:700;background:rgba(20,12,38,.7);padding:6px 14px;border-radius:999px;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+#enterBtn{animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+#exitBtn{position:fixed;top:calc(env(safe-area-inset-top) + 58px);inset-inline-start:12px;z-index:6;display:none}
+#jumpBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 26px);inset-inline-end:20px;z-index:8;
+ width:82px;height:82px;border-radius:50%;border:none;display:none;flex-direction:column;align-items:center;
+ justify-content:center;gap:1px;font-family:'Tajawal';font-weight:900;font-size:15px;color:#4A2E06;
+ background:radial-gradient(circle at 35% 28%,#FFE9A8,#F0A93C);
+ box-shadow:0 10px 24px rgba(0,0,0,.4),inset 0 -5px 0 rgba(0,0,0,.14),0 0 30px rgba(245,197,66,.35)}
+#jumpBtn span{font-size:19px;line-height:1}
+#jumpBtn:active{transform:translateY(4px) scale(.95);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+#zoomHint{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 122px);left:50%;transform:translateX(-50%);
+ z-index:6;font-size:12px;background:rgba(20,12,38,.6);padding:7px 14px;border-radius:999px;opacity:0;
+ transition:.4s;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+#zoomHint.on{opacity:.9}
+#toast{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 112px);left:50%;transform:translateX(-50%);z-index:7;
+ background:rgba(255,255,255,.95);color:var(--ink);font-size:13.5px;font-weight:700;padding:10px 16px;border-radius:16px;
+ box-shadow:0 10px 26px rgba(0,0,0,.35);opacity:0;transition:.3s;max-width:80vw;text-align:center;line-height:1.6}
+#toast.on{opacity:1}
+#badgePop{position:fixed;top:30%;left:50%;transform:translate(-50%,-20px) scale(.8);z-index:50;opacity:0;transition:.4s;
+ background:linear-gradient(160deg,#FFF3D0,#F3D06A);color:#4A2E06;border-radius:26px;padding:18px 26px;text-align:center;
+ box-shadow:0 20px 50px rgba(0,0,0,.45);pointer-events:none}
+#badgePop.on{opacity:1;transform:translate(-50%,0) scale(1)}
+#badgePop .em{font-size:52px}#badgePop b{display:block;font-size:18px;margin-top:4px}#badgePop small{opacity:.8}
+
+/* quest */
+#quest{background:linear-gradient(180deg,#3A2666,#241640);z-index:20;overflow-y:auto;justify-content:flex-start;align-items:stretch;text-align:right;padding:0}
+.qhead{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 12px) 14px 4px}
+.qhead .back{background:rgba(255,255,255,.1);border:none;color:var(--cream);width:36px;height:36px;border-radius:12px;font-size:17px}
+.qhead .where{font-weight:700;font-size:15px;opacity:.9}
+.qbody{flex:1;padding:6px 18px 30px}
+.storycard{background:linear-gradient(150deg,rgba(255,255,255,.14),rgba(255,255,255,.05));border-radius:22px;padding:16px;
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16);display:flex;gap:12px;line-height:1.9;font-size:15px;margin-bottom:14px}
+.storycard .face{font-size:34px}
+.prompt{font-size:clamp(22px,6.5vw,30px);font-weight:900;text-align:center;margin:8px 0 20px;line-height:1.7}
+.num{direction:ltr;unicode-bidi:isolate;display:inline-block}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opts.one{grid-template-columns:1fr}
+.opt{font-family:'Tajawal';font-size:20px;font-weight:700;padding:18px 10px;border:none;border-radius:20px;
+ background:linear-gradient(170deg,#FFFDF6,#F1E6D3);color:var(--ink);box-shadow:0 8px 18px rgba(0,0,0,.3),inset 0 -4px 0 rgba(0,0,0,.08)}
+.opt:active{transform:translateY(2px) scale(.98)}
+.opt.right{background:linear-gradient(170deg,#B6F0D8,#63C9A4);animation:cheer .5s}
+.opt.wrong{background:linear-gradient(170deg,#FFE0E6,#F5B7C2);animation:shk .4s}
+@keyframes cheer{50%{transform:scale(1.08)}}
+@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.flyfield{position:relative;height:230px}
+.fly{position:absolute;font-size:15px;font-weight:900;color:var(--ink);background:linear-gradient(170deg,#FFFDF6,#F3D9E4);
+ padding:10px 14px;border-radius:999px;border:none;box-shadow:0 6px 16px rgba(0,0,0,.3);animation:drift 6s ease-in-out infinite}
+@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(6px,-14px)}}
+.slots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:58px;padding:12px;border-radius:18px;
+ background:rgba(0,0,0,.22);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.12)}
+.slot{background:var(--gold);color:#4A2E06;font-weight:900;padding:9px 14px;border-radius:12px}
+.bank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.tokn{font-family:'Tajawal';background:linear-gradient(170deg,#FFFDF6,#EADFCB);color:var(--ink);font-weight:700;font-size:17px;
+ padding:11px 16px;border:none;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.28)}
+.tokn.used{opacity:.25;pointer-events:none}
+.feedback{margin-top:16px;text-align:center;font-size:17px;font-weight:700;min-height:28px}
+.feedback.good{color:var(--mint)}.feedback.soft{color:var(--rose)}
+.tip{margin-top:6px;font-size:14px;opacity:.85;text-align:center;line-height:1.8}
+
+#treasure{background:rgba(12,7,26,.94);z-index:25}
+#chestIcon{font-size:92px;animation:cp .9s cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 0 40px rgba(245,197,66,.7))}
+@keyframes cp{0%{transform:scale(.2) rotate(-15deg);opacity:0}60%{transform:scale(1.18) rotate(4deg)}100%{transform:scale(1)}}
+#treasure h2{font-size:30px;color:var(--gold);margin:12px 0 6px}
+#treasure p{opacity:.9;line-height:1.9;margin:0 20px 18px;font-size:15px}
+.loot{display:flex;gap:12px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.loot div{background:rgba(255,255,255,.1);border-radius:16px;padding:12px 16px;font-weight:900;font-size:15px;
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
+.cf{position:absolute;width:9px;height:14px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.15}}
+
+#badges{background:linear-gradient(180deg,#2B1B4A,#1B1132);z-index:30;justify-content:flex-start;overflow-y:auto;padding-top:calc(env(safe-area-inset-top) + 20px)}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px;width:100%;max-width:520px;margin-top:16px}
+.bcard{border-radius:20px;padding:14px 8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14)}
+.bcard.got{background:linear-gradient(160deg,rgba(245,197,66,.22),rgba(245,197,66,.06));box-shadow:inset 0 0 0 1.5px var(--gold)}
+.bcard .em{font-size:34px;display:block;filter:grayscale(1);opacity:.4}
+.bcard.got .em{filter:none;opacity:1}
+.bcard b{display:block;font-size:12.5px;margin-top:6px}
+.bcard small{font-size:11px;opacity:.65;line-height:1.5;display:block;margin-top:3px}
+
+/* ---- story scene ---- */
+#story{z-index:22;padding:0;justify-content:flex-end;overflow:hidden;background:#12081F}
+#storyArt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:background 1s ease}
+#storyArt .big{font-size:clamp(90px,26vw,180px);filter:drop-shadow(0 20px 50px rgba(0,0,0,.5));animation:sIn .9s cubic-bezier(.2,1.3,.4,1) both}
+#storyArt .s1,#storyArt .s2{position:absolute;font-size:clamp(38px,10vw,68px);opacity:.9;animation:sFloat 5s ease-in-out infinite}
+#storyArt .s1{top:24%;inset-inline-start:14%}
+#storyArt .s2{bottom:34%;inset-inline-end:15%;animation-delay:1.2s}
+@keyframes sIn{0%{transform:scale(.5) translateY(30px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes sFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-16px) rotate(3deg)}}
+#storyGlow{position:absolute;inset:0;background:radial-gradient(60% 45% at 50% 42%,rgba(255,225,160,.22),transparent 70%);pointer-events:none}
+#storySpark{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sp{position:absolute;border-radius:50%;background:#FFE9A8;animation:spUp linear infinite}
+@keyframes spUp{0%{transform:translateY(0);opacity:0}20%{opacity:.9}100%{transform:translateY(-70vh);opacity:0}}
+#storyBox{position:relative;z-index:3;width:100%;background:linear-gradient(180deg,rgba(12,7,26,0),rgba(12,7,26,.92) 22%);
+ padding:60px 22px calc(env(safe-area-inset-bottom) + 26px);text-align:center}
+#storyChapter{font-size:12.5px;letter-spacing:2px;color:var(--gold);opacity:.9;margin-bottom:8px}
+#storyText{font-size:clamp(17px,4.6vw,21px);line-height:2.1;min-height:110px;font-weight:500;
+ max-width:560px;margin:0 auto 16px;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+#storyDots{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+#storyDots i{width:7px;height:7px;border-radius:99px;background:rgba(255,255,255,.28)}
+#storyDots i.on{background:var(--gold);width:20px}
+#skipStory{position:fixed;top:calc(env(safe-area-inset-top) + 14px);inset-inline-end:14px;z-index:24;
+ background:rgba(255,255,255,.12);border:none;color:var(--cream);border-radius:999px;padding:8px 16px;font-family:'Tajawal';font-weight:700;font-size:13px}
+
+#mpSheet{background:rgba(12,7,26,.9);backdrop-filter:blur(8px);z-index:48}
+.vlab2{display:block;text-align:right;font-size:13px;font-weight:700;opacity:.85;margin:12px 0 5px}
+.mpin{width:100%;padding:11px 12px;border-radius:13px;border:none;font-family:'Tajawal';font-size:13.5px;
+ background:rgba(255,255,255,.94);color:var(--ink)}
+#shop{background:linear-gradient(180deg,#3A2450,#180E28);z-index:47;justify-content:flex-start;
+ overflow-y:auto;padding-top:calc(env(safe-area-inset-top) + 18px)}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin:12px 0 14px}
+.tab{background:rgba(255,255,255,.08);border:none;color:var(--cream);font-family:'Tajawal';font-weight:700;
+ font-size:13px;padding:9px 14px;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14)}
+.tab.on{background:linear-gradient(160deg,#FFD976,#F0A93C);color:#4A2E06;box-shadow:none}
+.price{display:inline-block;margin-top:5px;font-size:12.5px;font-weight:900;color:var(--gold)}
+.owned{color:var(--mint)}
+#wardrobe{background:linear-gradient(180deg,#2B1B4A,#160E28);z-index:47;justify-content:flex-start;
+ overflow-y:auto;padding-top:calc(env(safe-area-inset-top) + 18px)}
+.sub2{opacity:.75;font-size:13px;margin:6px 0 4px;text-align:center;line-height:1.7}
+#wPrev{position:static;width:150px;height:170px;margin:0 auto}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:11px;width:100%;max-width:480px}
+.wcard{border-radius:20px;padding:13px 8px;text-align:center;background:rgba(255,255,255,.06);
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);cursor:pointer}
+.wcard.got{background:linear-gradient(160deg,rgba(245,197,66,.18),rgba(245,197,66,.05))}
+.wcard.on{box-shadow:inset 0 0 0 2px var(--gold),0 0 24px rgba(245,197,66,.28)}
+.wcard .we{font-size:30px;display:block}
+.wcard.lock .we{filter:grayscale(1);opacity:.4}
+.wcard b{display:block;font-size:12.5px;margin-top:5px}
+.wcard small{font-size:11px;opacity:.7}
+#homeSheet{background:rgba(12,7,26,.9);backdrop-filter:blur(8px);z-index:46}
+.hbox{width:min(92vw,400px);background:linear-gradient(170deg,#3C2A66,#241640);border-radius:28px;padding:24px;
+ box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 0 0 1.5px rgba(255,255,255,.14);text-align:center}
+#book{background:linear-gradient(180deg,#2B1B4A,#160E28);z-index:31;justify-content:flex-start;overflow-y:auto;
+ padding-top:calc(env(safe-area-inset-top) + 20px);align-items:stretch;text-align:right}
+#book h2{text-align:center;font-size:27px;color:var(--gold);margin:0 0 4px}
+#book .sub{text-align:center;opacity:.7;font-size:13px;margin-bottom:18px}
+.tale{background:rgba(255,255,255,.06);border-radius:20px;padding:14px 16px;margin-bottom:12px;
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.13);display:flex;gap:12px;align-items:center}
+.tale.locked{opacity:.4}
+.tale .te{font-size:32px}
+.tale b{display:block;font-size:15px}
+.tale small{opacity:.7;font-size:12.5px;line-height:1.6}
+.tale button{margin-inline-start:auto;background:rgba(245,197,66,.9);border:none;color:#4A2E06;font-family:'Tajawal';
+ font-weight:900;border-radius:999px;padding:8px 14px;font-size:12.5px}
+#parent{background:linear-gradient(180deg,#FFF9EF,#F2E7D6);color:var(--ink);overflow-y:auto;z-index:40;justify-content:flex-start;align-items:stretch;text-align:right;padding:0}
+.ph{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 16px) 16px 12px;position:sticky;top:0;
+ background:rgba(255,249,239,.92);backdrop-filter:blur(6px);z-index:2}
+.ph h2{margin:0;font-size:20px;color:var(--plum)}
+.ph .close{margin-inline-start:auto;background:var(--plum);color:#fff;border:none;border-radius:12px;width:38px;height:38px;font-size:17px}
+.pwrap{padding:0 16px 44px}
+.pcard{background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(90,60,140,.12)}
+.pcard h3{margin:0 0 12px;font-size:16px;color:var(--plum)}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#F6F1FB;border-radius:14px;padding:11px 12px}
+.stat b{display:block;font-size:21px;color:var(--plum)}.stat small{font-size:12px;opacity:.75}
+.skill{margin-bottom:12px}
+.skill .row{display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-bottom:5px}
+.skill .bar{height:9px;border-radius:99px;background:#EDE4F7;overflow:hidden}
+.skill .bar i{display:block;height:100%;background:linear-gradient(90deg,#8E6FD1,#5B3E8E)}
+.pill{display:inline-block;background:#F0E9FA;color:var(--plum);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:700;margin:0 0 6px 6px}
+.pill.warn{background:#FDECEF;color:#B8365A}
+.gate{text-align:center;padding:34px 20px}
+.gate input{font-family:'Tajawal';font-size:22px;text-align:center;padding:12px;border-radius:14px;border:2px solid #C9B7E6;width:130px;margin:14px 0}
+.muted{opacity:.65;font-size:13px;line-height:1.8}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hud">
+  <div class="hrow">
+    <div class="chip">⭐ <b id="cStars">٠</b></div>
+    <div class="chip">💎 <b id="cGems">٠</b></div>
+    <div class="chip">🗝 <b id="cKeys">٠</b><span id="keyProg" style="opacity:.7;font-weight:700;font-size:11.5px"></span></div>
+    <div class="chip">🏅 <b id="cBadges">٠</b></div>
+    <button class="hbtn" id="mpBtn">👨‍👧</button>
+    <button class="hbtn" id="carBtn">🚗</button>
+    <button class="hbtn" id="rideBtn">🐾</button>
+    <button class="hbtn" id="wearBtn">👗</button>
+    <button class="hbtn" id="homeBtn">🏠</button>
+    <button class="hbtn" id="bookBtn">📖</button>
+    <button class="hbtn" id="badgeBtn">🏅</button>
+    <button class="hbtn" id="soundBtn">🔊</button>
+    <button class="hbtn" id="gear">⚙</button>
+  </div>
+  <div id="energy"><i></i></div>
+  <div id="eventBar"></div>
+</div>
+
+<button class="btn ghost" id="exitBtn">↩ خروج</button>
+<div id="prompt"><div id="promptName"></div><button class="btn" id="enterBtn">ادخلي ✨</button></div>
+<button id="jumpBtn">قفز<span>⬆</span></button>
+<div id="zoomHint">قرّب أو باعد بإصبعين لتكبير المدينة 🔍</div>
+<div id="toast"></div>
+<div id="badgePop"><div class="em">🏅</div><b id="bpName"></b><small id="bpDesc"></small></div>
+
+<!-- TITLE -->
+<div class="layer veil on" id="title">
+  <div class="crown">👑</div>
+  <h1 class="display">مدينة الحكمة</h1>
+  <p>المدينة فقدت سحرها… الأبواب أُغلقت، والكنوز اختفت.<br>تجوّل فيها، وأعِد إليها الحياة.</p>
+  <button class="btn" id="startBtn">ابدأ المغامرة</button>
+  <div style="margin-top:12px"><button class="btn ghost" id="parentBtn">لوحة ولي الأمر</button></div>
+</div>
+
+<!-- HERO PICK -->
+<div class="layer veil" id="heroPick">
+  <h2 class="display" style="font-size:29px;color:var(--gold);margin:0">من سيدخل المدينة؟</h2>
+  <div class="cards" id="heroCards">
+    <div class="card sel" data-h="princess"><canvas width="192" height="220" id="pv1"></canvas><b>الأميرة</b><small>تاج ذهبي وقلب شجاع</small></div>
+    <div class="card" data-h="hero"><canvas width="192" height="220" id="pv2"></canvas><b>البطل المقنّع</b><small>عباءة حمراء وسرعة البرق</small></div>
+  </div>
+  <input class="field" id="nameIn" maxlength="14" placeholder="اكتب الاسم هنا">
+  <button class="btn" id="toPet">التالي</button>
+</div>
+
+<!-- PET PICK -->
+<div class="layer veil" id="pick">
+  <h2 class="display" style="font-size:29px;color:var(--gold);margin:0 0 4px">اختر رفيقك السحري</h2>
+  <p style="opacity:.85;margin:0;font-size:14.5px">سيمشي خلفك، وسيكبر ويتغيّر شكله كلما تقدّمت.</p>
+  <div class="pets" id="pets"></div>
+  <button class="btn" id="goCity">إلى المدينة</button>
+</div>
+
+<!-- QUEST -->
+<div class="layer" id="quest">
+  <div class="qhead"><button class="back" id="questBack">→</button><div class="where" id="questWhere"></div></div>
+  <div class="qbody" id="qbody"></div>
+</div>
+
+<!-- TREASURE -->
+<div class="layer" id="treasure">
+  <div id="chestIcon">🎁</div>
+  <h2 class="display" id="trTitle">الكنز انفتح!</h2>
+  <p id="trText"></p>
+  <div class="loot" id="trLoot"></div>
+  <button class="btn" id="trBack">العودة إلى المدينة</button>
+</div>
+
+<!-- STORY -->
+<div class="layer" id="story">
+  <div id="storyArt"><span class="s1"></span><span class="big"></span><span class="s2"></span></div>
+  <div id="storyGlow"></div><div id="storySpark"></div>
+  <div id="storyBox">
+    <div id="storyChapter"></div>
+    <div id="storyText"></div>
+    <div id="storyDots"></div>
+    <button class="btn" id="storyNext">التالي</button>
+  </div>
+</div>
+<button id="skipStory" style="display:none">تخطّي ⏭</button>
+
+<!-- MULTIPLAYER -->
+<div class="layer" id="mpSheet">
+  <div class="hbox" style="max-height:88vh;overflow-y:auto">
+    <div style="font-size:46px">👨‍👧</div>
+    <h2 class="display" style="font-size:22px;color:var(--gold);margin:6px 0 2px">اللعب معاً</h2>
+    <p class="muted2">اكتبا نفس <b>رمز الغرفة</b> على الجهازين، وستريان بعضكما تمشيان في نفس المدينة.</p>
+    <label class="vlab2">رابط Supabase</label>
+    <input class="mpin" id="mpUrl" placeholder="https://xxxx.supabase.co" dir="ltr">
+    <label class="vlab2">المفتاح العام (anon key)</label>
+    <input class="mpin" id="mpKey" placeholder="eyJhbGci..." dir="ltr">
+    <label class="vlab2">رمز الغرفة</label>
+    <input class="mpin" id="mpRoom" placeholder="مثال: بيتنا" >
+    <div id="mpState" class="muted2" style="margin-top:10px"></div>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" id="mpGo">اتصال</button>
+      <button class="btn ghost" id="mpOff">قطع الاتصال</button>
+      <button class="btn ghost" id="mpClose">تم</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="layer" id="shop">
+  <h2 class="display" style="font-size:26px;color:var(--gold);margin:0">متجر المدينة</h2>
+  <div class="sub2" id="shopWallet"></div>
+  <div class="tabs" id="shopTabs"></div>
+  <div class="wgrid" id="shopGrid"></div>
+  <button class="btn ghost" id="shopClose" style="margin:18px auto 40px;display:block">خروج من المتجر</button>
+</div>
+
+<!-- WARDROBE -->
+<div class="layer" id="wardrobe">
+  <h2 class="display" style="font-size:26px;color:var(--gold);margin:0">خزانة الملابس</h2>
+  <div class="sub2" id="wSub"></div>
+  <canvas id="wPrev" width="220" height="250"></canvas>
+  <div class="wgrid" id="wGrid"></div>
+  <button class="btn ghost" id="wClose" style="margin:18px auto 40px;display:block">تم</button>
+</div>
+
+<!-- HOME SHEET -->
+<div class="layer" id="homeSheet">
+  <div class="hbox">
+    <div style="font-size:52px">🏠</div>
+    <h2 class="display" style="font-size:23px;color:var(--gold);margin:6px 0 4px">القائمة الرئيسية</h2>
+    <p id="homeWho" style="opacity:.75;font-size:13.5px;line-height:1.8;margin:0 0 6px"></p>
+    <p style="opacity:.6;font-size:12.5px;line-height:1.8;margin:0">تغيير اللاعب يبدأ رحلة جديدة من البداية،
+      وسيُمسح تقدّم اللاعب الحالي.</p>
+    <div style="margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" id="hResume">متابعة اللعب</button>
+      <button class="btn ghost" id="hChange">تغيير اللاعب</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORY BOOK -->
+<div class="layer" id="book">
+  <h2 class="display">كتاب الحكايات</h2>
+  <div class="sub">كل حكاية أنهيتها محفوظة هنا — يمكنك قراءتها مرة أخرى</div>
+  <div id="bookList"></div>
+  <button class="btn ghost" id="bookClose" style="margin:20px auto 40px;display:block">رجوع</button>
+</div>
+
+<!-- BADGES -->
+<div class="layer" id="badges">
+  <h2 class="display" style="font-size:27px;color:var(--gold);margin:0">خزانة الأوسمة</h2>
+  <div class="bgrid" id="bgrid"></div>
+  <button class="btn ghost" id="bClose" style="margin-top:22px">رجوع</button>
+</div>
+
+<!-- PARENT -->
+<div class="layer" id="parent">
+  <div class="ph"><h2>لوحة ولي الأمر</h2><button class="close" id="pClose">✕</button></div>
+  <div class="pwrap" id="pWrap"></div>
+</div>
+
+<script>
+/* ================= storage ================= */
+const KEY='hikma_city_v3';
+const Store={
+ async get(k){try{if(window.storage){const r=await window.storage.get(k);return r?JSON.parse(r.value):null}}catch(e){}
+  try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
+ async set(k,v){const s=JSON.stringify(v);try{if(window.storage){await window.storage.set(k,s);return}}catch(e){}
+  try{localStorage.setItem(k,s)}catch(e){}}};
+
+/* ================= utils ================= */
+const AR='٠١٢٣٤٥٦٧٨٩',ar=n=>String(n).replace(/\d/g,d=>AR[+d]);
+const $=id=>document.getElementById(id);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const seedToday=()=>{const d=new Date();return d.getFullYear()*372+d.getMonth()*31+d.getDate()};
+
+/* ================= sound (synth, no files) ================= */
+let AC=null,SOUND=true;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type='sine',vol=.16,delay=0,slide=0){
+ const c=ac();if(!c||!SOUND)return;
+ const o=c.createOscillator(),g=c.createGain();
+ o.type=type;o.frequency.setValueAtTime(f,c.currentTime+delay);
+ if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(40,f+slide),c.currentTime+delay+d);
+ g.gain.setValueAtTime(0,c.currentTime+delay);
+ g.gain.linearRampToValueAtTime(vol,c.currentTime+delay+0.012);
+ g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+delay+d);
+ o.connect(g);g.connect(c.destination);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+d+.05);
+}
+function noise(d=.3,vol=.1,delay=0){
+ const c=ac();if(!c||!SOUND)return;
+ const b=c.createBuffer(1,c.sampleRate*d,c.sampleRate),ch=b.getChannelData(0);
+ for(let i=0;i<ch.length;i++)ch[i]=(Math.random()*2-1)*(1-i/ch.length);
+ const s=c.createBufferSource();s.buffer=b;
+ const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=900;
+ const g=c.createGain();g.gain.value=vol;
+ s.connect(f);f.connect(g);g.connect(c.destination);s.start(c.currentTime+delay);
+}
+const SFX={
+ win(){[523,659,784,1047].forEach((f,i)=>tone(f,.32,'triangle',.16,i*.09))},
+ fanfare(){[392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.45,'triangle',.15,i*.1));noise(.5,.05,.3)},
+ soft(){tone(330,.18,'sine',.12);tone(262,.24,'sine',.1,.1)},
+ tap(){tone(660,.07,'square',.06)},
+ coin(){tone(988,.1,'square',.1);tone(1319,.16,'square',.09,.07)},
+ chestCreak(){tone(180,.5,'sawtooth',.05,0,60);noise(.35,.05,.15)},
+ chestOpen(){[659,880,1109,1319].forEach((f,i)=>tone(f,.5,'sine',.14,i*.07));noise(.6,.07,.1)},
+ badge(){[784,988,1175,1568].forEach((f,i)=>tone(f,.5,'triangle',.15,i*.11))},
+ door(){tone(220,.35,'sine',.1,0,-60);noise(.2,.04)},
+ step(){tone(140+Math.random()*30,.05,'sine',.035)}
+};
+$('soundBtn').onclick=()=>{SOUND=!SOUND;$('soundBtn').textContent=SOUND?'🔊':'🔇';if(SOUND)SFX.tap()};
+
+/* ================= gendered text ================= */
+let GIRL=true;
+const T=(f,m)=>GIRL?f:m;
+const PRAISE=()=>GIRL?['أحسنتِ!','رائعة!','أصبحتِ أقوى!','مدينة الحكمة استعادت جزءاً من سحرها.','عقلكِ يلمع كالجواهر!']
+                    :['أحسنتَ!','رائع!','أصبحتَ أقوى!','مدينة الحكمة استعادت جزءاً من سحرها.','عقلكَ يلمع كالجواهر!'];
+const SOFTW=()=>GIRL?['اقتربتِ.','لنحاول بطريقة أخرى.','أنا أثق بكِ.','سننجح معاً.']
+                    :['اقتربتَ.','لنحاول بطريقة أخرى.','أنا أثق بكَ.','سننجح معاً.'];
+
+/* ================= skills / state ================= */
+const SKILLS={
+ ar_letters:{n:'تمييز الحروف والأصوات',fam:'ar'}, ar_read:{n:'قراءة الكلمات',fam:'ar'},
+ ar_missing:{n:'الإملاء وإكمال الكلمة',fam:'ar'}, ar_sentence:{n:'بناء الجملة والفهم',fam:'ar'},
+ en_vocab:{n:'المفردات الإنجليزية',fam:'en'}, en_letters:{n:'أصوات الحروف الإنجليزية',fam:'en'},
+ en_sentence:{n:'الجملة الإنجليزية',fam:'en'},
+ ma_add:{n:'الجمع',fam:'ma'}, ma_sub:{n:'الطرح',fam:'ma'}, ma_mul:{n:'الضرب',fam:'ma'},
+ ma_money:{n:'النقود والقياس',fam:'ma'}, ma_word:{n:'المسائل اللفظية',fam:'ma'}};
+let S={hero:'princess',name:'الأميرة',pet:'🦊',petName:'ثعلوب',stars:0,gems:0,keys:0,missions:0,streak:0,
+ visited:{},skills:{},badges:{},log:[],started:Date.now()};
+Object.keys(SKILLS).forEach(k=>S.skills[k]={m:.35,lvl:1,seen:0,right:0,last:-99});
+const save=()=>Store.set(KEY,S);
+
+/* ================= badges ================= */
+const BADGES=[
+ {id:'first',e:'🌟',n:'أول ضوء',d:'أنجزت أول مغامرة',c:s=>s.missions>=1},
+ {id:'five',e:'🔥',n:'شعلة المدينة',d:'٥ مغامرات',c:s=>s.missions>=5},
+ {id:'ten',e:'👑',n:'تاج الحكمة',d:'١٠ مغامرات',c:s=>s.missions>=10},
+ {id:'streak3',e:'⚡',n:'ثلاث إجابات متتالية',d:'٣ إجابات صحيحة من أول مرة',c:s=>s.streak>=3},
+ {id:'gems20',e:'💎',n:'جامع الجواهر',d:'٢٠ جوهرة',c:s=>s.gems>=20},
+ {id:'reader',e:'📖',n:'القارئ الواثق',d:'إتقان قراءة الكلمات',c:s=>s.skills.ar_read.m>=.8&&s.skills.ar_read.seen>=4},
+ {id:'mathwiz',e:'🧮',n:'عقل الأرقام',d:'إتقان الجمع',c:s=>s.skills.ma_add.m>=.8&&s.skills.ma_add.seen>=4},
+ {id:'english',e:'🔤',n:'لسان عالمي',d:'إتقان المفردات الإنجليزية',c:s=>s.skills.en_vocab.m>=.8&&s.skills.en_vocab.seen>=4},
+ {id:'explorer',e:'🗺',n:'المستكشف',d:'زيارة ٥ أماكن',c:s=>Object.keys(s.visited).length>=5},
+ {id:'chests',e:'🎁',n:'صيّاد الصناديق',d:'فتح ٥ صناديق',c:s=>(s.chestsOpened||0)>=5}];
+function checkBadges(){
+ BADGES.forEach(b=>{if(!S.badges[b.id]&&b.c(S)){S.badges[b.id]=Date.now();showBadge(b);SFX.badge()}});
+ $('cBadges').textContent=ar(Object.keys(S.badges).length);
+}
+let bpT;
+function showBadge(b){
+ $('badgePop').querySelector('.em').textContent=b.e;
+ $('bpName').textContent='وسام: '+b.n;$('bpDesc').textContent=b.d;
+ $('badgePop').classList.add('on');clearTimeout(bpT);
+ bpT=setTimeout(()=>$('badgePop').classList.remove('on'),2600);
+}
+$('badgeBtn').onclick=()=>{SFX.tap();renderBadges();layer('badges');playing=false};
+$('bClose').onclick=()=>{layer(null);playing=true};
+function renderBadges(){
+ $('bgrid').innerHTML=BADGES.map(b=>`<div class="bcard ${S.badges[b.id]?'got':''}">
+  <span class="em">${b.e}</span><b>${b.n}</b><small>${b.d}</small></div>`).join('');
+}
+
+/* ================= world ================= */
+let W=2600,H=1900;
+const PLACES_MAIN=[
+ {id:'castle', n:'القصر الملكي',   x:1300,y:330, w:280,h:170,col:'#8E6FD1',roof:'#F5C542',e:'🏰',need:9,fam:'en',label:'بيت الرسائل الملكية',skills:['en_sentence','en_vocab'],who:'حارس القصر',face:'💂',room:{bg:'#4A3A78',floor:'#6C5AA0',props:['🕯','🛡','👑','🪞']}},
+ {id:'library',n:'المكتبة القديمة',x:820, y:520, w:190,h:130,col:'#6E88C9',roof:'#7FD1C1',e:'📚',need:0,fam:'ar',label:'بيت الحروف',skills:['ar_read','ar_missing'],who:'أمينة المكتبة',face:'👩‍🏫',room:{bg:'#3E4E7A',floor:'#7B6A52',props:['📚','📚','🕯','🪶']}},
+ {id:'bakery', n:'المخبز',         x:1830,y:560, w:180,h:125,col:'#D98C6A',roof:'#F7A8B8',e:'🍰',need:0,fam:'ma',label:'بيت الأعداد',skills:['ma_add','ma_sub'],who:'الخبّاز سالم',face:'👨‍🍳',room:{bg:'#7A4B36',floor:'#C99A6E',props:['🍞','🧁','🥐','🍰']}},
+ {id:'station',n:'محطة القطار',    x:480, y:980, w:210,h:130,col:'#5F9EA0',roof:'#F5C542',e:'🚂',need:0,fam:'en',label:'بيت الكلمات العالمية',skills:['en_vocab','en_letters'],who:'قائد القطار',face:'🧑‍✈️',room:{bg:'#33565C',floor:'#7C8B8E',props:['🎫','🧳','🕰','🚂']}},
+ {id:'market', n:'السوق الملكي',   x:2050,y:1000,w:200,h:130,col:'#C98BAF',roof:'#FFD976',e:'🛍',need:4,fam:'ma',label:'بيت النقود',skills:['ma_money','ma_add'],who:'بائعة الزهور',face:'💐',room:{bg:'#6B3F5E',floor:'#B98BA6',props:['💐','🌷','🧺','🪙']}},
+ {id:'tower',  n:'برج الساحر',     x:420, y:1450,w:150,h:220,col:'#6B4CA6',roof:'#7FD1C1',e:'🧙',need:7,fam:'en',label:'بيت التعاويذ الغريبة',skills:['en_letters','en_sentence','en_vocab'],who:'الساحر الطيّب',face:'🧙‍♂️',room:{bg:'#3B2A63',floor:'#5C4790',props:['🔮','🕯','📜','⭐']}},
+ {id:'mine',   n:'منجم الجواهر',   x:2130,y:1520,w:190,h:140,col:'#4E5B8A',roof:'#B388FF',e:'💎',need:5,fam:'ma',label:'بيت الكنوز الحسابية',skills:['ma_mul','ma_word'],who:'حارس المنجم',face:'⛏',room:{bg:'#2E3355',floor:'#5A5F80',props:['💎','⛏','🪨','💠']}},
+ {id:'garden', n:'حديقة الفراشات', x:1720,y:1420,w:200,h:120,col:'#6FB07A',roof:'#F7A8B8',e:'🦋',need:2,fam:'ar',label:'بيت الأصوات',skills:['ar_letters','ar_read'],who:'البستاني',face:'👨‍🌾',room:{bg:'#2F5B45',floor:'#5E9463',props:['🦋','🌻','🌿','🐝']}},
+ {id:'shop',n:'متجر المدينة',x:1650,y:830,w:200,h:135,col:'#C97B4A',roof:'#7FD1C1',e:'🏪',need:0,kind:'shop',
+  skills:[],who:'التاجر مبارك',face:'🧔',room:{bg:'#6B4530',floor:'#C2996B',props:['🛍','🧸','👗','🍰']}},
+ {id:'home',n:'بيتك',x:980,y:830,w:190,h:140,col:'#B0785C',roof:'#F5C542',e:'🏡',need:0,kind:'home',
+  skills:[],who:'',face:'',room:{bg:'#5A4030',floor:'#C9A87E',props:[]}},
+ {id:'bridge', n:'الجسر الكبير',   x:1180,y:1560,w:200,h:110,col:'#9A7B5F',roof:'#F5C542',e:'🌉',need:3,fam:'ar',label:'بيت الجُمَل',skills:['ar_sentence','ar_missing'],who:'النجّار',face:'🧑‍🔧',room:{bg:'#40506B',floor:'#8A7355',props:['🪵','🔨','🪛','🧰']}}];
+const FAMS={ar:{n:'الحروف والكلمات (العربية)',e:'📖',c:'#F5C542'},
+ en:{n:'الكلمات العالمية (الإنجليزية)',e:'🔤',c:'#7FD1C1'},
+ ma:{n:'الأعداد (الرياضيات)',e:'🔢',c:'#B388FF'}};
+const PLACES_ISLAND=[
+ {id:'lighthouse',n:'فنار الجزيرة',x:950,y:300,w:150,h:210,col:'#D9C3A0',roof:'#F5C542',e:'🗼',need:0,
+  fam:'ar',label:'بيت الحروف',skills:['ar_read','ar_sentence'],who:'حارس الفنار',face:'🧔',room:{bg:'#3E4E6B',floor:'#9A8A6E',props:['🔦','🗺','⚓','🕯']}},
+ {id:'shellcave',n:'كهف الأصداف',x:420,y:900,w:200,h:150,col:'#5C7A8A',roof:'#7FD1C1',e:'🐚',need:0,
+  fam:'ma',label:'بيت الأعداد',skills:['ma_mul','ma_sub'],who:'الغوّاص نايف',face:'🤿',room:{bg:'#22414F',floor:'#5A7C8A',props:['🐚','🪸','🐠','💧']}},
+ {id:'sailors',n:'سوق البحّارة',x:1480,y:950,w:210,h:140,col:'#B98A5A',roof:'#F7A8B8',e:'⛵',need:0,
+  fam:'en',label:'بيت الكلمات العالمية',skills:['en_vocab','en_sentence','en_letters'],who:'البحّار عمر',face:'🧑‍✈️',room:{bg:'#5A4030',floor:'#B08A5E',props:['🧭','🪢','🐟','🏺']}},
+ {id:'palms',n:'حديقة النخيل',x:950,y:1250,w:220,h:130,col:'#6FA05E',roof:'#FFD976',e:'🌴',need:0,
+  fam:'ma',label:'بيت النقود',skills:['ma_word','ma_money','ma_add'],who:'صاحبة البستان',face:'👩‍🌾',room:{bg:'#33543A',floor:'#7FA05E',props:['🌴','🥥','🧺','🦜']}}];
+const ALL_PLACES=PLACES_MAIN.concat(PLACES_ISLAND);
+const WORLDS={
+ main:{W:2600,H:1900,plaza:{x:1300,y:950},places:PLACES_MAIN,train:{x:200,y:880},
+  grass:['#4C6B52','#3D5745','#2E4038'],sky:['#1B1132','#4E357F'],n:'مدينة الحكمة'},
+ island:{W:1900,H:1500,plaza:{x:950,y:780},places:PLACES_ISLAND,train:{x:200,y:1120},
+  grass:['#6E8F86','#47695F','#2C4640'],sky:['#12203A','#2E6E8E'],n:'جزيرة الأصداف'}};
+let WK='main',WD=WORLDS.main;
+let PLACES=WD.places,PLAZA=WD.plaza;
+const EVENTS=[
+ {e:'🌧',t:'مطر لطيف يغسل حجارة الساحة…'},{e:'🎪',t:'وصل السيرك ليلاً! الأضواء تتراقص.'},
+ {e:'🌈',t:'قوس قزح نزل قرب الجسر.'},{e:'🐉',t:'شُوهد تنين صغير يحلّق فوق البرج.'},
+ {e:'🎁',t:'صناديق مجهولة تُركت في المدينة.'},{e:'🚂',t:'القطار وصل مبكراً اليوم.'},
+ {e:'🕯',t:'الساحر أطفأ شموعه واختفى…'}];
+const PETS=[{e:'🦊',n:'ثعلوب'},{e:'🐰',n:'قمر'},{e:'🦉',n:'حكيمة'},{e:'🐉',n:'لهيب'},{e:'🐼',n:'ندى'},{e:'🐱',n:'مشمش'}];
+
+let rngS=seedToday();
+function rnd(){rngS=(rngS*1103515245+12345)%2147483648;return rngS/2147483648}
+let TREES=[],FLOWERS=[],LAMPS=[];
+const overlapsB=(x,y,pad=70)=>PLACES.some(p=>Math.abs(x-p.x)<p.w/2+pad&&Math.abs(y-p.y)<p.h/2+pad);
+function genDecor(){
+ rngS=seedToday()+(WK==='island'?777:0);
+ TREES=[];FLOWERS=[];LAMPS=[];
+ const isle=WK==='island';
+ for(let i=0;i<(isle?46:70);i++)TREES.push({x:60+rnd()*(W-120),y:200+rnd()*(H-280),s:.8+rnd()*.6,palm:isle});
+ for(let i=0;i<160;i++)FLOWERS.push({x:rnd()*W,y:170+rnd()*(H-220),
+   c:pick(isle?['#FFE9A8','#7FD1C1','#F7A8B8','#BFE3D0']:['#F7A8B8','#FFD976','#B388FF','#7FD1C1'])});
+ for(let i=0;i<(isle?11:16);i++)LAMPS.push({x:200+rnd()*(W-400),y:260+rnd()*(H-420)});
+ for(let i=TREES.length-1;i>=0;i--)if(overlapsB(TREES[i].x,TREES[i].y))TREES.splice(i,1);
+ for(let i=LAMPS.length-1;i>=0;i--)if(overlapsB(LAMPS[i].x,LAMPS[i].y))LAMPS.splice(i,1);
+}
+genDecor();
+
+/* ---- street NPCs ---- */
+const NPCS=[
+ {e:'👨‍🍳',c:'#F2E3D0',c2:'#E4B48A',path:[[1830,700],[1500,860],[1300,1090],[1650,900]],say:'رائحة الخبز تملأ المدينة!'},
+ {e:'👨‍🌾',c:'#8FBF7A',c2:'#5A7A4A',path:[[1720,1520],[1450,1420],[1300,1120],[1600,1300]],say:'الفراشات تنتظر من يفهم لغتها.'},
+ {e:'💂',c:'#C05B6B',c2:'#3B2A63',path:[[1300,520],[1100,700],[1300,900],[1500,700]],say:'القصر يزداد ضوءاً كل يوم.'},
+ {e:'💐',c:'#EBA6C7',c2:'#A76B93',path:[[2050,1140],[1800,1050],[1550,1000],[1850,1180]],say:'زهرة لكل بطل صغير.'},
+ {e:'🧑‍✈️',c:'#6FA9C9',c2:'#2E5A78',path:[[480,1120],[760,1080],[1000,1000],[700,1180]],say:'القطار لا ينتظر أحداً… إلا أنت.'},
+ {e:'👩‍🏫',c:'#C7B6E8',c2:'#6B57A0',path:[[820,660],[1000,800],[1200,930],[900,780]],say:'كل كتاب هنا يخبّئ باباً.'},
+ {e:'🧒',c:'#F5D98C',c2:'#B58A3A',path:[[1300,1090],[1150,1250],[1400,1300],[1450,1150]],say:'هل رأيت الصناديق الذهبية؟'},
+ {e:'👧',c:'#9FE0D0',c2:'#4E9080',path:[[1500,1050],[1700,1150],[1600,1330],[1350,1200]],say:'المدينة تضيء كلما نجحت!'}];
+NPCS.forEach(n=>{n.i=0;n.x=n.path[0][0];n.y=n.path[0][1];n.walk=0;n.dir=1;n.sp=.55+Math.random()*.4});
+/* train */
+let TRAIN={x:200,y:880,dir:1,sp:1.4};
+
+let CHESTS=[];
+function spawnChests(n=4){CHESTS=[];let g=0;
+ while(CHESTS.length<n&&g<500){g++;const x=180+Math.random()*(W-360),y=320+Math.random()*(H-480);
+  if(overlapsB(x,y,120))continue;CHESTS.push({x,y,open:false,anim:0})}}
+spawnChests();
+
+/* ================= shop catalogue ================= */
+const SHOP={
+ clothes:[
+  {id:'c7',n:'زيّ التاجر الذهبي',e:'🧥',p:120,cur:'s',outfit:7},
+  {id:'c8',n:'زيّ الصحراء',e:'🏜',p:150,cur:'s',outfit:8},
+  {id:'c9',n:'زيّ المطر',e:'☔',p:180,cur:'s',outfit:9}],
+ food:[
+  {id:'f1',n:'كعكة المخبز',e:'🍰',p:12,cur:'s',eat:'أكلتَ الكعكة… طاقة ولذّة!'},
+  {id:'f2',n:'عصير برتقال',e:'🧃',p:8,cur:'s',eat:'انتعشتَ بالعصير!'},
+  {id:'f3',n:'تفاحة',e:'🍎',p:6,cur:'s',eat:'قرمشة لذيذة 🍎'},
+  {id:'f4',n:'آيس كريم',e:'🍦',p:15,cur:'s',eat:'مثلجات في يومٍ دافئ!'}],
+ pet:[
+  {id:'p1',n:'عظمة لذيذة',e:'🦴',p:10,cur:'s',feed:true},
+  {id:'p2',n:'سمكة طازجة',e:'🐟',p:12,cur:'s',feed:true},
+  {id:'p3',n:'حبوب سحرية',e:'🍬',p:18,cur:'s',feed:true},
+  {id:'p4',n:'طوق ذهبي',e:'🎀',p:40,cur:'s',feed:false,wear:true}],
+ house:[
+  {id:'h1',n:'كرة ملوّنة',e:'⚽',p:14,cur:'s'},
+  {id:'h2',n:'دبدوب',e:'🧸',p:20,cur:'s'},
+  {id:'h3',n:'نبتة',e:'🪴',p:18,cur:'s'},
+  {id:'h4',n:'مصباح',e:'🪔',p:22,cur:'s'},
+  {id:'h5',n:'لوحة فنية',e:'🖼',p:30,cur:'s'},
+  {id:'h6',n:'رفّ كتب',e:'📚',p:35,cur:'s'},
+  {id:'h7',n:'سجادة',e:'🟥',p:25,cur:'s'},
+  {id:'h8',n:'تلفاز',e:'📺',p:60,cur:'s'},
+  {id:'h9',n:'بيانو',e:'🎹',p:80,cur:'s'}],
+ cars:[
+  {id:'v1',n:'سيارة حمراء',e:'🚗',p:8,cur:'g',body:'#C0392B',roof:'#7B241C'},
+  {id:'v2',n:'سيارة زرقاء',e:'🚙',p:10,cur:'g',body:'#2E86C1',roof:'#1B4F72'},
+  {id:'v3',n:'سيارة وردية',e:'🚗',p:12,cur:'g',body:'#EBA6C7',roof:'#A76B93'},
+  {id:'v4',n:'سيارة ذهبية',e:'🏎',p:18,cur:'g',body:'#F5C542',roof:'#B9860B'},
+  {id:'v5',n:'سيارة الشرطة',e:'🚓',p:22,cur:'g',body:'#FFFFFF',roof:'#2C3E50',police:true},
+  {id:'v6',n:'سيارة السباق',e:'🏁',p:28,cur:'g',body:'#8E44AD',roof:'#4A235A',fast:true}]};
+const CATS=[['food','🍰 طعام لك'],['pet','🦴 طعام رفيقك'],['house','🧸 أغراض البيت'],['clothes','👗 ملابس'],['cars','🚗 سيارات']];
+const findItem=id=>Object.values(SHOP).flat().find(i=>i.id===id);
+
+/* ================= outfits ================= */
+const OUTFITS=[
+ {id:0,n:'الزيّ الأول',need:0,e:'👗',
+  p:{a:'#FFF0F5',b:'#F49CB8',sash:'#F5C542',hair:'#4A2E22'},h:{a:'#2E86C1',b:'#1B4F72',cape:'#C0392B'},ex:null},
+ {id:1,n:'زيّ الفجر',need:10,e:'🌅',
+  p:{a:'#FFF6E0',b:'#F0A93C',sash:'#C0392B',hair:'#3A2418'},h:{a:'#E67E22',b:'#A04000',cape:'#F5C542'},ex:null},
+ {id:2,n:'زيّ الغابة',need:20,e:'🌿',
+  p:{a:'#EAF7E6',b:'#6FB07A',sash:'#F5C542',hair:'#2E4A2E'},h:{a:'#2E8B57',b:'#1B5E3A',cape:'#8FBF7A'},ex:'leaf'},
+ {id:3,n:'زيّ البحر',need:30,e:'🌊',
+  p:{a:'#E6F7FA',b:'#5FA8C9',sash:'#7FD1C1',hair:'#243A55'},h:{a:'#2980B9',b:'#154360',cape:'#7FD1C1'},ex:null},
+ {id:4,n:'زيّ الجواهر',need:40,e:'💎',
+  p:{a:'#F5EAFF',b:'#B388FF',sash:'#F5C542',hair:'#2E1B45'},h:{a:'#8E44AD',b:'#4A235A',cape:'#B388FF'},ex:'gem'},
+ {id:5,n:'زيّ النجوم',need:50,e:'✨',
+  p:{a:'#FFFDF0',b:'#F5C542',sash:'#FFFFFF',hair:'#2A1B3D'},h:{a:'#F5C542',b:'#B9860B',cape:'#FFF6E8'},ex:'wings'},
+ {id:6,n:'زيّ الليل',need:60,e:'🌙',
+  p:{a:'#DDE3FF',b:'#4E5B8A',sash:'#F5C542',hair:'#1B1132'},h:{a:'#34495E',b:'#17202A',cape:'#5B3E8E'},ex:'stars'},
+ {id:7,n:'زيّ التاجر الذهبي',need:9999,shop:1,e:'🧥',
+  p:{a:'#FFF3D6',b:'#C9A84C',sash:'#7A4F2A',hair:'#3A2418'},h:{a:'#C9A84C',b:'#8A6A20',cape:'#7A4F2A'},ex:'gem'},
+ {id:8,n:'زيّ الصحراء',need:9999,shop:1,e:'🏜',
+  p:{a:'#FFF6E8',b:'#D9A566',sash:'#8A5A2B',hair:'#4A2E22'},h:{a:'#D9A566',b:'#8A5A2B',cape:'#FFF6E8'},ex:'leaf'},
+ {id:9,n:'زيّ المطر',need:9999,shop:1,e:'☔',
+  p:{a:'#EAF3FF',b:'#6E88C9',sash:'#F5C542',hair:'#243A55'},h:{a:'#6E88C9',b:'#33507F',cape:'#BFD8F5'},ex:'stars'}];
+const outfit=()=>OUTFITS[Math.min(S.outfit||0,OUTFITS.length-1)];
+
+/* ================= actors ================= */
+const P={x:PLAZA.x,y:PLAZA.y+90,dir:1,walk:0,speed:3.0,z:0,vz:0};
+const PET={x:P.x-40,y:P.y,bob:0};
+let cam={x:P.x,y:P.y};
+let scene='world', room=null, playing=false, stepT=0;
+
+/* ================= canvas ================= */
+const cv=$('cv'),ctx=cv.getContext('2d');
+let VW=0,VH=0,DPR=1,scale=1,UZ=1;
+/* depth: things near the bottom (closer to the camera) are drawn bigger */
+const DEPTH=y=>0.70+0.60*Math.max(0,Math.min(1,(y-160)/(H-160)));
+function withDepth(x,y,fn){const k=DEPTH(y);
+ ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.translate(-x,-y);fn();ctx.restore()}
+function resize(){DPR=Math.min(devicePixelRatio||1,2);VW=innerWidth;VH=innerHeight;
+ cv.width=VW*DPR;cv.height=VH*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);
+ scale=Math.max(.62,Math.min(1.15,VW/620));}
+addEventListener('resize',resize);resize();
+
+/* ================= input ================= */
+const keys={};
+addEventListener('keydown',e=>keys[e.key]=true);
+addEventListener('keyup',e=>keys[e.key]=false);
+let joy=null;
+const pt=e=>{const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY}};
+let pinch=null;
+const dist2=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+cv.addEventListener('touchstart',e=>{ac();
+ if(e.touches.length>=2){joy=null;pinch={d:dist2(e.touches),z:UZ};e.preventDefault();return}
+ const p=pt(e);joy={ox:p.x,oy:p.y,x:p.x,y:p.y};e.preventDefault()},{passive:false});
+cv.addEventListener('touchmove',e=>{
+ if(e.touches.length>=2&&pinch){const d=dist2(e.touches);
+  UZ=Math.max(.55,Math.min(2.1,pinch.z*(d/pinch.d)));showZoom();e.preventDefault();return}
+ if(!joy)return;const p=pt(e);joy.x=p.x;joy.y=p.y;e.preventDefault()},{passive:false});
+cv.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null;if(!e.touches.length)joy=null});
+cv.addEventListener('wheel',e=>{UZ=Math.max(.55,Math.min(2.1,UZ*(e.deltaY>0?.93:1.07)));showZoom();e.preventDefault()},{passive:false});
+let zT;function showZoom(){$('zoomHint').textContent='التقريب: '+ar(Math.round(UZ*100))+'٪';
+ $('zoomHint').classList.add('on');clearTimeout(zT);zT=setTimeout(()=>$('zoomHint').classList.remove('on'),1100)}
+let lastTap=0;
+cv.addEventListener('touchend',()=>{const n=Date.now();
+ if(n-lastTap<280){UZ=1;showZoom()}lastTap=n});
+cv.addEventListener('mousedown',e=>{ac();const p=pt(e);joy={ox:p.x,oy:p.y,x:p.x,y:p.y}});
+cv.addEventListener('mousemove',e=>{if(!joy)return;const p=pt(e);joy.x=p.x;joy.y=p.y});
+addEventListener('mouseup',()=>joy=null);
+
+/* ================= movement ================= */
+function blockedWorld(x,y){
+ for(const p of PLACES){const hw=p.w/2+6,hh=p.h/2+4;
+  if(x>p.x-hw&&x<p.x+hw&&y>p.y-hh+18&&y<p.y+hh)return true}
+ return false;
+}
+function step(){
+ let dx=0,dy=0;
+ if(joy){const jx=joy.x-joy.ox,jy=joy.y-joy.oy,d=Math.hypot(jx,jy);
+  if(d>10){const m=Math.min(1,d/70);dx=jx/d*m;dy=jy/d*m}}
+ if(keys.ArrowRight||keys.d)dx+=1;if(keys.ArrowLeft||keys.a)dx-=1;
+ if(keys.ArrowDown||keys.s)dy+=1;if(keys.ArrowUp||keys.w)dy-=1;
+ const mg=Math.hypot(dx,dy);if(mg>1){dx/=mg;dy/=mg}
+ const moving=(Math.abs(dx)+Math.abs(dy))>.05;
+ const car=S.driving?carOf():null;
+ const sp=P.speed*(S.driving?(car&&car.fast?4.4:3.6):S.riding?(flying()?4.2:3.2):2.1);
+ if(scene==='world'){
+  const nx=P.x+dx*sp,ny=P.y+dy*sp;
+  if(flying()||!blockedWorld(nx,P.y))P.x=Math.max(50,Math.min(W-50,nx));
+  if(flying()||!blockedWorld(P.x,ny))P.y=Math.max(210,Math.min(H-60,ny));
+ }else if(scene==='train'){
+  P.x=Math.max(60,Math.min(room.x1-60,P.x+dx*sp));
+  P.y=Math.max(250,Math.min(390,P.y+dy*sp));
+ }else{
+  P.x=Math.max(room.x0+40,Math.min(room.x1-40,P.x+dx*sp));
+  P.y=Math.max(room.y0+70,Math.min(room.y1-30,P.y+dy*sp));
+ }
+ if(dx!==0)P.dir=dx>0?1:-1;
+ P.walk=moving?P.walk+.22:lerp(P.walk%6.283,0,.2);
+ if(moving&&P.z<=0){stepT++;if(stepT%16===0)SFX.step()}
+ if(P.z>0||P.vz!==0){P.z+=P.vz;P.vz-=0.62;
+  if(P.z<=0){P.z=0;P.vz=0;if(!jLanded){jLanded=true;SFX.tap()}}}
+ if(!S.riding||scene!=='world')ALTt=0;
+ ALT=lerp(ALT,ALTt,ALT<ALTt?.05:.07);
+ if(ALT<3&&ALTt===0&&landIntent){landIntent=false;ALT=0;onLand()}
+ $('jumpBtn').firstChild.nodeValue=scene!=='world'?'قفز':(S.riding?(ALTt>0?'انزل':'طيران'):'قفز');
+ $('jumpBtn').querySelector('span').textContent=(S.riding&&ALTt>0)?'⬇':'⬆';
+ const fx=S.riding?P.x:P.x-P.dir*46,fy=S.riding?P.y:P.y+12;
+ PET.x=lerp(PET.x,fx,.06);PET.y=lerp(PET.y,fy,.06);PET.bob+=.06;
+ if(scene==='world'){
+  if(WK==='main')NPCS.forEach(n=>{
+   const tgt=n.path[n.i],ddx=tgt[0]-n.x,ddy=tgt[1]-n.y,dd=Math.hypot(ddx,ddy);
+   if(dd<8){n.i=(n.i+1)%n.path.length}else{n.x+=ddx/dd*n.sp;n.y+=ddy/dd*n.sp;n.walk+=.12;if(ddx!==0)n.dir=ddx>0?1:-1}
+  });
+  TRAIN.x+=TRAIN.sp*TRAIN.dir;
+  if(TRAIN.x>W-150||TRAIN.x<150)TRAIN.dir*=-1;
+  CHESTS.forEach(c=>{if(c.anim>0&&c.anim<1)c.anim=Math.min(1,c.anim+.02)});
+ }
+ cam.x=lerp(cam.x,P.x,.09);cam.y=lerp(cam.y,P.y,.09);
+ const bw=scene==='world'?W:room.x1,bh=scene==='world'?H:room.y1;
+ const bx0=scene==='world'?0:room.x0,by0=scene==='world'?0:room.y0;
+ const hw=VW/(2*scale*UZ),hh=VH/(2*scale*UZ);
+ cam.x=bw-bx0<hw*2?(bx0+bw)/2:Math.max(bx0+hw,Math.min(bw-hw,cam.x));
+ cam.y=bh-by0<hh*2?(by0+bh)/2:Math.max(by0+hh,Math.min(bh-hh,cam.y));
+ checkNear();
+ autoDoors();
+}
+/* walk into the door → enter. walk onto the exit mat → leave. */
+let doorArmed=true;
+function autoDoors(){
+ if(!playing)return;
+ if(flying())return;
+ if(scene==='world'){
+  let atDoor=null;
+  for(const p of PLACES){
+   const d=Math.hypot(P.x-p.x,P.y-(p.y+p.h/2+18));
+   if(d<48){atDoor=p;break}
+  }
+  if(!atDoor){doorArmed=true;return}
+  if(!doorArmed)return;
+  if(S.missions<atDoor.need){
+   if(!doorMsgT||Date.now()-doorMsgT>2600){doorMsgT=Date.now();SFX.soft();
+    toast(atDoor.n+' نائم — يحتاج '+ar(atDoor.need-S.missions)+' مغامرات')}
+   return;
+  }
+  doorArmed=false;enterBuilding(atDoor);
+ }else if(scene==='train'){
+  if(!RIDE)return;
+  const prog=(Date.now()-RIDE.t0)/RIDE.dur;
+  if(prog>=1&&!RIDE.arrived){RIDE.arrived=true;SFX.chestOpen();
+   toast('وصلنا! امشِ نحو الباب المضيء ⟵')}
+  if(RIDE.arrived&&P.x>room.x1-110)arriveTrain();
+ }else{
+  const cx=(room.x0+room.x1)/2;
+  const onMat=Math.abs(P.x-cx)<70&&P.y>room.y1-56;
+  if(!onMat){doorArmed=true;return}
+  if(doorArmed)leaveBuilding();
+ }
+}
+let doorMsgT=0;
+
+let jLanded=true;
+let ALT=0,ALTt=0;            /* current / target altitude */
+const flying=()=>ALT>40;
+function toggleFly(){
+ if(!S.riding){doJump();return}
+ if(ALTt>0){ALTt=0;landIntent=true;toast('نازلون… 🪶');tone(300,.5,'sine',.08,0,-120)}
+ else{ALTt=250;landIntent=false;SFX.coin();tone(520,.5,'sine',.09,0,340);
+  toast('حلّقتَ فوق المدينة! انظر إليها من الأعلى ✨')}
+}
+let landIntent=false;
+function doJump(){
+ if(P.z>0)return;
+ P.vz=S.riding?11.5:9.2;jLanded=false;
+ tone(430,.12,'sine',.09,0,260);
+}
+const jumpAction=()=>{if(scene!=='world'){doJump();return}toggleFly()};
+$('jumpBtn').onclick=e=>{e.preventDefault();jumpAction()};
+$('jumpBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();jumpAction()},{passive:false});
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();jumpAction()}});
+
+function onLand(){
+ SFX.door();
+ const over=PLACES.find(p=>Math.abs(P.x-p.x)<p.w/2+10&&Math.abs(P.y-p.y)<p.h/2+10);
+ if(over){
+  if(S.missions<over.need){P.y=over.y+over.h/2+110;toast(over.n+' نائم — هبطتَ أمامه');return}
+  toast('هبطتَ من السماء داخل '+over.n+'! 🪂');enterBuilding(over);return;
+ }
+ tone(220,.35,'sine',.09,0,-70);toast('هبطتَ بسلام 🪶');
+}
+
+/* ================= proximity ================= */
+let near=null;
+function checkNear(){
+ let best=null,bd=1e9;
+ if(flying()){near=null;$('prompt').classList.remove('on');return}
+ if(scene==='world'){
+  for(const c of CHESTS){if(c.open)continue;const d=Math.hypot(P.x-c.x,P.y-c.y);
+   if(d<95&&d<bd){bd=d;best={type:'chest',ref:c,name:'صندوق غامض'}}}
+  for(const p of PLACES){const d=Math.hypot(P.x-p.x,P.y-(p.y+p.h/2));
+   if(d<110&&d<bd){bd=d;best={type:'place',ref:p,name:p.n,hint:true}}}
+  const dt=Math.hypot(P.x-TRAIN.x,P.y-(TRAIN.y+10));
+  if(dt<120&&dt<bd){bd=dt;best={type:'train',ref:TRAIN,name:WK==='main'?'القطار إلى جزيرة الأصداف':'القطار إلى مدينة الحكمة'}}
+ }else{
+  const k=room.place.kind;
+  if(k==='home'){
+   const dh=Math.hypot(P.x-450,P.y-250);
+   if(dh<130)best={type:'sleep',ref:room.place,name:'سريرك — استرِح واستعد'};
+  }else{
+   const d=Math.hypot(P.x-room.npc.x,P.y-room.npc.y);
+   if(d<110)best={type:k==='shop'?'shop':'npc',ref:room.place,name:k==='shop'?'التاجر مبارك':room.place.who};
+  }
+ }
+ near=best;const el=$('prompt');
+ if(near&&playing){
+  el.classList.add('on');
+  if(near.type==='place'){
+   $('promptName').textContent=S.missions<near.ref.need
+    ? near.ref.n+' — نائم 🔒 يحتاج '+ar(near.ref.need-S.missions)+' مغامرات'
+    : near.ref.n+(near.ref.label?' · '+FAMS[near.ref.fam].e+' '+near.ref.label:'')+' — امشِ نحو الباب';
+   $('enterBtn').style.display='none';
+  }else{
+   $('enterBtn').style.display='';
+   $('promptName').textContent=near.name;
+   if(near.type==='chest'&&(S.keys||0)<1){
+    $('promptName').textContent='صندوق مقفل 🔒';
+    $('enterBtn').textContent='تحتاج مفتاحاً 🗝';$('enterBtn').disabled=true;return}
+   if(near.type==='train'){$('enterBtn').style.display='';$('enterBtn').disabled=false;
+    $('enterBtn').textContent='اركب القطار 🚂';return}
+   if(near.type==='shop'){$('enterBtn').style.display='';$('enterBtn').disabled=false;
+    $('enterBtn').textContent='تسوّق 🛍';return}
+   if(near.type==='sleep'){$('enterBtn').style.display='';$('enterBtn').disabled=false;
+    $('enterBtn').textContent='استرِح 😴';return}
+   $('enterBtn').textContent=near.type==='chest'?T('افتحي الصندوق بالمفتاح 🗝','افتح الصندوق بالمفتاح 🗝'):
+    near.type==='npc'?T('تحدّثي 💬','تحدّث 💬'):T('ادخلي ✨','ادخل ✨');
+   $('enterBtn').disabled=false;
+  }
+ }else el.classList.remove('on');
+}
+
+/* ================= drawing helpers ================= */
+function roundRect(x,y,w,h,r){const rr=typeof r==='number'?[r,r,r,r]:r;
+ ctx.beginPath();ctx.moveTo(x+rr[0],y);ctx.lineTo(x+w-rr[1],y);ctx.quadraticCurveTo(x+w,y,x+w,y+rr[1]);
+ ctx.lineTo(x+w,y+h-rr[2]);ctx.quadraticCurveTo(x+w,y+h,x+w-rr[2],y+h);
+ ctx.lineTo(x+rr[3],y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-rr[3]);
+ ctx.lineTo(x,y+rr[0]);ctx.quadraticCurveTo(x,y,x+rr[0],y);ctx.closePath()}
+function shade(hex,a){const n=parseInt(hex.slice(1),16);
+ const r=Math.max(0,Math.min(255,(n>>16)+a)),g=Math.max(0,Math.min(255,((n>>8)&255)+a)),b=Math.max(0,Math.min(255,(n&255)+a));
+ return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0')}
+
+/* ---- hero drawing (works for preview canvases too) ---- */
+function drawHero(c,x,y,dir,walk,kind,sc=1,ot){
+ const O=ot||outfit();
+ const bob=Math.sin(walk)*2.2,legA=Math.sin(walk)*7;
+ c.save();c.translate(x,y);c.scale(dir*sc,sc);c.translate(0,bob);
+ if(kind==='hero'){
+  // cape
+  c.fillStyle=O.h.cape;c.beginPath();
+  c.moveTo(-9,-50);c.quadraticCurveTo(-30,-30+Math.sin(walk)*4,-16,-6);
+  c.lineTo(9,-50);c.closePath();c.fill();
+  // legs
+  c.strokeStyle='#2B3A67';c.lineWidth=6;c.lineCap='round';
+  c.beginPath();c.moveTo(-4,-22);c.lineTo(-4+legA*.6,0);c.stroke();
+  c.beginPath();c.moveTo(4,-22);c.lineTo(4-legA*.6,0);c.stroke();
+  // body
+  const g=c.createLinearGradient(0,-52,0,-18);g.addColorStop(0,O.h.a);g.addColorStop(1,O.h.b);
+  c.fillStyle=g;roundRect(-11,-52,22,34,8);c.fill();
+  // star emblem
+  c.fillStyle='#F5C542';c.beginPath();
+  for(let i=0;i<5;i++){const a=-Math.PI/2+i*2*Math.PI/5;
+   c.lineTo(Math.cos(a)*7,-38+Math.sin(a)*7);
+   const a2=a+Math.PI/5;c.lineTo(Math.cos(a2)*3,-38+Math.sin(a2)*3)}
+  c.closePath();c.fill();
+  // arms
+  c.strokeStyle=O.h.a;c.lineWidth=5;
+  c.beginPath();c.moveTo(-10,-48);c.lineTo(-18-legA*.3,-32);c.stroke();
+  c.beginPath();c.moveTo(10,-48);c.lineTo(18+legA*.3,-32);c.stroke();
+  // head + mask
+  c.fillStyle='#F2C79A';c.beginPath();c.arc(0,-62,12,0,7);c.fill();
+  c.fillStyle=O.h.cape;c.beginPath();c.arc(0,-65,12.5,Math.PI,2*Math.PI);c.fill();
+  c.fillRect(-12.5,-66,25,7);
+  c.fillStyle='#FFF';c.beginPath();c.ellipse(4.5,-63,4,2.6,-.2,0,7);c.fill();
+  c.beginPath();c.ellipse(-4.5,-63,4,2.6,.2,0,7);c.fill();
+  c.fillStyle='#2A1B3D';c.beginPath();c.arc(4.5,-63,1.5,0,7);c.fill();
+  c.fillStyle='#2A1B3D';c.beginPath();c.arc(-4.5,-63,1.5,0,7);c.fill();
+ }else{
+  c.strokeStyle='#F2C9A0';c.lineWidth=5;c.lineCap='round';
+  c.beginPath();c.moveTo(-4,-14);c.lineTo(-4+legA*.5,0);c.stroke();
+  c.beginPath();c.moveTo(4,-14);c.lineTo(4-legA*.5,0);c.stroke();
+  const dg=c.createLinearGradient(0,-52,0,-8);dg.addColorStop(0,O.p.a);dg.addColorStop(1,O.p.b);
+  c.fillStyle=dg;c.beginPath();c.moveTo(-8,-50);c.lineTo(8,-50);
+  c.quadraticCurveTo(24,-20,20,-8);c.lineTo(-20,-8);c.quadraticCurveTo(-24,-20,-8,-50);c.closePath();c.fill();
+  c.fillStyle=O.p.sash;c.fillRect(-9,-34,18,5);
+  c.strokeStyle='#F2C9A0';c.lineWidth=4.5;
+  c.beginPath();c.moveTo(-8,-46);c.lineTo(-15-legA*.3,-30);c.stroke();
+  c.beginPath();c.moveTo(8,-46);c.lineTo(15+legA*.3,-30);c.stroke();
+  c.fillStyle='#F7D3AE';c.beginPath();c.arc(0,-60,12,0,7);c.fill();
+  c.fillStyle=O.p.hair;c.beginPath();c.arc(0,-63,13,Math.PI,2*Math.PI);c.fill();
+  c.beginPath();c.ellipse(-11,-56,5,13,.2,0,7);c.fill();
+  c.beginPath();c.ellipse(11,-56,5,13,-.2,0,7);c.fill();
+  c.fillStyle='#2A1B3D';c.beginPath();c.arc(4,-60,1.7,0,7);c.fill();
+  c.beginPath();c.arc(-2,-60,1.7,0,7);c.fill();
+  c.fillStyle='rgba(244,156,184,.7)';c.beginPath();c.arc(6,-56,2.4,0,7);c.fill();
+  c.fillStyle='#F5C542';c.beginPath();
+  c.moveTo(-8,-72);c.lineTo(-8,-79);c.lineTo(-4,-75);c.lineTo(0,-81);c.lineTo(4,-75);c.lineTo(8,-79);c.lineTo(8,-72);c.closePath();c.fill();
+ }
+ // outfit extras
+ if(O.ex){
+  c.save();c.translate(x,y);c.scale(dir,1);c.translate(0,Math.sin(walk)*2.2);
+  if(O.ex==='wings'){const fl=Math.sin(walk*.7)*4;
+   c.fillStyle='rgba(255,255,255,.6)';
+   c.beginPath();c.ellipse(-16,-42,9,17+fl,.5,0,7);c.fill();
+   c.beginPath();c.ellipse(16,-42,9,17+fl,-.5,0,7);c.fill()}
+  if(O.ex==='leaf'){c.font='13px serif';c.fillText('🌿',-13,-70)}
+  if(O.ex==='gem'){c.font='12px serif';c.fillText('💎',0,-30)}
+  if(O.ex==='stars'){c.font='11px serif';
+   c.fillText('✨',-16,-58);c.fillText('✨',16,-46)}
+  c.restore();
+ }
+ c.restore();
+}
+const petStage=()=>S.missions>=14?3:S.missions>=8?2:S.missions>=3?1:0;
+function drawPlayer(){
+ const J=(P.z||0)+ALT, sh=1-Math.min(.72,J/300);
+ if(S.driving&&carOf()){
+  const c=carOf(),bump=Math.sin(P.walk*1.4)*1.4;
+  ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(P.x,P.y+6,40,10,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(P.x,P.y+bump);ctx.scale(P.dir,1);
+  ctx.fillStyle=c.body;roundRect(-44,-30,88,30,[10,10,6,6]);ctx.fill();
+  ctx.fillStyle=c.roof;roundRect(-24,-50,48,24,[12,12,3,3]);ctx.fill();
+  ctx.fillStyle='rgba(200,235,255,.85)';roundRect(-19,-46,20,16,4);ctx.fill();roundRect(3,-46,16,16,4);ctx.fill();
+  ctx.fillStyle='#2C3E50';[-26,26].forEach(w=>{ctx.beginPath();ctx.arc(w,2,11,0,7);ctx.fill()});
+  ctx.fillStyle='#95A5A6';[-26,26].forEach(w=>{ctx.beginPath();ctx.arc(w,2,4.5,0,7);ctx.fill()});
+  ctx.fillStyle='rgba(255,240,180,.95)';ctx.beginPath();ctx.arc(42,-16,5,0,7);ctx.fill();
+  if(c.police){const on=Math.floor(Date.now()/260)%2;
+   ctx.fillStyle=on?'#E74C3C':'#3498DB';roundRect(-14,-58,28,9,4);ctx.fill();
+   const g=ctx.createRadialGradient(0,-54,2,0,-54,70);
+   g.addColorStop(0,on?'rgba(231,76,60,.45)':'rgba(52,152,219,.45)');g.addColorStop(1,'rgba(0,0,0,0)');
+   ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,-54,70,0,7);ctx.fill();
+   if(sirenT!==on){sirenT=on;if(SOUND&&Math.random()<.5)tone(on?880:660,.18,'sine',.05)}}
+  ctx.restore();
+  drawHero(ctx,P.x-P.dir*6,P.y-34+bump,P.dir,0,S.hero,.62);
+  ctx.font='700 12px Tajawal';ctx.textAlign='center';ctx.fillStyle='rgba(255,246,232,.85)';
+  ctx.fillText(S.name,P.x,P.y+24);
+  return;
+ }
+ if(ALT>6){
+  ctx.globalAlpha=.35*sh+.1;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(P.x,P.y+4,26*sh,9*sh,0,0,7);ctx.fill();ctx.globalAlpha=1;
+  for(let i=0;i<3;i++){const cx=P.x-120+i*120+Math.sin(Date.now()/1400+i)*40;
+   ctx.fillStyle='rgba(255,255,255,.16)';
+   ctx.beginPath();ctx.ellipse(cx,P.y-ALT+40+i*26,54,17,0,0,7);ctx.fill()}
+ }
+ if(S.riding){
+  const bob=Math.sin(PET.bob*1.6)*3-J;
+  ctx.globalAlpha=sh;ctx.fillStyle='rgba(0,0,0,.32)';
+  ctx.beginPath();ctx.ellipse(P.x,P.y+4,26*sh,8*sh,0,0,7);ctx.fill();ctx.globalAlpha=1;
+  const g=ctx.createRadialGradient(P.x,P.y-14,4,P.x,P.y-14,70);
+  g.addColorStop(0,'rgba(245,197,66,.3)');g.addColorStop(1,'rgba(245,197,66,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(P.x,P.y-14,70,0,7);ctx.fill();
+  ctx.save();ctx.translate(P.x,P.y+bob);ctx.scale(P.dir,1);
+  const fl=Math.sin(PET.bob*3)*5;
+  ctx.fillStyle='rgba(255,255,255,.6)';
+  ctx.beginPath();ctx.ellipse(-30,-24,14,7+fl,.5,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(30,-24,14,7+fl,-.5,0,7);ctx.fill();
+  ctx.restore();
+  ctx.font='52px serif';ctx.textAlign='center';ctx.fillText(S.pet,P.x,P.y-2+bob);
+  drawHero(ctx,P.x,P.y-34+bob,P.dir,J>0?0:P.walk*.4,S.hero,.86);
+  ctx.font='700 12px Tajawal';ctx.fillStyle='rgba(255,246,232,.85)';
+  ctx.fillText(S.name,P.x,P.y+22);
+  return;
+ }
+ ctx.globalAlpha=sh;ctx.fillStyle='rgba(0,0,0,.3)';
+ ctx.beginPath();ctx.ellipse(P.x,P.y+2,17*sh,6*sh,0,0,7);ctx.fill();ctx.globalAlpha=1;
+ drawHero(ctx,P.x,P.y-J,P.dir,J>0?0:P.walk,S.hero,1);
+ if(J>4){ctx.fillStyle='rgba(245,197,66,.5)';
+  for(let i=0;i<3;i++){ctx.beginPath();
+   ctx.arc(P.x-14+i*14+Math.sin(i*3)*4,P.y-2-i*3,2.4,0,7);ctx.fill()}}
+ ctx.font='700 12px Tajawal';ctx.textAlign='center';ctx.fillStyle='rgba(255,246,232,.85)';
+ ctx.fillText(S.name,P.x,P.y+18);
+}
+function drawNPC(n,t){
+ const bob=Math.sin(n.walk)*1.8,legA=Math.sin(n.walk)*6;
+ ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(n.x,n.y+2,13,5,0,0,7);ctx.fill();
+ ctx.save();ctx.translate(n.x,n.y+bob);ctx.scale(n.dir,1);
+ ctx.strokeStyle='#4A3A2E';ctx.lineWidth=4.5;ctx.lineCap='round';
+ ctx.beginPath();ctx.moveTo(-3,-16);ctx.lineTo(-3+legA*.5,0);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(3,-16);ctx.lineTo(3-legA*.5,0);ctx.stroke();
+ const g=ctx.createLinearGradient(0,-44,0,-14);g.addColorStop(0,n.c);g.addColorStop(1,n.c2);
+ ctx.fillStyle=g;roundRect(-10,-44,20,30,7);ctx.fill();
+ ctx.strokeStyle=n.c2;ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(-9,-40);ctx.lineTo(-15-legA*.2,-26);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(9,-40);ctx.lineTo(15+legA*.2,-26);ctx.stroke();
+ ctx.fillStyle='#F2C79A';ctx.beginPath();ctx.arc(0,-52,10,0,7);ctx.fill();
+ ctx.restore();
+ ctx.font='20px serif';ctx.textAlign='center';ctx.fillText(n.e,n.x,n.y-58);
+ // speech when player near
+ if(Math.hypot(P.x-n.x,P.y-n.y)<120){
+  ctx.font='700 12px Tajawal';const w=ctx.measureText(n.say).width+18;
+  ctx.fillStyle='rgba(255,255,255,.92)';roundRect(n.x-w/2,n.y-104,w,26,12);ctx.fill();
+  ctx.fillStyle='#2A1B3D';ctx.fillText(n.say,n.x,n.y-87);
+ }
+}
+function drawPet(){
+ if(S.riding)return;
+ const st=petStage();
+ const sz=[20,26,32,40][st], bob=Math.sin(PET.bob)*4;
+ const y=PET.y-8+bob;
+ const g=ctx.createRadialGradient(PET.x,y-6,2,PET.x,y-6,30+st*10);
+ g.addColorStop(0,`rgba(245,197,66,${.18+st*.09})`);g.addColorStop(1,'rgba(245,197,66,0)');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(PET.x,y-6,30+st*10,0,7);ctx.fill();
+ ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(PET.x,PET.y+2,10+st*2,4,0,0,7);ctx.fill();
+ if(st>=2){ // wings
+  ctx.fillStyle='rgba(255,255,255,.55)';
+  const fl=Math.sin(PET.bob*3)*4;
+  ctx.beginPath();ctx.ellipse(PET.x-sz*.7,y-8,10,5+fl,.5,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(PET.x+sz*.7,y-8,10,5+fl,-.5,0,7);ctx.fill();
+ }
+ ctx.font=sz+'px serif';ctx.textAlign='center';ctx.fillText(S.pet,PET.x,y);
+ if(st>=3){ctx.font='16px serif';ctx.fillText('👑',PET.x,y-sz*.95)}
+ if(st>=1){ctx.font='700 10px Tajawal';ctx.fillStyle='rgba(255,246,232,.8)';
+  ctx.fillText(['','صغير','متوهّج','أسطوري'][st],PET.x,PET.y+16)}
+}
+function drawTree(t){const{x,y,s}=t;
+ if(t.palm){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+4,18*s,6*s,0,0,7);ctx.fill();
+  ctx.strokeStyle='#8A6A3E';ctx.lineWidth=7*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+6*s,y-34*s,x+2*s,y-58*s);ctx.stroke();
+  ctx.fillStyle='#4E9463';for(let i=0;i<6;i++){const a=-Math.PI/2+(i-2.5)*.55;
+   ctx.beginPath();ctx.ellipse(x+2*s+Math.cos(a)*22*s,y-58*s+Math.sin(a)*14*s,22*s,7*s,a,0,7);ctx.fill()}
+  ctx.fillStyle='#C98B4B';ctx.beginPath();ctx.arc(x+2*s,y-54*s,5*s,0,7);ctx.fill();return}
+ ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+4,20*s,7*s,0,0,7);ctx.fill();
+ ctx.fillStyle='#5A3E2B';ctx.fillRect(x-4*s,y-26*s,8*s,26*s);
+ ctx.fillStyle='#3F7A52';ctx.beginPath();ctx.arc(x,y-40*s,24*s,0,7);ctx.fill();
+ ctx.fillStyle='#4E9463';ctx.beginPath();ctx.arc(x-8*s,y-46*s,16*s,0,7);ctx.fill();
+ ctx.fillStyle='rgba(245,197,66,.18)';ctx.beginPath();ctx.arc(x+7*s,y-50*s,9*s,0,7);ctx.fill()}
+function drawLamp(l,t){ctx.fillStyle='#3A2C55';ctx.fillRect(l.x-3,l.y-52,6,52);
+ const g=ctx.createRadialGradient(l.x,l.y-58,2,l.x,l.y-58,70);
+ g.addColorStop(0,'rgba(255,214,120,.55)');g.addColorStop(1,'rgba(255,214,120,0)');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(l.x,l.y-58,70,0,7);ctx.fill();
+ ctx.fillStyle='#FFE49B';ctx.beginPath();ctx.arc(l.x,l.y-58,7+Math.sin(t/400+l.x)*.8,0,7);ctx.fill()}
+function drawBuilding(p,t){
+ const lit=(S.visited[p.id]||0)>0,locked=S.missions<p.need,x=p.x,y=p.y,w=p.w,h=p.h;
+ ctx.save();if(locked)ctx.globalAlpha=.55;
+ ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(x,y+h/2+6,w*.55,16,0,0,7);ctx.fill();
+ if(lit&&!locked){const g=ctx.createRadialGradient(x,y,10,x,y,w*1.15);
+  g.addColorStop(0,'rgba(245,197,66,.3)');g.addColorStop(1,'rgba(245,197,66,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,w*1.15,0,7);ctx.fill()}
+ const bg=ctx.createLinearGradient(0,y-h/2,0,y+h/2);bg.addColorStop(0,p.col);bg.addColorStop(1,shade(p.col,-30));
+ ctx.fillStyle=bg;roundRect(x-w/2,y-h/2,w,h,10);ctx.fill();
+ ctx.fillStyle=p.roof;ctx.beginPath();ctx.moveTo(x-w/2-14,y-h/2);ctx.lineTo(x,y-h/2-52);ctx.lineTo(x+w/2+14,y-h/2);ctx.closePath();ctx.fill();
+ const cols=Math.max(2,Math.round(w/70));
+ for(let i=0;i<cols;i++){const wx=x-w/2+18+i*((w-36)/cols)+((w-36)/cols)/2-11;
+  ctx.fillStyle=(lit&&!locked)?'rgba(255,228,155,'+(.75+Math.sin(t/500+i)*.18)+')':'rgba(30,20,50,.6)';
+  roundRect(wx,y-h/2+26,22,26,5);ctx.fill()}
+ ctx.fillStyle='rgba(40,25,64,.85)';roundRect(x-17,y+h/2-40,34,40,[8,8,0,0]);ctx.fill();
+ ctx.fillStyle='rgba(245,197,66,.85)';ctx.beginPath();ctx.arc(x+9,y+h/2-20,3,0,7);ctx.fill();
+ ctx.restore();
+ ctx.font='30px serif';ctx.textAlign='center';ctx.fillText(p.e,x,y-h/2-64+Math.sin(t/600+x)*4);
+ if(p.fam){const F=FAMS[p.fam],by=y-h/2-20;
+  ctx.save();if(locked)ctx.globalAlpha=.5;
+  const g=ctx.createRadialGradient(x,by,3,x,by,54);
+  g.addColorStop(0,F.c+'88');g.addColorStop(1,F.c+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,by,54,0,7);ctx.fill();
+  ctx.fillStyle=F.c;roundRect(x-19,by-16,38,32,10);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.22)';roundRect(x-19,by-16,38,7,[10,10,0,0]);ctx.fill();
+  ctx.font='19px serif';ctx.fillText(F.e,x,by+8);
+  ctx.fillStyle=F.c;ctx.fillRect(x-w/2,y-h/2-7,w,7);
+  ctx.restore();}
+ if(locked){ctx.font='20px serif';ctx.fillText('🔒',x,y+h/2+30)}
+ else{ctx.font='700 14px Tajawal';ctx.fillStyle='rgba(255,246,232,.9)';ctx.fillText(p.n,x,y+h/2+30);
+  if(p.label){ctx.font='700 12px Tajawal';ctx.fillStyle=FAMS[p.fam].c;ctx.fillText(p.label,x,y+h/2+48)}}
+}
+function drawChest(c,t){
+ if(c.open&&c.anim>=1)return;
+ const a=c.anim, bob=a?0:Math.sin(t/420+c.x)*4;
+ const g=ctx.createRadialGradient(c.x,c.y-14,3,c.x,c.y-14,72+a*90);
+ g.addColorStop(0,`rgba(245,197,66,${.42+a*.5})`);g.addColorStop(1,'rgba(245,197,66,0)');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(c.x,c.y-14,72+a*90,0,7);ctx.fill();
+ ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(c.x,c.y+6,20,7,0,0,7);ctx.fill();
+ // base
+ ctx.fillStyle='#8A5A2B';roundRect(c.x-22,c.y-16,44,26,5);ctx.fill();
+ ctx.fillStyle='#F5C542';ctx.fillRect(c.x-22,c.y-4,44,5);
+ // lid rotating open
+ ctx.save();ctx.translate(c.x,c.y-16);ctx.rotate(-a*1.25);
+ ctx.fillStyle='#A56B33';roundRect(-22,-14,44,16,[8,8,2,2]);ctx.fill();
+ ctx.fillStyle='#F5C542';ctx.fillRect(-22,-4,44,4);ctx.restore();
+ // light beam + particles
+ if(a>0){
+  ctx.save();ctx.globalAlpha=Math.min(1,a*1.5);
+  const bg=ctx.createLinearGradient(c.x,c.y-16,c.x,c.y-150);
+  bg.addColorStop(0,'rgba(255,240,180,.75)');bg.addColorStop(1,'rgba(255,240,180,0)');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(c.x-18,c.y-14);ctx.lineTo(c.x-48,c.y-150);
+  ctx.lineTo(c.x+48,c.y-150);ctx.lineTo(c.x+18,c.y-14);ctx.closePath();ctx.fill();
+  for(let i=0;i<10;i++){const p=(a*2+i/10)%1;
+   ctx.fillStyle=`rgba(255,${200+i*5},120,${1-p})`;
+   ctx.beginPath();ctx.arc(c.x+Math.sin(i*2+t/200)*22,c.y-16-p*120,2.5+Math.random()*1.6,0,7);ctx.fill()}
+  ctx.restore();
+ }
+ ctx.font='16px serif';ctx.textAlign='center';if(!a)ctx.fillText('✨',c.x,c.y-34+bob);
+}
+function drawTrain(t){
+ const x=TRAIN.x,y=TRAIN.y;
+ ctx.strokeStyle='rgba(120,110,140,.5)';ctx.lineWidth=8;
+ ctx.beginPath();ctx.moveTo(80,y+16);ctx.lineTo(W-80,y+16);ctx.stroke();
+ ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x,y+16,60,8,0,0,7);ctx.fill();
+ ctx.save();ctx.translate(x,y);ctx.scale(TRAIN.dir,1);
+ ctx.fillStyle='#3E6E7A';roundRect(-56,-34,86,34,7);ctx.fill();
+ ctx.fillStyle='#6FA9C9';roundRect(30,-46,30,46,7);ctx.fill();
+ ctx.fillStyle='rgba(255,228,155,.85)';roundRect(-46,-26,18,16,4);ctx.fill();roundRect(-20,-26,18,16,4);ctx.fill();
+ ctx.fillStyle='#2C3E50';[-42,-14,20,46].forEach(w=>{ctx.beginPath();ctx.arc(w,4,8,0,7);ctx.fill()});
+ ctx.fillStyle='rgba(255,255,255,.45)';
+ for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(52,-56-i*18+Math.sin(t/300+i)*4,7+i*3,0,7);ctx.fill()}
+ ctx.restore();
+}
+let FIRE=[];for(let i=0;i<40;i++)FIRE.push({x:Math.random()*W,y:220+Math.random()*(H-300),p:Math.random()*6.3,s:.3+Math.random()*.7});
+function drawFire(t){FIRE.forEach(f=>{const a=(Math.sin(t/700+f.p)+1)/2;
+ ctx.fillStyle=`rgba(255,236,160,${a*.55})`;
+ ctx.beginPath();ctx.arc(f.x+Math.sin(t/1600+f.p)*22,f.y+Math.cos(t/1900+f.p)*16,2.2*f.s+1,0,7);ctx.fill()})}
+function drawGround(){
+ ctx.fillStyle='#3A2A5E';ctx.fillRect(0,0,W,H);
+ const g=ctx.createRadialGradient(PLAZA.x,PLAZA.y,100,PLAZA.x,PLAZA.y,1500);
+ g.addColorStop(0,WD.grass[0]);g.addColorStop(.55,WD.grass[1]);g.addColorStop(1,WD.grass[2]);
+ ctx.fillStyle=g;ctx.fillRect(0,150,W,H-150);
+ const s=ctx.createLinearGradient(0,0,0,330);s.addColorStop(0,WD.sky[0]);s.addColorStop(1,WD.sky[1]);
+ ctx.fillStyle=s;ctx.fillRect(0,0,W,330);
+ ctx.strokeStyle='rgba(226,201,150,.32)';ctx.lineCap='round';ctx.lineWidth=34;
+ PLACES.forEach(p=>{ctx.beginPath();ctx.moveTo(PLAZA.x,PLAZA.y);ctx.lineTo(p.x,p.y+p.h/2+26);ctx.stroke()});
+ ctx.fillStyle='rgba(226,201,150,.34)';ctx.beginPath();ctx.arc(PLAZA.x,PLAZA.y,130,0,7);ctx.fill();
+ ctx.fillStyle='rgba(127,209,193,.5)';ctx.beginPath();ctx.arc(PLAZA.x,PLAZA.y,42,0,7);ctx.fill();
+ const fg=ctx.createRadialGradient(PLAZA.x,PLAZA.y,5,PLAZA.x,PLAZA.y,160);
+ fg.addColorStop(0,'rgba(127,209,193,.35)');fg.addColorStop(1,'rgba(127,209,193,0)');
+ ctx.fillStyle=fg;ctx.beginPath();ctx.arc(PLAZA.x,PLAZA.y,160,0,7);ctx.fill();
+ const haze=ctx.createLinearGradient(0,150,0,H*.55);
+ haze.addColorStop(0,'rgba(120,140,190,.28)');haze.addColorStop(1,'rgba(120,140,190,0)');
+ ctx.fillStyle=haze;ctx.fillRect(0,150,W,H*.55);
+ ctx.globalAlpha=.75;FLOWERS.forEach(f=>{ctx.fillStyle=f.c;ctx.beginPath();ctx.arc(f.x,f.y,2.6,0,7);ctx.fill()});ctx.globalAlpha=1;
+}
+/* ---- interior ---- */
+let eatCool=0,sirenT=-1;
+function drawRoom(t){
+ const r=room;
+ ctx.fillStyle=r.place.room.bg;ctx.fillRect(r.x0,r.y0,r.x1-r.x0,r.y1-r.y0);
+ // back wall
+ ctx.fillStyle=shade(r.place.room.bg,-25);ctx.fillRect(r.x0,r.y0,r.x1-r.x0,120);
+ if(r.place.fam){const F=FAMS[r.place.fam];
+  ctx.fillStyle=F.c;ctx.fillRect(r.x0,116,r.x1-r.x0,6);
+  ctx.font='700 16px Tajawal';ctx.textAlign='center';ctx.fillStyle=F.c;
+  ctx.fillText(F.e+'  '+r.place.label,(r.x0+r.x1)/2,42);}
+ // floor
+ const fg=ctx.createLinearGradient(0,r.y0+120,0,r.y1);
+ fg.addColorStop(0,shade(r.place.room.floor,10));fg.addColorStop(1,shade(r.place.room.floor,-30));
+ ctx.fillStyle=fg;ctx.fillRect(r.x0,r.y0+120,r.x1-r.x0,r.y1-r.y0-120);
+ // floor tiles
+ ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=2;
+ for(let x=r.x0;x<r.x1;x+=60){ctx.beginPath();ctx.moveTo(x,r.y0+120);ctx.lineTo(x,r.y1);ctx.stroke()}
+ for(let y=r.y0+120;y<r.y1;y+=48){ctx.beginPath();ctx.moveTo(r.x0,y);ctx.lineTo(r.x1,y);ctx.stroke()}
+ // props on wall
+ r.place.room.props.forEach((pr,i)=>{
+  const x=r.x0+80+i*((r.x1-r.x0-160)/(r.place.room.props.length-1||1));
+  ctx.font='40px serif';ctx.textAlign='center';ctx.fillText(pr,x,r.y0+80);
+  const g=ctx.createRadialGradient(x,r.y0+66,3,x,r.y0+66,54);
+  g.addColorStop(0,'rgba(255,220,140,.22)');g.addColorStop(1,'rgba(255,220,140,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,r.y0+66,54,0,7);ctx.fill();
+ });
+ // rug
+ ctx.fillStyle='rgba(245,197,66,.12)';roundRect(r.x0+90,r.y0+200,r.x1-r.x0-180,180,40);ctx.fill();
+ // exit
+ ctx.fillStyle='rgba(20,12,38,.75)';roundRect((r.x0+r.x1)/2-34,r.y1-16,68,16,[10,10,0,0]);ctx.fill();
+ ctx.font='700 13px Tajawal';ctx.fillStyle='rgba(255,246,232,.8)';ctx.textAlign='center';
+ ctx.fillText('↩ الخروج',(r.x0+r.x1)/2,r.y1-24);
+ // ---- your house: bed, and every item you bought ----
+ if(r.place.kind==='home'){
+  ctx.font='64px serif';ctx.textAlign='center';ctx.fillText('🛏',450,262);
+  ctx.font='700 13px Tajawal';ctx.fillStyle='rgba(255,246,232,.85)';ctx.fillText('سريرك',450,292);
+  const items=[];S.inv=S.inv||{};
+  SHOP.house.forEach(it=>{for(let k=0;k<(S.inv[it.id]||0);k++)items.push(it.e)});
+  SHOP.pet.forEach(it=>{if(it.wear&&S.inv[it.id])items.push(it.e)});
+  items.forEach((e,i)=>{const x=120+(i%8)*95,y=380+Math.floor(i/8)*70;
+   const g=ctx.createRadialGradient(x,y-12,2,x,y-12,44);
+   g.addColorStop(0,'rgba(255,220,140,.2)');g.addColorStop(1,'rgba(255,220,140,0)');
+   ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y-12,44,0,7);ctx.fill();
+   ctx.font='34px serif';ctx.fillText(e,x,y)});
+  // food you own, on the table
+  const foods=[];SHOP.food.concat(SHOP.pet.filter(f=>f.feed)).forEach(it=>{if(S.inv[it.id])foods.push([it.e,it.id,S.inv[it.id]])});
+  if(foods.length){ctx.font='700 13px Tajawal';ctx.fillStyle='rgba(255,246,232,.7)';
+   ctx.fillText('مؤونتك (امشِ فوقها لتأكلها)',760,352);
+   foods.forEach((f,i)=>{const x=640+i*62,y=392;
+    ctx.font='30px serif';ctx.fillText(f[0],x,y);
+    ctx.font='700 12px Tajawal';ctx.fillStyle='var(--gold)';ctx.fillText('×'+ar(f[2]),x,y+16);
+    ctx.fillStyle='rgba(255,246,232,.7)';
+    if(Math.hypot(P.x-x,P.y-y)<34&&!eatCool){eatCool=1;eatItem(f[1]);setTimeout(()=>eatCool=0,900)}});}
+  if(!items.length)
+   {ctx.font='700 13px Tajawal';ctx.fillStyle='rgba(255,246,232,.55)';
+    ctx.fillText('بيتك فارغ — اشترِ أغراضاً من المتجر لتزيّنه 🏪',450,470)}
+  return;
+ }
+ // ---- shop shelves ----
+ if(r.place.kind==='shop'){
+  ['🍰','🧃','🧸','👗','🦴','🚗','🪴','🎹'].forEach((e,i)=>{
+   const x=110+i*95;ctx.font='30px serif';ctx.textAlign='center';ctx.fillText(e,x,300);
+   ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(x-34,308,68,7)});
+ }
+ // npc
+ const n=r.npc;const bob=Math.sin(t/500)*3;
+ ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(n.x,n.y+4,20,7,0,0,7);ctx.fill();
+ ctx.font='54px serif';ctx.fillText(r.place.face,n.x,n.y-10+bob);
+ ctx.font='700 14px Tajawal';ctx.fillStyle='rgba(255,246,232,.9)';ctx.fillText(r.place.who,n.x,n.y+26);
+ if(Math.hypot(P.x-n.x,P.y-n.y)<140){
+  const say='لديّ مهمة من أجلك…';ctx.font='700 13px Tajawal';
+  const w=ctx.measureText(say).width+20;
+  ctx.fillStyle='rgba(255,255,255,.94)';roundRect(n.x-w/2,n.y-92,w,28,13);ctx.fill();
+  ctx.fillStyle='#2A1B3D';ctx.fillText(say,n.x,n.y-73);
+ }
+}
+function drawTrainCar(t){
+ const r=room,prog=RIDE?Math.min(1,(Date.now()-RIDE.t0)/RIDE.dur):1;
+ const isle=RIDE?RIDE.to==='island':true;
+ // outside view (parallax through the windows) drawn first
+ const sky=ctx.createLinearGradient(0,0,0,250);
+ if(prog<.45){sky.addColorStop(0,'#1B1132');sky.addColorStop(1,'#4E357F')}
+ else if(prog<.8){sky.addColorStop(0,'#12203A');sky.addColorStop(1,'#2E6E8E')}
+ else{sky.addColorStop(0,isle?'#12203A':'#1B1132');sky.addColorStop(1,isle?'#3E8EA8':'#5B3E8E')}
+ ctx.fillStyle=sky;ctx.fillRect(0,0,r.x1,250);
+ const off=t*.35;
+ // far hills / sea
+ ctx.fillStyle=prog<.45?'rgba(70,90,120,.75)':'rgba(50,110,140,.75)';
+ for(let i=0;i<26;i++){const x=((i*180-off*.35)%(r.x1+400))-200;
+  ctx.beginPath();ctx.moveTo(x,210);ctx.quadraticCurveTo(x+90,140,x+180,210);ctx.fill()}
+ if(prog>.4&&prog<.9){ // the sea crossing
+  ctx.fillStyle='rgba(40,120,160,.8)';ctx.fillRect(0,196,r.x1,54);
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
+  for(let i=0;i<40;i++){const x=((i*90-off*1.2)%(r.x1+200))-100,y=204+(i%4)*11;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+14,y-4,x+28,y);ctx.stroke()}
+ }
+ // near scenery
+ for(let i=0;i<30;i++){const x=((i*150-off*1.9)%(r.x1+300))-150;
+  if(prog>.85&&isle){ctx.strokeStyle='#8A6A3E';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(x,250);ctx.quadraticCurveTo(x+5,225,x+2,206);ctx.stroke();
+   ctx.fillStyle='#4E9463';for(let k=0;k<5;k++){const a=-Math.PI/2+(k-2)*.6;
+    ctx.beginPath();ctx.ellipse(x+2+Math.cos(a)*16,206+Math.sin(a)*10,16,5,a,0,7);ctx.fill()}}
+  else{ctx.fillStyle='#3F7A52';ctx.beginPath();ctx.arc(x,222,17,0,7);ctx.fill();
+   ctx.fillStyle='#5A3E2B';ctx.fillRect(x-3,222,6,26)}}
+ // carriage body
+ ctx.fillStyle='#2E4756';ctx.fillRect(0,0,r.x1,70);
+ ctx.fillStyle='#25384A';ctx.fillRect(0,250,r.x1,r.y1-250);
+ const fl=ctx.createLinearGradient(0,250,0,r.y1);
+ fl.addColorStop(0,'#8A6B4E');fl.addColorStop(1,'#5C4634');
+ ctx.fillStyle=fl;ctx.fillRect(0,260,r.x1,r.y1-260);
+ ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=2;
+ for(let x=0;x<r.x1;x+=54){ctx.beginPath();ctx.moveTo(x,260);ctx.lineTo(x,r.y1);ctx.stroke()}
+ // window frames
+ for(let i=0;i<Math.ceil(r.x1/230);i++){const x=40+i*230;
+  ctx.strokeStyle='#C9A86A';ctx.lineWidth=9;roundRect(x,58,180,150,14);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.07)';roundRect(x+6,64,168,60,10);ctx.fill()}
+ ctx.fillStyle='#2E4756';
+ for(let i=0;i<Math.ceil(r.x1/230);i++){const x=40+i*230;
+  ctx.fillRect(x-40,58,42,150)}
+ // seats
+ for(let i=0;i<Math.ceil(r.x1/230);i++){const x=70+i*230;
+  ctx.fillStyle='#6E4CA6';roundRect(x,262,120,26,8);ctx.fill();
+  ctx.fillStyle='#8A6BC9';roundRect(x,232,120,34,10);ctx.fill()}
+ // lamps
+ for(let i=0;i<Math.ceil(r.x1/190);i++){const x=90+i*190;
+  const g=ctx.createRadialGradient(x,40,3,x,40,70);
+  g.addColorStop(0,'rgba(255,225,150,.45)');g.addColorStop(1,'rgba(255,225,150,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,40,70,0,7);ctx.fill();
+  ctx.fillStyle='#FFE49B';ctx.beginPath();ctx.arc(x,34,8,0,7);ctx.fill()}
+ // exit door at the far end
+ const open=RIDE&&RIDE.arrived;
+ ctx.fillStyle=open?'rgba(255,236,170,.95)':'rgba(30,20,50,.85)';
+ roundRect(r.x1-80,190,64,150,[14,14,4,4]);ctx.fill();
+ if(open){const g=ctx.createRadialGradient(r.x1-48,265,6,r.x1-48,265,150);
+  g.addColorStop(0,'rgba(255,240,180,.6)');g.addColorStop(1,'rgba(255,240,180,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(r.x1-48,265,150,0,7);ctx.fill()}
+ ctx.font='700 15px Tajawal';ctx.textAlign='center';ctx.fillStyle=open?'#4A2E06':'rgba(255,246,232,.8)';
+ ctx.fillText(open?'الخروج ⟵':'مغلق',r.x1-48,272);
+ // progress banner
+ ctx.font='700 15px Tajawal';ctx.fillStyle='rgba(255,246,232,.9)';ctx.textAlign='center';
+ ctx.fillText(open?'وصلنا!':'الرحلة… '+ar(Math.round(prog*100))+'٪',cam.x,110);
+ // gentle shake
+}
+function drawJoy(){if(!joy)return;ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);
+ ctx.fillStyle='rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(joy.ox,joy.oy,46,0,7);ctx.fill();
+ const dx=joy.x-joy.ox,dy=joy.y-joy.oy,d=Math.hypot(dx,dy),m=Math.min(d,40);
+ ctx.fillStyle='rgba(245,197,66,.75)';ctx.beginPath();
+ ctx.arc(d?joy.ox+dx/d*m:joy.ox,d?joy.oy+dy/d*m:joy.oy,20,0,7);ctx.fill();ctx.restore()}
+
+function render(t){
+ ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,VW,VH);
+ const SC=scale*UZ*(scene==='world'?Math.max(.5,1-ALT/560):1);
+ ctx.save();ctx.translate(VW/2,VH/2);ctx.scale(SC,SC);ctx.translate(-cam.x,-cam.y);
+ const ents=[];
+ if(scene==='world'){
+  drawGround();
+  TREES.forEach(o=>ents.push({y:o.y,f:()=>withDepth(o.x,o.y,()=>drawTree(o))}));
+  LAMPS.forEach(o=>ents.push({y:o.y,f:()=>withDepth(o.x,o.y,()=>drawLamp(o,t))}));
+  PLACES.forEach(p=>ents.push({y:p.y+p.h/2,f:()=>withDepth(p.x,p.y+p.h/2,()=>drawBuilding(p,t))}));
+  CHESTS.forEach(c=>ents.push({y:c.y,f:()=>withDepth(c.x,c.y,()=>drawChest(c,t))}));
+  if(WK==='main')NPCS.forEach(n=>ents.push({y:n.y,f:()=>withDepth(n.x,n.y,()=>drawNPC(n,t))}));
+  ents.push({y:TRAIN.y+16,f:()=>withDepth(TRAIN.x,TRAIN.y+16,()=>drawTrain(t))});
+  ents.push({y:P.y+1,f:()=>drawPeers()});
+ }else if(scene==='train'){drawTrainCar(t)}else{drawRoom(t)}
+ ents.push({y:PET.y,f:()=>scene==='world'?withDepth(PET.x,PET.y,drawPet):drawPet()});
+ ents.push({y:P.y,f:()=>scene==='world'?withDepth(P.x,P.y,drawPlayer):drawPlayer()});
+ ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
+ if(scene==='world')drawFire(t);
+ ctx.restore();
+ const v=ctx.createRadialGradient(VW/2,VH/2,VH*.35,VW/2,VH/2,VH*.95);
+ v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(12,7,26,.55)');
+ ctx.fillStyle=v;ctx.fillRect(0,0,VW,VH);
+ drawJoy();
+}
+function loop(t){if(playing)step();render(t||0);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+/* ================= HUD ================= */
+function hud(){
+ $('cStars').textContent=ar(S.stars);$('cGems').textContent=ar(S.gems);
+ $('cKeys').textContent=ar(S.keys||0);
+ $('rideBtn').textContent=S.riding?'🚶':'🐾';
+ $('carBtn').textContent=S.driving?'🚶':'🚗';
+ $('keyProg').textContent=' ('+ar(S.keyProgress||0)+'/٣)';
+ $('cBadges').textContent=ar(Object.keys(S.badges).length);
+ const p=Math.min(100,Math.round(S.missions*100/24));
+ $('energy').firstElementChild.style.width=p+'%';
+ const ev=EVENTS[seedToday()%EVENTS.length];
+ $('eventBar').innerHTML=`<b style="color:var(--gold)">${WD.n}</b> — ${ev.e} ${ev.t} <span style="opacity:.7">— استعادت المدينة ${ar(p)}٪ من سحرها</span>`;
+}
+let toastT;function toast(t){$('toast').textContent=t;$('toast').classList.add('on');
+ clearTimeout(toastT);toastT=setTimeout(()=>$('toast').classList.remove('on'),2600)}
+
+/* ================= content ================= */
+const AR_WORDS=[
+ {w:'شَمْس',img:'☀️',opts:['قَمَر','بَحْر','مَطَر']},{w:'كِتَاب',img:'📖',opts:['قَلَم','بَاب','حَقِيبَة']},
+ {w:'جِسْر',img:'🌉',opts:['بَيْت','نَهْر','شَجَرَة']},{w:'زَهْرَة',img:'🌸',opts:['فَرَاشَة','نَافِذَة','سَحَابَة']},
+ {w:'مِفْتَاح',img:'🗝',opts:['صُنْدُوق','سَاعَة','نَجْمَة']},{w:'قِطَار',img:'🚂',opts:['سَفِينَة','حِصَان','طَائِرَة']},
+ {w:'خُبْز',img:'🍞',opts:['حَلِيب','عَسَل','تُفَّاح']},{w:'تَاج',img:'👑',opts:['خَاتَم','مِرْآة','عَصَا']},
+ {w:'قَمَر',img:'🌙',opts:['شَمْس','نَجْمَة','سَحَابَة']},{w:'سَمَكَة',img:'🐟',opts:['طَائِر','قِطَّة','فَرَاشَة']},
+ {w:'شَجَرَة',img:'🌳',opts:['زَهْرَة',' جَبَل','بَيْت']},{w:'بَيْت',img:'🏠',opts:['قَصْر','بَاب','سُور']},
+ {w:'سَاعَة',img:'⏰',opts:['مِفْتَاح','جَرَس','مِرْآة']},{w:'حِصَان',img:'🐴',opts:['غَزَال','جَمَل','أَرْنَب']},
+ {w:'مَطَر',img:'🌧',opts:['ثَلْج','رِيح','ضَبَاب']},{w:'قَلَم',img:'✏️',opts:['كِتَاب','دَفْتَر','مِمْحَاة']},
+ {w:'نَجْمَة',img:'⭐',opts:['قَمَر','شَمْس','بَرْق']},{w:'فَرَاشَة',img:'🦋',opts:['نَحْلَة','عُصْفُور','زَهْرَة']},
+ {w:'مِظَلَّة',img:'☂️',opts:['قُبَّعَة','حَقِيبَة','مِعْطَف']},{w:'جَبَل',img:'⛰',opts:['بَحْر','وَادٍ','صَحْرَاء']},
+ {w:'سَفِينَة',img:'⛵',opts:['قَارِب','طَائِرَة','جِسْر']},{w:'عُصْفُور',img:'🐦',opts:['دَجَاجَة','بَطَّة','نَحْلَة']},
+ {w:'مِصْبَاح',img:'🪔',opts:['شَمْعَة','نَافِذَة','مِرْآة']},{w:'كَعْكَة',img:'🎂',opts:['خُبْز','حَلْوَى','فَطِيرَة']},
+ {w:'مِقَصّ',img:'✂️',opts:['سِكِّين','قَلَم','مِسْطَرَة']},{w:'أَرْنَب',img:'🐰',opts:['قِطَّة','سِنْجَاب','فَأْر']},
+ {w:'وَرْدَة',img:'🌹',opts:['شَجَرَة','عُشْب','نَخْلَة']},{w:'نَخْلَة',img:'🌴',opts:['شَجَرَة','زَهْرَة','جَبَل']}];
+const AR_MISSING=[
+ {w:'مَ_ْتَبَة',a:'ك',d:['ق','ل','ن'],full:'مَكْتَبَة'},{w:'شَجَ_َة',a:'ر',d:['ز','د','و'],full:'شَجَرَة'},
+ {w:'مِصْبَا_',a:'ح',d:['ج','خ','ه'],full:'مِصْبَاح'},{w:'سَ_َابَة',a:'ح',d:['خ','ج','ع'],full:'سَحَابَة'},
+ {w:'فَرَا_َة',a:'ش',d:['س','ص','ث'],full:'فَرَاشَة'},{w:'ضِيَا_',a:'ء',d:['ع','ه','و'],full:'ضِيَاء'},
+ {w:'مَدْرَ_َة',a:'س',d:['ص','ش','ث'],full:'مَدْرَسَة'},{w:'حَدِي_َة',a:'ق',d:['ك','غ','ف'],full:'حَدِيقَة'},
+ {w:'عُصْفُو_',a:'ر',d:['ز','ن','د'],full:'عُصْفُور'},{w:'سَفِي_َة',a:'ن',d:['م','ب','ت'],full:'سَفِينَة'},
+ {w:'مِفْتَا_',a:'ح',d:['خ','ج','ه'],full:'مِفْتَاح'},{w:'قَنْدِي_',a:'ل',d:['ن','م','ر'],full:'قَنْدِيل'},
+ {w:'طَاوُو_',a:'س',d:['ص','ش','ز'],full:'طَاوُوس'},{w:'كِتَا_',a:'ب',d:['ت','ن','ث'],full:'كِتَاب'},
+ {w:'زُهُو_',a:'ر',d:['ز','د','و'],full:'زُهُور'},{w:'مَلْعَ_',a:'ب',d:['ت','ن','ث'],full:'مَلْعَب'},
+ {w:'ثَعْلَ_',a:'ب',d:['ت','ن','ف'],full:'ثَعْلَب'},{w:'غُرْفَ_',a:'ة',d:['ه','ت','ي'],full:'غُرْفَة'},
+ {w:'صَحْرَا_',a:'ء',d:['ه','و','ي'],full:'صَحْرَاء'},{w:'مَ_ْجِد',a:'س',d:['ص','ش','ز'],full:'مَسْجِد'},
+ {w:'قِنْدِي_',a:'ل',d:['ن','م','ر'],full:'قِنْدِيل'},{w:'خَرِي_َة',a:'ط',d:['ت','ض','ظ'],full:'خَرِيطَة'}];
+const AR_LETTER=[
+ {q:'أي حرف يبدأ به اسم «سَمَكَة»؟',a:'س',d:['ص','ش','ث']},{q:'أي حرف يبدأ به اسم «غَزَال»؟',a:'غ',d:['ع','ق','خ']},
+ {q:'أي حرف يبدأ به اسم «ذِئْب»؟',a:'ذ',d:['د','ز','ظ']},{q:'أي حرف يبدأ به اسم «طَاوُوس»؟',a:'ط',d:['ت','ض','ظ']},
+ {q:'أي حرف يبدأ به اسم «حِصَان»؟',a:'ح',d:['خ','ج','ه']},{q:'أي حرف يبدأ به اسم «ضِفْدَع»؟',a:'ض',d:['ص','ظ','د']},
+ {q:'أي حرف يبدأ به اسم «ثَعْلَب»؟',a:'ث',d:['ت','س','ش']},{q:'أي حرف يبدأ به اسم «زَرَافَة»؟',a:'ز',d:['ذ','ر','س']},
+ {q:'أي حرف يبدأ به اسم «قِطَّة»؟',a:'ق',d:['ك','ف','غ']},{q:'أي حرف يبدأ به اسم «نَحْلَة»؟',a:'ن',d:['م','ب','ت']},
+ {q:'أي حرف يبدأ به اسم «هُدْهُد»؟',a:'ه',d:['ح','خ','ع']},{q:'أي حرف يبدأ به اسم «عُصْفُور»؟',a:'ع',d:['غ','ح','أ']},
+ {q:'أي حرف يبدأ به اسم «صَقْر»؟',a:'ص',d:['س','ض','ز']},{q:'أي حرف يبدأ به اسم «فِيل»؟',a:'ف',d:['ق','ث','ب']},
+ {q:'أي حرف ينتهي به اسم «كِتَاب»؟',a:'ب',d:['ت','ن','ث']},{q:'أي حرف ينتهي به اسم «قَمَر»؟',a:'ر',d:['ز','د','ن']},
+ {q:'أي حرف ينتهي به اسم «شَمْس»؟',a:'س',d:['ص','ش','ث']},{q:'أي حرف ينتهي به اسم «مِفْتَاح»؟',a:'ح',d:['ج','خ','ه']},
+ {q:'أي حرف في وسط كلمة «قَمَر»؟',a:'م',d:['ن','ب','ل']},{q:'أي حرف في وسط كلمة «بَحْر»؟',a:'ح',d:['ج','خ','ه']}];
+const AR_SENT=[
+ {s:['الأميرةُ','فتحتْ','البابَ','السحريَّ'],c:'ماذا حدث للباب؟',v:1},
+ {s:['القطارُ','وصلَ','إلى','المحطّةِ'],c:'ما الذي حدث في المحطة؟',v:1},
+ {s:['الفراشةُ','حطّتْ','على','الزهرةِ'],c:'أين حطّت الفراشة؟',v:1},
+ {s:['الخبّازُ','صنعَ','خبزاً','طازجاً'],c:'ماذا صنع الخبّاز؟',v:1},
+ {s:['الطفلُ','قرأَ','قصّةً','جميلةً'],c:'ماذا قرأ الطفل؟',v:1},
+ {s:['الشمسُ','أشرقتْ','على','المدينةِ'],c:'ما الذي أضاء المدينة؟',v:1},
+ {s:['النجّارُ','أصلحَ','الجسرَ','الكبيرَ'],c:'من أصلح الجسر؟',v:1},
+ {s:['البستانيُّ','سقى','الأزهارَ','صباحاً'],c:'متى سُقيت الأزهار؟',v:1},
+ {s:['الساحرُ','فتحَ','الصندوقَ','الذهبيَّ'],c:'ماذا فتح الساحر؟',v:1},
+ {s:['الغيمةُ','أمطرتْ','على','الحديقةِ'],c:'أين نزل المطر؟',v:1},
+ {s:['العصفورُ','بنى','عُشَّهُ','فوقَ','الشجرةِ'],c:'أين بنى العصفور عشّه؟',v:1},
+ {s:['التلميذةُ','كتبتْ','الدرسَ','بخطٍّ','جميلٍ'],c:'كيف كتبت التلميذة؟',v:1},
+ {s:['البحرُ','هادئٌ','في','الصباحِ'],c:'كيف كان البحر؟',v:0},
+ {s:['القمرُ','مُنيرٌ','في','السماءِ'],c:'أين القمر؟',v:0},
+ {s:['الحديقةُ','مليئةٌ','بالأزهارِ','الجميلةِ'],c:'بماذا امتلأت الحديقة؟',v:0},
+ {s:['الكتابُ','مفيدٌ','لكلِّ','قارئٍ'],c:'لمن يفيد الكتاب؟',v:0}];
+const EN_VOCAB=[
+ {en:'Key',ar:'مِفتاح',d:['بَاب','نَجمة','قِطار']},{en:'Bridge',ar:'جِسر',d:['بَحر','شَجرة','قَمَر']},
+ {en:'Bread',ar:'خُبز',d:['حَليب','تُفّاح','عَسَل']},{en:'Star',ar:'نَجمة',d:['شَمس','سَحابة','مَطر']},
+ {en:'Garden',ar:'حَديقة',d:['مَكتبة','سُوق','قَصر']},{en:'Train',ar:'قِطار',d:['سَفينة','حِصان','عَربة']},
+ {en:'Crown',ar:'تاج',d:['خاتم','مفتاح','مِرآة']},{en:'Book',ar:'كِتاب',d:['قَلَم','دَفتر','حَقيبة']},
+ {en:'Moon',ar:'قَمَر',d:['شَمس','نَجمة','سَحابة']},{en:'Sun',ar:'شَمس',d:['قَمَر','مَطَر','رِيح']},
+ {en:'Fish',ar:'سَمَكة',d:['طائِر','قِطّة','فَراشة']},{en:'House',ar:'بَيت',d:['قَصر','بَاب','سُور']},
+ {en:'Flower',ar:'زَهرة',d:['شَجَرة','عُشب','نَخلة']},{en:'Water',ar:'ماء',d:['حَليب','عَصير','عَسَل']},
+ {en:'Door',ar:'باب',d:['نافِذة','جِدار','سَقف']},{en:'Cat',ar:'قِطّة',d:['كَلب','أرنب','فَأر']},
+ {en:'Bird',ar:'عُصفور',d:['نَحلة','فَراشة','سَمَكة']},{en:'Cake',ar:'كَعكة',d:['خُبز','حَلوى','فَطيرة']},
+ {en:'Tree',ar:'شَجَرة',d:['زَهرة','جَبَل','نَهر']},{en:'Sea',ar:'بَحر',d:['نَهر','بُحَيرة','صَحراء']},
+ {en:'Horse',ar:'حِصان',d:['جَمَل','غَزال','أرنب']},{en:'School',ar:'مَدرسة',d:['مَكتبة','سُوق','مُستشفى']},
+ {en:'Friend',ar:'صَديق',d:['جار','مُعلّم','أخ']},{en:'Night',ar:'لَيل',d:['نَهار','صَباح','مَساء']},
+ {en:'Green',ar:'أخضَر',d:['أزرَق','أحمَر','أصفَر']},{en:'Blue',ar:'أزرَق',d:['أخضَر','أبيَض','أسوَد']},
+ {en:'Big',ar:'كَبير',d:['صَغير','طَويل','قَصير']},{en:'Happy',ar:'سَعيد',d:['حَزين','غاضِب','خائِف']},
+ {en:'Bag',ar:'حَقيبة',d:['كِتاب','قَلَم','صُندوق']},{en:'Milk',ar:'حَليب',d:['ماء','عَصير','عَسَل']}];
+const EN_LETTERS=[
+ {q:'Which word starts with /b/ ?',a:'Butterfly',d:['Dragon','Castle','Flower']},
+ {q:'Which word starts with /k/ ?',a:'Key',d:['Train','Star','Bread']},
+ {q:'Which word starts with /g/ ?',a:'Garden',d:['Moon','River','Cake']},
+ {q:'Which word starts with /m/ ?',a:'Moon',d:['Sun','Book','Bridge']},
+ {q:'Which word starts with /s/ ?',a:'Sun',d:['Fish','Tree','Door']},
+ {q:'Which word starts with /f/ ?',a:'Fish',d:['Cat','Bird','Star']},
+ {q:'Which word starts with /t/ ?',a:'Tree',d:['Milk','House','Key']},
+ {q:'Which word starts with /h/ ?',a:'House',d:['Bag','Sea','Cake']},
+ {q:'Which word starts with /d/ ?',a:'Door',d:['Night','Green','Fish']},
+ {q:'Which word starts with /r/ ?',a:'River',d:['Star','Book','Cat']},
+ {q:'Which word ends with /t/ ?',a:'Cat',d:['Book','Star','Milk']},
+ {q:'Which word ends with /k/ ?',a:'Book',d:['Tree','Door','Sun']},
+ {q:'Which word ends with /n/ ?',a:'Sun',d:['Cake','Fish','Bag']},
+ {q:'Which word has the /ee/ sound ?',a:'Tree',d:['Cat','Book','Door']},
+ {q:'Which word rhymes with «cake» ?',a:'Lake',d:['Book','Fish','Star']},
+ {q:'Which word rhymes with «star» ?',a:'Car',d:['Tree','Milk','Door']}];
+const EN_SENT=[
+ {s:['The','train','is','here'],c:'قائد القطار يريد جملة صحيحة'},
+ {s:['I','open','the','door'],c:'الباب لا يُفتح إلا بجملة سليمة'},
+ {s:['The','cake','is','sweet'],c:'الخبّاز نسي ترتيب كلماته'},
+ {s:['The','cat','is','small'],c:'صف القطة بجملة صحيحة'},
+ {s:['I','have','a','book'],c:'أخبر أمينة المكتبة بما معك'},
+ {s:['The','sun','is','bright'],c:'صف الشمس'},
+ {s:['We','go','to','school'],c:'إلى أين تذهبون؟'},
+ {s:['She','likes','the','flowers'],c:'ماذا تحب بائعة الزهور؟'},
+ {s:['The','bird','can','fly'],c:'ماذا يستطيع العصفور؟'},
+ {s:['My','friend','is','happy'],c:'كيف حال صديقك؟'},
+ {s:['The','sea','is','blue'],c:'صف البحر'},
+ {s:['I','like','my','house'],c:'تحدّث عن بيتك'}];
+const MA_WORD=[
+ ()=>{const a=3+Math.floor(Math.random()*7),b=2+Math.floor(Math.random()*6);
+  return{q:`خبز الخبّاز ${ar(a)} كعكة صباحاً و${ar(b)} مساءً. كم كعكة صنع؟`,v:a+b}},
+ ()=>{const a=8+Math.floor(Math.random()*12),b=2+Math.floor(Math.random()*6);
+  return{q:`في الصندوق ${ar(a)} جوهرة، أخذ الساحر ${ar(b)}. كم بقي؟`,v:a-b}},
+ ()=>{const a=2+Math.floor(Math.random()*5),b=2+Math.floor(Math.random()*5);
+  return{q:`في الحديقة ${ar(a)} أشجار، على كل شجرة ${ar(b)} فراشات. كم فراشة؟`,v:a*b}},
+ ()=>{const a=2+Math.floor(Math.random()*4);
+  return{q:`القطار يتوقف كل ${ar(a)} دقائق. كم دقيقة يحتاج ليتوقف ٤ مرات؟`,v:a*4}},
+ ()=>{const a=10+Math.floor(Math.random()*20),b=3+Math.floor(Math.random()*8);
+  return{q:`في المكتبة ${ar(a)} كتاباً، استعار الأطفال ${ar(b)}. كم كتاباً بقي؟`,v:a-b}},
+ ()=>{const a=2+Math.floor(Math.random()*6),b=3+Math.floor(Math.random()*5);
+  return{q:`اشترى ${ar(a)} أكياس، في كل كيس ${ar(b)} تفاحات. كم تفاحة معه؟`,v:a*b}},
+ ()=>{const a=2+Math.floor(Math.random()*5),b=2+Math.floor(Math.random()*5),c=1+Math.floor(Math.random()*5);
+  return{q:`جمع ${ar(a)} نجوم ثم ${ar(b)} نجوم ثم ${ar(c)} نجوم. كم نجمة معه؟`,v:a+b+c}},
+ ()=>{const t=4+Math.floor(Math.random()*6),g=2+Math.floor(Math.random()*3);
+  return{q:`عند البستاني ${ar(t*g)} زهرة وزّعها بالتساوي على ${ar(g)} أصص. كم زهرة في كل أصيص؟`,v:t}},
+ ()=>{const a=5+Math.floor(Math.random()*10);
+  return{q:`في السوق ${ar(a)} سلة، بيعت نصفها تقريباً وبقي ${ar(a)} سلال. كم كان المجموع؟`,v:a*2}},
+ ()=>{const a=100*(2+Math.floor(Math.random()*6)),b=100*(1+Math.floor(Math.random()*4));
+  return{q:`معه ${ar(a)} فلس، اشترى بـ ${ar(b)} فلس. كم بقي معه؟`,v:a-b}},
+ ()=>{const d=2+Math.floor(Math.random()*5),h=2+Math.floor(Math.random()*4);
+  return{q:`تفتح المكتبة ${ar(h)} ساعات كل يوم. كم ساعة تفتح في ${ar(d)} أيام؟`,v:d*h}},
+ ()=>{const a=6+Math.floor(Math.random()*10),b=2+Math.floor(Math.random()*4);
+  return{q:`في القطار ${ar(a)} راكباً، نزل ${ar(b)} وصعد ${ar(b+2)}. كم راكباً الآن؟`,v:a-b+(b+2)}}];
+const MREC=[];
+function mathQ(sk,L){
+ for(let k=0;k<10;k++){const q=mathQ0(sk,L);
+  if(!MREC.includes(q.t)){MREC.push(q.t);if(MREC.length>14)MREC.shift();return q}}
+ return mathQ0(sk,L);
+}
+function mathQ0(sk,L){
+ if(sk==='ma_add'){const a=[9,29,89][L-1],b=[9,19,49][L-1];
+  const x=2+Math.floor(Math.random()*a),y=2+Math.floor(Math.random()*b);return{t:`${x} + ${y}`,v:x+y}}
+ if(sk==='ma_sub'){const a=[12,45,99][L-1];const x=5+Math.floor(Math.random()*a),y=1+Math.floor(Math.random()*x);return{t:`${x} − ${y}`,v:x-y}}
+ if(sk==='ma_mul'){const a=[5,9,12][L-1];const x=2+Math.floor(Math.random()*a),y=2+Math.floor(Math.random()*a);return{t:`${x} × ${y}`,v:x*y}}
+ const x=[3,7,12][L-1],y=2+Math.floor(Math.random()*x);return{t:`${x*100} + ${y*100}`,v:(x+y)*100}}
+function distract(v){const s=new Set([v]);
+ while(s.size<4){const d=v+pick([-10,-5,-3,-2,-1,1,2,3,5,10]);if(d>0)s.add(d);
+  if(s.size<4)s.add(Math.max(1,v+Math.ceil(Math.random()*6)))}return[...s]}
+
+/* ================= STORY BANK ================= */
+const BG={
+ night:'radial-gradient(120% 80% at 50% 20%,#4E357F,#241640 60%,#12081F)',
+ warm:'radial-gradient(120% 80% at 50% 30%,#8A5A3C,#3E2418 60%,#180D10)',
+ gold:'radial-gradient(120% 80% at 50% 30%,#B98A3A,#5B3E1F 60%,#1A1008)',
+ green:'radial-gradient(120% 80% at 50% 30%,#3E7A57,#1F4433 60%,#0D1F17)',
+ blue:'radial-gradient(120% 80% at 50% 30%,#3C6E9E,#1C3A57 60%,#0B1A29)',
+ rose:'radial-gradient(120% 80% at 50% 30%,#9E4E72,#4E2340 60%,#1E0F1A)',
+ violet:'radial-gradient(120% 80% at 50% 30%,#6B4CA6,#33215C 60%,#150C28)',
+ dark:'radial-gradient(120% 80% at 50% 30%,#3A4470,#1C2140 60%,#0A0C1A)'};
+const PROLOGUE={id:'prologue',t:'البداية',e:'🌙',panels:[
+ {bg:BG.night,big:'🌙',s1:'✨',s2:'⭐',t:'قبل زمنٍ بعيد، كانت مدينةُ الحكمة تضيء الليل كلّه.\nكانت أنوارُها تُرى من وراء الجبال.'},
+ {bg:BG.dark,big:'🏰',s1:'🕯',s2:'🕸',t:'ثم جاءت ليلةٌ صامتة… انطفأت النوافذُ واحدةً واحدة،\nوأُغلقت الأبواب، واختفت الكنوز.'},
+ {bg:BG.violet,big:'📜',s1:'🗝',s2:'✨',t:'وفي أقدم كتابٍ في المكتبة سطرٌ واحد:\n«لن يعود الضوء إلا بيدِ من يفهم… ويقرأ… ويحسب.»'},
+ {bg:BG.gold,big:'👣',s1:'🌟',s2:'🌟',t:'وفي هذا الصباح… وقفتَ عند بوابة المدينة.\nالحكاية تبدأ الآن.'}]};
+const MILESTONES=[
+ {at:5,id:'ms1',t:'الضوء الأول',e:'🌟',panels:[
+  {bg:BG.gold,big:'🌟',s1:'✨',s2:'✨',t:'شيءٌ ما تغيّر. الفوانيس القديمة ارتجفت،\nثم اشتعلت واحدةً تلو الأخرى في الساحة.'},
+  {bg:BG.night,big:'🏘',s1:'🪟',s2:'🕯',t:'وفتحَ أهلُ المدينة نوافذهم يسألون:\n«من أعاد إلينا الضوء؟»'}]},
+ {at:12,id:'ms2',t:'همسة من البرج',e:'🧙',panels:[
+  {bg:BG.violet,big:'🧙',s1:'🔮',s2:'📜',t:'في أعلى البرج، فتح الساحرُ عينيه بعد نومٍ طويل.\n«لقد وصل أخيراً» — قالها وابتسم.'},
+  {bg:BG.violet,big:'🗝',s1:'✨',s2:'⭐',t:'وأرسل مفتاحاً صغيراً يطير في الهواء…\nكل باب في المدينة صار يعرف اسمك.'}]},
+ {at:20,id:'ms3',t:'المدينة تستيقظ',e:'🎆',panels:[
+  {bg:BG.gold,big:'🎆',s1:'🏰',s2:'🌉',t:'دقّت أجراسُ القصر، وارتفعت الأنوارُ فوق الجسر،\nوعاد النهرُ يلمع كما كان.'},
+  {bg:BG.rose,big:'👑',s1:'💎',s2:'🌸',t:'وقالت المدينة بصوتٍ لم يسمعه أحدٌ من قبل:\n«شكراً… لقد أعدتَ إليّ قلبي.»'}]}];
+const TALES={
+ library:[
+  {id:'lib1',t:'الكتاب الذي يهمس',e:'📖',panels:[
+   {bg:BG.blue,big:'📚',s1:'🕯',s2:'🕸',t:'رفوفُ المكتبة عالية، والغبارُ يرقص في ضوء الشمعة.\nأمينةُ المكتبة تضع إصبعها على شفتيها: «اسمع…»'},
+   {bg:BG.blue,big:'📖',s1:'✨',s2:'🔤',t:'في الرفّ الأخير كتابٌ يهمس بالحروف،\nلكن حروفه هربت منه ليلة انطفاء المدينة.'},
+   {bg:BG.violet,big:'🔍',s1:'📖',s2:'✨',t:'«أعِد إليه كلماته» — قالت — «وسيفتح لك بابه.»'}],
+   outro:{bg:BG.gold,big:'📖',s1:'🌟',s2:'✨',t:'الكتاب أغلق نفسه بهدوء وضحك ضحكةً صغيرة،\nثم أضاء الرفّ كلّه من الداخل.'}},
+  {id:'lib2',t:'خريطة تحت الغبار',e:'🗺',panels:[
+   {bg:BG.blue,big:'🗺',s1:'📚',s2:'🕯',t:'سقط كتابٌ ثقيل، فخرجت من بين صفحاته خريطةٌ قديمة\nمرسومة بحبرٍ يلمع في العتمة.'},
+   {bg:BG.dark,big:'❓',s1:'🗝',s2:'💎',t:'لكن أسماء الأماكن عليها ممحوّة…\nولن تظهر إلا لمن يعرف قراءتها.'}],
+   outro:{bg:BG.gold,big:'🗺',s1:'✨',s2:'🧭',t:'الأسماء عادت إلى الخريطة حرفاً حرفاً،\nوظهر طريقٌ لم يكن موجوداً قبل قليل.'}}],
+ bakery:[
+  {id:'bak1',t:'صباح بلا رائحة',e:'🍞',panels:[
+   {bg:BG.warm,big:'🍞',s1:'🔥',s2:'🥐',t:'المخبز دافئ، لكن الخبّاز سالم يقف حائراً أمام فرنه.\n«الوصفة القديمة ضاعت أرقامها يا صديقي.»'},
+   {bg:BG.warm,big:'🧁',s1:'🍰',s2:'❓',t:'أطفال المدينة سينتظرون كعك المساء…\nولن يكفي إلا إذا حسبنا بدقّة.'}],
+   outro:{bg:BG.gold,big:'🥐',s1:'😋',s2:'✨',t:'خرجت الصينية ذهبيةً من الفرن،\nوامتلأ الشارع برائحةٍ جعلت الجميع يبتسمون.'}},
+  {id:'bak2',t:'طلبية القصر',e:'🎂',panels:[
+   {bg:BG.warm,big:'🎂',s1:'👑',s2:'📜',t:'وصلت رسالة مختومة بشمعٍ ذهبي:\nالقصر يريد كعكةً لأول احتفالٍ منذ سنوات.'},
+   {bg:BG.warm,big:'⏳',s1:'🕰',s2:'🔥',t:'«لدينا ساعةٌ واحدة» — قال سالم وهو يرفع كمّيه —\n«ولن ننجح إلا بعقلٍ سريع.»'}],
+   outro:{bg:BG.rose,big:'🎂',s1:'🎉',s2:'👑',t:'وصلت الكعكة إلى القصر في وقتها تماماً،\nوسمع سالم التصفيق من بعيد ودمعت عينه.'}}],
+ station:[
+  {id:'sta1',t:'القطار الذي نسي لغته',e:'🚂',panels:[
+   {bg:BG.blue,big:'🚂',s1:'🎫',s2:'🧳',t:'يصفّر القطار عند الرصيف، لكن الركاب لا يفهمون النداء.\nقائد القطار يتحدث بكلماتٍ من مدينةٍ بعيدة.'},
+   {bg:BG.blue,big:'🔤',s1:'📢',s2:'❓',t:'«ساعدني» — قال — «كل كلمةٍ تفهمها،\nتفتح باباً في عربةٍ من عرباتي.»'}],
+   outro:{bg:BG.gold,big:'🚂',s1:'🌟',s2:'🎫',t:'انطلق القطار أخيراً، وكل نافذةٍ فيه مضيئة،\nوالركاب يلوّحون لك حتى اختفوا خلف المنعطف.'}},
+  {id:'sta2',t:'الحقيبة المجهولة',e:'🧳',panels:[
+   {bg:BG.dark,big:'🧳',s1:'🏷',s2:'❓',t:'حقيبةٌ صغيرة نُسيت على المقعد الأخير،\nوعليها بطاقةٌ بكلماتٍ إنجليزية باهتة.'},
+   {bg:BG.blue,big:'🔍',s1:'🚂',s2:'✨',t:'لا أحد يعرف صاحبها…\nإلا إذا استطعنا قراءة البطاقة.'}],
+   outro:{bg:BG.rose,big:'🧸',s1:'😊',s2:'✨',t:'كان بداخلها دبٌّ صغير لطفلةٍ نزلت في المحطة السابقة.\nوصل إليها في اليوم التالي — والقصة انتهت بابتسامة.'}}],
+ garden:[
+  {id:'gar1',t:'فراشات بلا أسماء',e:'🦋',panels:[
+   {bg:BG.green,big:'🦋',s1:'🌻',s2:'🌿',t:'في الحديقة فراشاتٌ تحمل على أجنحتها حروفاً،\nلكنها نسيت أصواتها منذ أن انطفأت المدينة.'},
+   {bg:BG.green,big:'🌸',s1:'🦋',s2:'✨',t:'البستاني يهمس: «كل حرفٍ تناديه بصوته الصحيح،\nتعود إليه فراشته.»'}],
+   outro:{bg:BG.gold,big:'🦋',s1:'🌈',s2:'✨',t:'ارتفعت الفراشات كلها دفعةً واحدة\nفصارت الحديقة سحابةً ملوّنة تدور فوق رأسك.'}},
+  {id:'gar2',t:'البذرة الأخيرة',e:'🌱',panels:[
+   {bg:BG.green,big:'🌱',s1:'💧',s2:'🌿',t:'بقيت بذرةٌ واحدة من شجرة المدينة القديمة،\nولا تنبت إلا في أرضٍ يملؤها الضوء.'},
+   {bg:BG.green,big:'🌳',s1:'✨',s2:'🕊',t:'«كل مهمةٍ تنجح فيها تصنع ضوءاً» — قال البستاني —\n«وهذه البذرة تنتظر ضوءك أنت.»'}],
+   outro:{bg:BG.green,big:'🌳',s1:'🌸',s2:'🕊',t:'نبتت الشجرة في لحظةٍ واحدة، وارتفعت حتى غطّت الشمس،\nوعادت الطيور إلى المدينة بعد غياب طويل.'}}],
+ bridge:[
+  {id:'bri1',t:'ألواح متبعثرة',e:'🌉',panels:[
+   {bg:BG.dark,big:'🌉',s1:'🪵',s2:'💨',t:'الجسر الكبير مكسور، وألواحه تطفو على النهر.\nالنجّار يمسك مطرقته ولا يعرف من أين يبدأ.'},
+   {bg:BG.blue,big:'🪵',s1:'🔨',s2:'❓',t:'«كل لوحٍ يحمل كلمة» — قال —\n«ولن يثبت الجسر إلا إذا كانت الجملة صحيحة.»'}],
+   outro:{bg:BG.gold,big:'🌉',s1:'✨',s2:'🌟',t:'ثبت اللوح الأخير بصوتٍ عميق،\nوعبر أول رجلٍ الجسرَ منذ سنوات… فصفّق الجميع.'}},
+  {id:'bri2',t:'الضفة الأخرى',e:'🚶',panels:[
+   {bg:BG.dark,big:'🌫',s1:'🌉',s2:'❓',t:'خلف الجسر ضبابٌ لم ينقشع أبداً،\nويقال إن أحداً لم يعبره ويعد بنفس الحكاية.'},
+   {bg:BG.blue,big:'🕯',s1:'👣',s2:'✨',t:'«اعبر معي» — قال النجّار — «لكن انتبه:\nالضباب لا يفتح طريقه إلا للعقول المرتّبة.»'}],
+   outro:{bg:BG.rose,big:'🌅',s1:'🕊',s2:'✨',t:'انقشع الضباب فجأة… وظهرت حقولٌ ذهبية\nلم يرها أحدٌ منذ زمن الأنوار الأول.'}}],
+ market:[
+  {id:'mar1',t:'الميزان المكسور',e:'⚖️',panels:[
+   {bg:BG.rose,big:'⚖️',s1:'🪙',s2:'💐',t:'في السوق ضجّة: ميزان بائعة الزهور تعطّل،\nولا أحد يعرف كم يدفع ولا كم يأخذ.'},
+   {bg:BG.rose,big:'🪙',s1:'🌷',s2:'❓',t:'«لا أريد أن أظلم أحداً» — قالت وهي تعدّ بيديها —\n«ساعدني في الحساب من فضلك.»'}],
+   outro:{bg:BG.gold,big:'💐',s1:'😊',s2:'🪙',t:'عاد الميزان يتّزن، وأهدتك أجمل زهرةٍ في السوق\nوقالت: «هذه لمن يعرف قيمة العدل.»'}},
+  {id:'mar2',t:'يوم الهدايا',e:'🎁',panels:[
+   {bg:BG.rose,big:'🎁',s1:'🛍',s2:'✨',t:'قرّر أهل السوق أن يصنعوا هدايا لكل طفلٍ في المدينة،\nلكن النقود قليلة والأطفال كثيرون.'},
+   {bg:BG.rose,big:'🧮',s1:'🪙',s2:'🎀',t:'«لن ينجح هذا إلا بحسابٍ ذكي» — قالت البائعة —\n«ولا أثق إلا بك.»'}],
+   outro:{bg:BG.gold,big:'🎀',s1:'🎉',s2:'🧒',t:'حمل كل طفلٍ هديته ذلك المساء،\nولم يعرفوا أن عقلاً صغيراً هو من دبّر كل شيء.'}}],
+ mine:[
+  {id:'min1',t:'قلب المنجم',e:'💎',panels:[
+   {bg:BG.dark,big:'⛏',s1:'🪨',s2:'🕯',t:'المنجم مظلم، وصوت القطرات يتردّد في الأعماق.\nحارس المنجم يرفع مصباحه: «انتبه لخطواتك.»'},
+   {bg:BG.dark,big:'💎',s1:'✨',s2:'❓',t:'في القاع جوهرةٌ واحدة تُضيء المدينة كلها،\nلكن الطريق إليها مليء بالأرقام المتشابكة.'}],
+   outro:{bg:BG.gold,big:'💎',s1:'🌟',s2:'✨',t:'رفعتَ الجوهرة، فامتلأ المنجم بضوءٍ أزرق،\nوعرف الحارس أن المدينة لن تعود مظلمة أبداً.'}},
+  {id:'min2',t:'الصدى الذي يعدّ',e:'🔊',panels:[
+   {bg:BG.dark,big:'🕳',s1:'🪨',s2:'💠',t:'في أحد الأنفاق صدىً غريب: كلما صرختَ رقماً،\nردّ عليك برقمٍ آخر أكبر منه.'},
+   {bg:BG.dark,big:'🔢',s1:'✨',s2:'❓',t:'«إنه لغزٌ قديم» — قال الحارس —\n«ومن يحلّه يفتح الغرفة المخفية.»'}],
+   outro:{bg:BG.violet,big:'🚪',s1:'💎',s2:'✨',t:'انفتحت الغرفة المخفية بصريرٍ طويل،\nوكانت مليئة بجواهر لم يرها إنسانٌ من قبل.'}}],
+ tower:[
+  {id:'tow1',t:'الساحر النائم',e:'🧙',panels:[
+   {bg:BG.violet,big:'🧙',s1:'🔮',s2:'🕯',t:'في أعلى البرج ساحرٌ طيّب نام منذ ليلة الظلام،\nولا يوقظه إلا صوت جملةٍ صحيحة.'},
+   {bg:BG.violet,big:'📜',s1:'✨',s2:'❓',t:'على مكتبه رقاعٌ تبعثرت كلماتها،\nوكل رقعةٍ تحمل جزءاً من تعويذة النور.'}],
+   outro:{bg:BG.gold,big:'🔮',s1:'🌟',s2:'✨',t:'فتح الساحر عينيه أخيراً وقال:\n«كنت أنتظر عقلاً مثل عقلك منذ سنوات.»'}},
+  {id:'tow2',t:'المرآة التي تسأل',e:'🪞',panels:[
+   {bg:BG.violet,big:'🪞',s1:'✨',s2:'👁',t:'في غرفةٍ مغلقة مرآةٌ لا تُظهر وجهك،\nبل تُظهر سؤالاً جديداً في كل مرة.'},
+   {bg:BG.violet,big:'❓',s1:'🕯',s2:'🔮',t:'«من يجيب المرآة ثلاث مرات» — قال الساحر —\n«ترى فيها المدينة كما ستكون.»'}],
+   outro:{bg:BG.gold,big:'🏙',s1:'🌟',s2:'💫',t:'ظهرت في المرآة مدينةٌ مضيئة بالكامل…\nوفي وسطها أنت.'}}],
+ castle:[
+  {id:'cas1',t:'الباب ذو القفل الذهبي',e:'🏰',panels:[
+   {bg:BG.gold,big:'🏰',s1:'🗝',s2:'👑',t:'بوابة القصر لم تُفتح منذ ليلة الظلام.\nحارسها الوفيّ ما زال واقفاً في مكانه ينتظر.'},
+   {bg:BG.gold,big:'🔐',s1:'✨',s2:'❓',t:'«القفل لا يُفتح بمفتاح» — قال —\n«بل بثلاثة أسئلةٍ لا يعرفها إلا من تعلّم.»'}],
+   outro:{bg:BG.gold,big:'👑',s1:'🎆',s2:'🌟',t:'انفتحت البوابة، وأضاء القصر كله دفعةً واحدة،\nوانحنى الحارس وقال: «أهلاً بك في بيتك.»'}},
+  {id:'cas2',t:'العرش الفارغ',e:'👑',panels:[
+   {bg:BG.violet,big:'👑',s1:'🕯',s2:'🏰',t:'في قاعة العرش كرسيٌّ فارغ وتاجٌ مغطّى بالغبار،\nومكتوبٌ تحته: «ليس للأقوى… بل للأحكم.»'},
+   {bg:BG.violet,big:'📜',s1:'✨',s2:'❓',t:'ثلاثة اختباراتٍ أخيرة تفصلك عن التاج.'}],
+   outro:{bg:BG.gold,big:'🎆',s1:'👑',s2:'💫',t:'وُضع التاج على رأسك، ودقّت كل أجراس المدينة معاً.\nمدينة الحكمة عادت… بفضلك.'}}]};
+const GENERIC=[
+ {t:'نداء في الساحة',e:'📢',panels:[
+  {bg:BG.night,big:'📢',s1:'🏘',s2:'✨',t:'صوتٌ ينادي من وسط الساحة:\n«هناك من يحتاج مساعدتك… الآن.»'}],
+  outro:{bg:BG.gold,big:'🌟',s1:'✨',s2:'😊',t:'ضوءٌ صغير جديد أُضيف إلى المدينة،\nولن ينطفئ بعد اليوم.'}},
+ {t:'الباب الذي طرق نفسه',e:'🚪',panels:[
+  {bg:BG.violet,big:'🚪',s1:'🗝',s2:'❓',t:'بابٌ طرق نفسه ثلاث مرات ثم انفتح قليلاً…\nولم يخرج منه أحد. دخلتَ أنت.'}],
+  outro:{bg:BG.gold,big:'✨',s1:'🎁',s2:'🌟',t:'ما كان خلف الباب أجمل مما توقعت،\nوسمعتَ ضحكةً صغيرة تشكرك.'}},
+ {t:'رسالة بلا اسم',e:'📮',panels:[
+  {bg:BG.blue,big:'📮',s1:'✉️',s2:'✨',t:'وجدتَ رسالةً بلا اسمٍ ولا عنوان،\nمكتوبٌ عليها سطرٌ واحد: «أنا أعرف أنك تستطيع.»'}],
+  outro:{bg:BG.rose,big:'✉️',s1:'🌟',s2:'💫',t:'وفي أسفل الرسالة ظهر توقيعٌ لم يكن موجوداً:\n«— من مدينةٍ تنتظرك كل يوم.»'}}];
+
+/* ================= story engine ================= */
+let ST={panels:[],i:0,after:null,title:'',typing:null};
+function sparkles(){
+ const box=$('storySpark');box.innerHTML='';
+ for(let i=0;i<26;i++){const d=document.createElement('div');d.className='sp';
+  const s=2+Math.random()*3;d.style.width=s+'px';d.style.height=s+'px';
+  d.style.left=Math.random()*100+'%';d.style.bottom='-10px';
+  d.style.animationDuration=(5+Math.random()*6)+'s';d.style.animationDelay=(Math.random()*5)+'s';
+  d.style.opacity=.7;box.appendChild(d)}
+}
+function playStory(title,panels,after){
+ ST={panels,i:0,after,title};playing=false;
+ sparkles();layer('story');$('skipStory').style.display='block';showPanel();
+}
+function showPanel(){
+ const p=ST.panels[ST.i];
+ $('storyArt').style.background=p.bg;
+ $('storyArt').querySelector('.big').textContent=p.big;
+ $('storyArt').querySelector('.big').style.animation='none';void $('storyArt').offsetWidth;
+ $('storyArt').querySelector('.big').style.animation='';
+ $('storyArt').querySelector('.s1').textContent=p.s1||'';
+ $('storyArt').querySelector('.s2').textContent=p.s2||'';
+ $('storyChapter').textContent=ST.title;
+ $('storyDots').innerHTML=ST.panels.map((_,i)=>`<i class="${i===ST.i?'on':''}"></i>`).join('');
+ $('storyNext').textContent=ST.i===ST.panels.length-1?'هيا بنا ✨':'التالي';
+ typeText(p.t);
+}
+function typeText(txt){
+ clearInterval(ST.typing);const el=$('storyText');el.innerHTML='';
+ let i=0;const html=txt.replace(/\n/g,'<br>');
+ const chars=html.split(/(<br>)/).flatMap(x=>x==='<br>'?['<br>']:x.split(''));
+ ST.typing=setInterval(()=>{
+  if(i>=chars.length){clearInterval(ST.typing);ST.typing=null;return}
+  el.innerHTML+=chars[i];
+  if(i%3===0&&SOUND)tone(520+Math.random()*160,.03,'sine',.025);
+  i++;
+ },26);
+ ST.full=html;
+}
+$('storyNext').onclick=()=>{
+ if(ST.typing){clearInterval(ST.typing);ST.typing=null;$('storyText').innerHTML=ST.full;return}
+ SFX.tap();
+ if(ST.i<ST.panels.length-1){ST.i++;showPanel()}
+ else{$('skipStory').style.display='none';const cb=ST.after;ST.after=null;if(cb)cb()}
+};
+$('skipStory').onclick=()=>{clearInterval(ST.typing);$('skipStory').style.display='none';
+ const cb=ST.after;ST.after=null;if(cb)cb()};
+$('story').addEventListener('click',e=>{if(e.target.id==='story'||e.target.id==='storyArt')$('storyNext').click()});
+
+function nextTale(place){
+ const list=TALES[place.id]||[];
+ S.tales=S.tales||{};
+ const done=S.tales[place.id]||0;
+ if(done<list.length)return {tale:list[done],idx:done,generic:false};
+ return {tale:pick(GENERIC),idx:-1,generic:true};
+}
+function renderBook(){
+ const all=[];
+ all.push({e:PROLOGUE.e,t:PROLOGUE.t,p:'المقدّمة',got:!!(S.storiesRead&&S.storiesRead.prologue),data:PROLOGUE});
+ Object.keys(TALES).forEach(k=>{const pl=ALL_PLACES.find(p=>p.id===k);
+  TALES[k].forEach((tl,i)=>all.push({e:tl.e,t:tl.t,p:pl.n,got:(S.tales&&S.tales[k]>i),data:tl}))});
+ MILESTONES.forEach(m=>all.push({e:m.e,t:m.t,p:'حكاية المدينة',got:!!(S.storiesRead&&S.storiesRead[m.id]),data:m}));
+ $('bookList').innerHTML=all.map((a,i)=>`<div class="tale ${a.got?'':'locked'}">
+  <div class="te">${a.got?a.e:'🔒'}</div>
+  <div><b>${a.got?a.t:'حكاية لم تُكتشف بعد'}</b><small>${a.p}</small></div>
+  ${a.got?`<button data-i="${i}">اقرأ</button>`:''}</div>`).join('');
+ $('bookList').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  const a=all[+b.dataset.i];const panels=a.data.panels.concat(a.data.outro?[a.data.outro]:[]);
+  playStory(a.t,panels,()=>{layer('book')})};
+}
+/* ---- driving ---- */
+const carOf=()=>SHOP.cars.find(c=>c.id===S.car);
+$('carBtn').onclick=()=>{
+ S.cars=S.cars||[];
+ if(!S.cars.length){SFX.soft();toast('لا تملك سيارة بعد — اشترِ واحدة من متجر المدينة 🏪');return}
+ if(!S.car)S.car=S.cars[0];
+ if(!S.driving&&S.cars.length>1){ // cycle to the next owned car when tapping while parked
+  const i=S.cars.indexOf(S.car);S.car=S.cars[(i)%S.cars.length];
+ }
+ S.driving=!S.driving;if(S.driving)S.riding=false,ALTt=0;
+ SFX.coin();save();
+ toast(S.driving?('ركبتَ '+carOf().n+' 🚗'):'نزلتَ من السيارة');
+};
+/* ---- riding ---- */
+$('rideBtn').onclick=()=>{
+ if(petStage()<2){SFX.soft();
+  toast(`${S.petName} ما زال صغيراً — أكمل ${ar(Math.max(0,8-S.missions))} مغامرات ليكبر ويحملك 🐾`);return}
+ if(S.driving)S.driving=false;
+ S.riding=!S.riding;SFX.coin();save();
+ $('rideBtn').textContent=S.riding?'🚶':'🐾';
+ $('carBtn').textContent=S.driving?'🚶':'🚗';
+ toast(S.riding?`أنت الآن تركب ${S.petName}! السرعة تضاعفت ✨`:'نزلتَ عن ظهر رفيقك');
+};
+/* ---- shop ---- */
+let shopTab='food';
+function money(){return {s:S.stars||0,g:S.gems||0}}
+function openShop(){SFX.tap();playing=false;renderShop();layer('shop')}
+function renderShop(){
+ $('shopWallet').innerHTML=`في محفظتك: <b style="color:var(--gold)">⭐ ${ar(S.stars)}</b> &nbsp; <b style="color:var(--mint)">💎 ${ar(S.gems)}</b>`;
+ $('shopTabs').innerHTML=CATS.map(([k,n])=>`<button class="tab ${shopTab===k?'on':''}" data-k="${k}">${n}</button>`).join('');
+ $('shopTabs').onclick=e=>{const b=e.target.closest('.tab');if(!b)return;SFX.tap();shopTab=b.dataset.k;renderShop()};
+ S.inv=S.inv||{};S.cars=S.cars||[];
+ $('shopGrid').innerHTML=SHOP[shopTab].map(it=>{
+  const owned=shopTab==='cars'?S.cars.includes(it.id):(S.inv[it.id]||0);
+  const can=it.cur==='s'?S.stars>=it.p:S.gems>=it.p;
+  return `<div class="wcard ${owned?'got':''} ${can||owned?'':'lock'}" data-id="${it.id}">
+   <span class="we">${it.e}</span><b>${it.n}</b>
+   <span class="price">${it.cur==='s'?'⭐':'💎'} ${ar(it.p)}</span>
+   <small>${shopTab==='cars'?(owned?'<span class="owned">تملكها ✔</span>':'اضغط للشراء')
+     :(owned?'<span class="owned">لديك '+ar(owned)+'</span>':'اضغط للشراء')}</small></div>`}).join('');
+ $('shopGrid').onclick=e=>{const c=e.target.closest('.wcard');if(!c)return;buy(findItem(c.dataset.id))};
+}
+function buy(it){
+ S.inv=S.inv||{};S.cars=S.cars||[];
+ if(SHOP.cars.includes(it)&&S.cars.includes(it.id)){S.car=it.id;SFX.coin();
+  toast(it.n+' صارت سيارتك الحالية 🚗');save();renderShop();return}
+ const have=it.cur==='s'?S.stars:S.gems;
+ if(have<it.p){SFX.soft();
+  toast('لا تكفي '+(it.cur==='s'?'النجوم — أجب أسئلة أكثر ⭐':'الجواهر — افتح صناديق أكثر 💎'));return}
+ if(it.cur==='s')S.stars-=it.p;else S.gems-=it.p;
+ SFX.coin();
+ if(SHOP.cars.includes(it)){S.cars.push(it.id);S.car=it.id;toast('مبروك! اشتريتَ '+it.n+' 🎉')}
+ else{S.inv[it.id]=(S.inv[it.id]||0)+1;
+  if(it.outfit!=null){S.boughtOutfits=S.boughtOutfits||[];S.boughtOutfits.push(it.outfit);S.outfit=it.outfit;
+   toast('اشتريتَ '+it.n+' وارتديتَه فوراً! 👗')}
+  else if(SHOP.house.includes(it))toast('اشتريتَ '+it.n+' — ستجده في بيتك 🏡');
+  else toast('اشتريتَ '+it.n+' ✔');}
+ save();hud();renderShop();
+}
+$('shopClose').onclick=()=>{layer(null);playing=true};
+
+/* ---- wardrobe ---- */
+let wPrevW=0;
+$('wearBtn').onclick=()=>{SFX.tap();playing=false;renderWardrobe();layer('wardrobe')};
+$('wClose').onclick=()=>{layer(null);playing=true};
+function hasOutfit(o){return S.missions>=o.need||((S.inv&&S.inv['c'+o.id])>0)||(S.boughtOutfits||[]).includes(o.id)}
+function unlockedOutfits(){return OUTFITS.filter(hasOutfit).length}
+function renderWardrobe(){
+ const nxt=OUTFITS.find(o=>!o.shop&&S.missions<o.need);
+ $('wSub').innerHTML=nxt
+  ?`أجبتَ ${ar(S.missions)} إجابة صحيحة — بقي <b style="color:var(--gold)">${ar(nxt.need-S.missions)}</b> لفتح «${nxt.n}»`
+  :'فتحتَ كل الأزياء! 👑';
+ $('wGrid').innerHTML=OUTFITS.map(o=>{const got=hasOutfit(o);
+  return `<div class="wcard ${got?'got':'lock'} ${(S.outfit||0)===o.id?'on':''}" data-id="${o.id}">
+   <span class="we">${got?o.e:'🔒'}</span><b>${got?o.n:'زيّ مقفل'}</b>
+   <small>${got?((S.outfit||0)===o.id?'مرتدىً الآن':'اضغط للارتداء'):(o.shop?'يُشترى من المتجر 🏪':'عند '+ar(o.need)+' إجابة')}</small></div>`}).join('');
+ $('wGrid').onclick=e=>{const c=e.target.closest('.wcard');if(!c)return;
+  const o=OUTFITS[+c.dataset.id];
+  if(!hasOutfit(o)){SFX.soft();toast(o.shop?'اشترِه من متجر المدينة 🏪':'يفتح بعد '+ar(o.need-S.missions)+' إجابة صحيحة');return}
+  S.outfit=o.id;SFX.coin();save();renderWardrobe()};
+ const c=$('wPrev').getContext('2d');
+ cancelAnimationFrame(wPrevW);
+ (function anim(){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,220,250);c.save();c.scale(1.8,1.8);
+  drawHero(c,62,124,1,wAnim,S.hero,1,outfit());c.restore();wAnim+=.12;
+  wPrevW=requestAnimationFrame(anim)})();
+}
+let wAnim=0;
+$('homeBtn').onclick=()=>{SFX.tap();playing=false;
+ $('homeWho').textContent=`اللاعب الحالي: ${S.name} — ${ar(S.missions)} مغامرة، ${ar(Object.keys(S.badges).length)} وسام.`;
+ layer('homeSheet')};
+$('hResume').onclick=()=>{SFX.tap();layer(null);playing=true};
+$('hChange').onclick=async()=>{SFX.door();await Store.set(KEY,null);location.reload()};
+$('bookBtn').onclick=()=>{SFX.tap();playing=false;renderBook();layer('book')};
+$('bookClose').onclick=()=>{layer(null);playing=true};
+
+/* ================= anti-repeat picker ================= */
+const SEEN={};
+function fresh(list,tag){
+ SEEN[tag]=SEEN[tag]||[];
+ const keep=Math.min(list.length-1,Math.max(3,Math.floor(list.length*0.7)));
+ let pool=list.filter((_,i)=>!SEEN[tag].includes(i));
+ if(!pool.length){SEEN[tag]=[];pool=list.slice()}
+ const it=pool[Math.floor(Math.random()*pool.length)];
+ SEEN[tag].push(list.indexOf(it));
+ while(SEEN[tag].length>keep)SEEN[tag].shift();
+ return it;
+}
+
+/* ================= adaptive engine ================= */
+let turn=0;
+function chooseSkill(p){const c=p.skills.map(k=>({k,d:S.skills[k]}));
+ c.forEach(o=>o.score=(1-o.d.m)*100+Math.min(turn-o.d.last,12)*3+Math.random()*10);
+ c.sort((a,b)=>b.score-a.score);return c[0].k}
+function record(sk,ok){const d=S.skills[sk];d.seen++;if(ok)d.right++;
+ d.m=d.m*.72+(ok?1:0)*.28;d.last=turn;
+ if(d.m>.82&&d.seen>=4&&d.lvl<3){d.lvl++;d.m=.55}
+ if(d.m<.28&&d.lvl>1){d.lvl--;d.m=.5}
+ S.log.push({s:sk,ok,t:Date.now()});if(S.log.length>400)S.log.shift()}
+function buildChallenge(place){
+ const skill=chooseSkill(place),lvl=S.skills[skill].lvl,c={skill,place,face:place.face,who:place.who};
+ if(skill==='ar_read'){const it=fresh(AR_WORDS,'arw');c.mode='choice';
+  c.story=T('«فقدتُ لوحة الكلمات يا أميرة… أي كلمة تعني هذه الصورة؟»','«فقدتُ لوحة الكلمات يا بطل… أي كلمة تعني هذه الصورة؟»');
+  c.prompt=`<span style="font-size:74px">${it.img}</span>`;c.options=shuffle([it.w,...it.opts]);c.answer=it.w;
+  c.tip=`الكلمة تبدأ بحرف «${it.w[0]}»`}
+ else if(skill==='ar_missing'){const it=fresh(AR_MISSING,'arm');c.mode='choice';
+  c.story='«الحبر سال على الورقة وضاع حرف! أي حرف يكمل الكلمة؟»';
+  c.prompt=it.w;c.options=shuffle([it.a,...it.d]);c.answer=it.a;c.tip=`الكلمة كاملة: ${it.full}`}
+ else if(skill==='ar_letters'){const it=fresh(AR_LETTER,'arl');c.mode='fly';
+  c.story=T('«الفراشات تحمل الحروف! التقطي الحرف الصحيح.»','«الفراشات تحمل الحروف! التقط الحرف الصحيح.»');
+  c.prompt=it.q;c.options=shuffle([it.a,...it.d]);c.answer=it.a;c.tip='انطق الاسم ببطء وركّز على أول صوت.'}
+ else if(skill==='ar_sentence'){const it=fresh(AR_SENT,'ars');c.mode='order';
+  c.story=T('«ألواح الجسر تبعثرت! رتّبي الكلمات.»','«ألواح الجسر تبعثرت! رتّب الكلمات.»');
+  c.prompt=it.c;c.tokens=shuffle(it.s.slice());c.answer=it.s.join(' ');c.tip='ابدأ بمن قام بالفعل، ثم الفعل.'}
+ else if(skill==='en_vocab'){const it=fresh(EN_VOCAB,'env');c.mode='choice';
+  c.story='«I lost my word cards! ماذا تعني هذه الكلمة؟»';
+  c.prompt=`<span dir="ltr">${it.en}</span>`;c.options=shuffle([it.ar,...it.d]);c.answer=it.ar;c.tip=`${it.en} — ${it.ar}`}
+ else if(skill==='en_letters'){const it=fresh(EN_LETTERS,'enl');c.mode='choice';
+  c.story='«Listen carefully… ركّز في أول صوت.»';
+  c.prompt=`<span dir="ltr">${it.q}</span>`;c.options=shuffle([it.a,...it.d]);c.answer=it.a;c.tip='الصوت الأول هو المفتاح.'}
+ else if(skill==='en_sentence'){const it=fresh(EN_SENT,'ens');c.mode='order';
+  c.story=`«${it.c}»`;c.prompt='<span dir="ltr">Put the words in order</span>';
+  c.tokens=shuffle(it.s.slice());c.answer=it.s.join(' ');c.tip='ابدأ بـ The أو I.'}
+ else if(skill==='ma_word'){const it=fresh(MA_WORD,'maw')();c.mode='choice';
+  c.story=T('«أحتاج عقلكِ الذكي يا أميرة.»','«أحتاج عقلكَ الذكي يا بطل.»');
+  c.prompt=it.q;c.answer=ar(it.v);c.options=shuffle(distract(it.v).map(ar));c.tip='ارسم المسألة بأصابعك أولاً.'}
+ else{const it=mathQ(skill,lvl);c.mode='choice';
+  c.story='«الأرقام على اللوح اختفت! ما الناتج؟»';
+  c.prompt=`<span class="num">${ar(it.t)} = ؟</span>`;c.answer=ar(it.v);
+  c.options=shuffle(distract(it.v).map(ar));c.tip='عُدّ خطوة خطوة، لا تستعجل.'}
+ return c;
+}
+
+/* ================= travel between worlds ================= */
+const TRAVEL={
+ toIsland:[{bg:BG.night,big:'🚂',s1:'🎫',s2:'🌙',t:'صفّر القطار مرّتين، وفتح لك قائدُه الباب:\n«أمسك جيداً… سنعبر الجسر الطويل.»'},
+  {bg:BG.blue,big:'🌊',s1:'⛵',s2:'✨',t:'مرّت النوافذ سريعة: حقولٌ، ثم نهر، ثم بحرٌ لم تره من قبل…\nحتى ظهرت جزيرةٌ يلمع فوقها فنار.'},
+  {bg:BG.blue,big:'🏝',s1:'🐚',s2:'🌴',t:'«أهلاً بك في جزيرة الأصداف» — قال القائد —\n«هنا حكاياتٌ لا يعرفها أهل المدينة.»'}],
+ toMain:[{bg:BG.blue,big:'🚂',s1:'🌊',s2:'🐚',t:'ودّعتك الجزيرة بموجةٍ عالية،\nوعاد القطار يشقّ طريقه نحو الأنوار البعيدة.'},
+  {bg:BG.night,big:'🏰',s1:'✨',s2:'🌙',t:'ومن بعيد ظهرت أسوار مدينة الحكمة تنتظر عودتك.'}]};
+function setWorld(k){
+ WK=k;WD=WORLDS[k];PLACES=WD.places;PLAZA=WD.plaza;W=WD.W;H=WD.H;
+ TRAIN={x:WD.train.x,y:WD.train.y,dir:1,sp:1.4};
+ genDecor();spawnChests();
+ FIRE=[];for(let i=0;i<40;i++)FIRE.push({x:Math.random()*W,y:220+Math.random()*(H-300),p:Math.random()*6.3,s:.3+Math.random()*.7});
+ P.x=PLAZA.x;P.y=PLAZA.y+120;PET.x=P.x-40;PET.y=P.y;cam.x=P.x;cam.y=P.y;
+ S.world=k;save();
+}
+let RIDE=null; /* {to, t0, dur, arrived} */
+function boardTrain(){
+ const to=WK==='main'?'island':'main';
+ RIDE={to,t0:Date.now(),dur:15000,arrived:false};
+ scene='train';playing=true;boardArmed=false;doorArmed=false;
+ room={place:{n:'داخل القطار'},x0:0,y0:0,x1:1500,y1:430,npc:{x:-999,y:-999}};
+ P.x=180;P.y=330;P.z=0;P.vz=0;PET.x=P.x-40;PET.y=P.y;cam.x=P.x;cam.y=250;
+ $('exitBtn').style.display='none';
+ SFX.door();setTimeout(()=>{tone(320,.5,'sawtooth',.08,0,-90);noise(.6,.05,.2)},250);
+ toast(to==='island'?'القطار ينطلق نحو جزيرة الأصداف 🚂':'القطار عائد إلى مدينة الحكمة 🚂');
+}
+function arriveTrain(){
+ const to=RIDE.to;RIDE=null;
+ setWorld(to);toWorld();
+ toast(to==='island'?'وصلتَ إلى جزيرة الأصداف 🏝':'عدتَ إلى مدينة الحكمة 🏰');
+ SFX.fanfare();
+}
+function travel(){
+ const to=WK==='main'?'island':'main';
+ playing=false;boardArmed=false;
+ playStory(to==='island'?'إلى جزيرة الأصداف':'العودة إلى مدينة الحكمة',
+  to==='island'?TRAVEL.toIsland:TRAVEL.toMain,()=>{
+   setWorld(to);toWorld();toast(to==='island'?'وصلتَ إلى جزيرة الأصداف 🏝':'عدتَ إلى مدينة الحكمة 🏰');
+  });
+}
+let boardArmed=true;
+
+/* ================= multiplayer (Supabase Realtime) ================= */
+const RT={on:false,ch:null,peers:{},id:Math.random().toString(36).slice(2,9),timer:null};
+async function rtConnect(url,key,room){
+ try{
+  $('mpState').textContent='جارٍ الاتصال…';
+  const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  const client=createClient(url,key,{realtime:{params:{eventsPerSecond:12}}});
+  if(RT.ch){try{await RT.ch.unsubscribe()}catch(e){}}
+  RT.peers={};
+  RT.ch=client.channel('hikma-'+room,{config:{broadcast:{self:false}}});
+  RT.ch.on('broadcast',{event:'pos'},({payload})=>{
+   if(payload.id===RT.id)return;
+   const old=RT.peers[payload.id];
+   RT.peers[payload.id]=Object.assign({px:old?old.px:payload.x,py:old?old.py:payload.y},payload,{t:Date.now()});
+   if(!old)toast(payload.n+' انضمّ إلى اللعب! 👋');
+  });
+  RT.ch.on('broadcast',{event:'bye'},({payload})=>{delete RT.peers[payload.id]});
+  RT.ch.subscribe(st=>{
+   if(st==='SUBSCRIBED'){RT.on=true;
+    $('mpState').innerHTML='<b style="color:var(--mint)">متصل بغرفة: '+room+'</b>';
+    toast('متصل! اكتبا نفس الرمز لتريا بعضكما 👨‍👧');
+    clearInterval(RT.timer);RT.timer=setInterval(rtSend,140);
+   }else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){RT.on=false;
+    $('mpState').innerHTML='<b style="color:var(--rose)">تعذّر الاتصال — تأكد من الرابط والمفتاح</b>'}
+  });
+  S.mpUrl=url;S.mpKey=key;S.mpRoom=room;save();
+ }catch(e){$('mpState').innerHTML='<b style="color:var(--rose)">خطأ: '+e.message+'</b>'}
+}
+function rtSend(){
+ if(!RT.on||!RT.ch)return;
+ RT.ch.send({type:'broadcast',event:'pos',payload:{id:RT.id,n:S.name,h:S.hero,o:S.outfit||0,
+  pet:S.pet,r:!!S.riding,w:WK,sc:scene,x:Math.round(P.x),y:Math.round(P.y),d:P.dir,wk:+(P.walk%6.28).toFixed(2)}});
+}
+function rtDisconnect(){
+ if(RT.ch){try{RT.ch.send({type:'broadcast',event:'bye',payload:{id:RT.id}});RT.ch.unsubscribe()}catch(e){}}
+ RT.on=false;RT.peers={};clearInterval(RT.timer);
+ if($('mpState'))$('mpState').textContent='غير متصل';
+}
+function drawPeers(){
+ const now=Date.now();
+ Object.keys(RT.peers).forEach(k=>{
+  const q=RT.peers[k];
+  if(now-q.t>6000){delete RT.peers[k];return}
+  if(q.w!==WK||q.sc!=='world')return;
+  q.px=lerp(q.px,q.x,.18);q.py=lerp(q.py,q.y,.18);
+  const g=ctx.createRadialGradient(q.px,q.py-20,4,q.px,q.py-20,60);
+  g.addColorStop(0,'rgba(127,209,193,.28)');g.addColorStop(1,'rgba(127,209,193,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.px,q.py-20,60,0,7);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(q.px,q.py+2,16,6,0,0,7);ctx.fill();
+  if(q.r){ctx.font='46px serif';ctx.textAlign='center';ctx.fillText(q.pet||'🦊',q.px,q.py-2);
+   drawHero(ctx,q.px,q.py-32,q.d||1,q.wk||0,q.h||'princess',.86,OUTFITS[Math.min(q.o||0,OUTFITS.length-1)]);}
+  else drawHero(ctx,q.px,q.py,q.d||1,q.wk||0,q.h||'princess',1,OUTFITS[Math.min(q.o||0,OUTFITS.length-1)]);
+  ctx.font='700 12px Tajawal';ctx.textAlign='center';
+  const w=ctx.measureText(q.n).width+18;
+  ctx.fillStyle='rgba(127,209,193,.92)';roundRect(q.px-w/2,q.py+8,w,20,10);ctx.fill();
+  ctx.fillStyle='#123';ctx.fillText(q.n,q.px,q.py+22);
+ });
+}
+$('mpBtn').onclick=()=>{SFX.tap();playing=false;
+ $('mpUrl').value=S.mpUrl||'';$('mpKey').value=S.mpKey||'';$('mpRoom').value=S.mpRoom||'';
+ $('mpState').innerHTML=RT.on?'<b style="color:var(--mint)">متصل بغرفة: '+(S.mpRoom||'')+'</b>':'غير متصل';
+ layer('mpSheet')};
+$('mpGo').onclick=()=>{const u=$('mpUrl').value.trim(),k=$('mpKey').value.trim(),r=$('mpRoom').value.trim();
+ if(!u||!k||!r){$('mpState').textContent='اكمل الحقول الثلاثة أولاً';return}
+ rtConnect(u,k,r)};
+$('mpOff').onclick=()=>{rtDisconnect();toast('انقطع الاتصال')};
+$('mpClose').onclick=()=>{layer(null);playing=true};
+addEventListener('beforeunload',()=>{if(RT.on)rtDisconnect()});
+
+/* ================= layers ================= */
+function layer(id){document.querySelectorAll('.layer').forEach(l=>l.classList.remove('on'));
+ if(id)$(id).classList.add('on');
+ const jb=$('jumpBtn');if(jb)jb.style.display=id?'none':(playing||scene?'flex':'none');}
+function toWorld(){layer(null);scene='world';room=null;playing=true;hud();
+ $('hud').style.display='block';$('exitBtn').style.display='none'}
+
+/* start flow */
+$('startBtn').onclick=()=>{ac();SFX.tap();layer('heroPick')};
+$('parentBtn').onclick=()=>{layer('parent');gate()};
+$('gear').onclick=()=>{SFX.tap();playing=false;layer('parent');gate()};
+let heroSel='princess';
+$('heroCards').onclick=e=>{const c=e.target.closest('.card');if(!c)return;
+ SFX.tap();document.querySelectorAll('.card').forEach(x=>x.classList.remove('sel'));c.classList.add('sel');
+ heroSel=c.dataset.h;$('nameIn').placeholder=heroSel==='hero'?'اكتب اسم البطل':'اكتبي اسم الأميرة'};
+$('toPet').onclick=()=>{
+ S.hero=heroSel;GIRL=heroSel==='princess';
+ S.name=($('nameIn').value||'').trim()||(GIRL?'الأميرة':'البطل');
+ SFX.tap();layer('pick')};
+$('pets').innerHTML=PETS.map((p,i)=>`<div class="pet${i?'':' sel'}" data-i="${i}"><span>${p.e}</span><small>${p.n}</small></div>`).join('');
+$('pets').onclick=e=>{const el=e.target.closest('.pet');if(!el)return;SFX.tap();
+ document.querySelectorAll('.pet').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');
+ const p=PETS[+el.dataset.i];S.pet=p.e;S.petName=p.n};
+$('goCity').onclick=()=>{
+ SFX.door();S.storiesRead=S.storiesRead||{};
+ $('hud').style.display='block';hud();
+ const go=()=>{S.storiesRead.prologue=1;toWorld();
+  toast(T('اسحبي بإصبعكِ لتمشي 👑','اسحب بإصبعك لتمشي ⚡'));save()};
+ if(!S.storiesRead.prologue)playStory(PROLOGUE.t,PROLOGUE.panels,go);else go();
+};
+
+/* hero previews */
+function preview(cid,kind){const c=$(cid).getContext('2d');let w=0;
+ (function anim(){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,192,220);c.save();c.scale(1.6,1.6);
+  drawHero(c,60,110,1,w,kind,1);c.restore();w+=.12;requestAnimationFrame(anim)})()}
+preview('pv1','princess');preview('pv2','hero');
+
+/* ================= interaction ================= */
+$('enterBtn').onclick=()=>{
+ if(!near)return;
+ if(near.type==='train'){boardTrain();return}
+ if(near.type==='shop'){openShop();return}
+ if(near.type==='sleep'){restAtHome();return}
+ if(near.type==='chest'){openChest(near.ref);return}
+ if(near.type==='npc'){startQuest(near.ref);return}
+ const p=near.ref;if(S.missions<p.need)return;
+ enterBuilding(p);
+};
+function enterBuilding(p){
+ SFX.door();
+ scene='interior';
+ room={place:p,x0:0,y0:0,x1:900,y1:620,npc:{x:450,y:270}};
+ P.x=450;P.y=500;PET.x=P.x-40;PET.y=P.y;cam.x=450;cam.y=350;
+ doorArmed=false;
+ $('exitBtn').style.display='block';
+ toast(T('امشي نحو '+p.who,'امشِ نحو '+p.who));
+}
+function leaveBuilding(){
+ const p=room?room.place:null;
+ SFX.door();toWorld();
+ if(p){P.x=p.x;P.y=p.y+p.h/2+96;PET.x=P.x-40;PET.y=P.y;cam.x=P.x;cam.y=P.y}
+ doorArmed=false;
+ toast('خرجتَ من '+(p?p.n:'المكان'));
+}
+$('exitBtn').onclick=()=>leaveBuilding();
+function restAtHome(){
+ SFX.win();S.stars+=2;save();hud();
+ toast('نمتَ قليلاً في سريرك… استيقظتَ بنشاط ونجمتين ⭐⭐');
+ confetti();
+}
+function eatItem(id){
+ const it=findItem(id);if(!it||!(S.inv[id]>0))return;
+ S.inv[id]--;save();SFX.coin();
+ if(it.feed){toast(S.petName+' أكل '+it.n+' وقفز فرحاً! 🐾');PET.bob+=6}
+ else toast(it.eat||('أكلتَ '+it.n));
+ confetti();renderHouse&&0;
+}
+function openChest(c){
+ if((S.keys||0)<1){toast('هذا الصندوق مقفل — أجب ٣ إجابات صحيحة لتكسب مفتاحاً 🗝');SFX.soft();return}
+ S.keys--;hud();
+ c.open=true;c.anim=.01;playing=true;SFX.chestCreak();
+ setTimeout(()=>SFX.chestOpen(),380);
+ setTimeout(()=>{
+  playing=false;
+  const l=pick([['👗','فستان جديد'],['🪄','عصا سحرية'],['🪽','جناحان'],['🌸','زهرة نادرة'],['🎀','تاج صغير'],['🛡','درع لامع']]);
+  S.gems+=2;S.stars+=1;S.chestsOpened=(S.chestsOpened||0)+1;save();
+  $('chestIcon').textContent='🎁';$('trTitle').textContent='المفتاح فتح الصندوق!';
+  $('trText').textContent=`دار المفتاح في القفل، فانسكب ضوءٌ ذهبي من الصندوق و${S.petName} قفز فرحاً.
+  استُهلك المفتاح — اجمع ٣ إجاباتٍ صحيحة لتنال مفتاحاً جديداً.`;
+  $('trLoot').innerHTML=`<div>⭐ ١</div><div>💎 ٢</div><div>${l[0]} ${l[1]}</div>`;
+  layer('treasure');confetti();SFX.win();checkBadges();hud();
+  if(CHESTS.every(x=>x.open))setTimeout(spawnChests,800);
+ },1500);
+}
+$('trBack').onclick=()=>{SFX.tap();
+ S.storiesRead=S.storiesRead||{};
+ const ms=MILESTONES.find(m=>S.missions>=m.at&&!S.storiesRead[m.id]);
+ if(ms){S.storiesRead[ms.id]=1;save();
+  playStory(ms.t,ms.panels,()=>{layer(null);playing=true;checkNear()});return}
+ layer(null);playing=true;checkNear()};
+
+/* ================= quest ================= */
+let CUR=null,answered=false,attempts=0;
+let CURTALE=null;
+function startQuest(p){
+ turn++;CUR=buildChallenge(p);answered=false;attempts=0;playing=false;
+ const nt=nextTale(p);CURTALE=nt;
+ CUR.who=p.who;
+ playStory(nt.tale.t,nt.tale.panels,()=>{
+  $('questWhere').textContent=p.n+' — '+nt.tale.t;renderQuest();layer('quest')});
+}
+$('questBack').onclick=()=>{layer(null);playing=true};
+function renderQuest(){
+ const c=CUR;
+ let b=`<div class="storycard"><div class="face">${c.face}</div><div><b>${c.who}:</b> ${c.story}</div></div>
+ <div class="prompt">${c.prompt}</div>`;
+ if(c.mode==='choice'){const long=c.options.some(o=>String(o).length>12);
+  b+=`<div class="opts ${long?'one':''}" id="opts">`+c.options.map(o=>`<button class="opt" data-v="${o}">${o}</button>`).join('')+`</div>`}
+ else if(c.mode==='fly'){b+=`<div class="flyfield" id="opts">`+c.options.map((o,i)=>
+  `<button class="fly opt" data-v="${o}" style="top:${[10,62,120,172][i]}px;left:${[8,54,18,60][i]}%;animation-delay:${i*.4}s">🦋 ${o}</button>`).join('')+`</div>`}
+ else{const ltr=/^en_/.test(c.skill)?' dir="ltr"':'';
+  b+=`<div class="slots" id="slots"${ltr}></div><div class="bank" id="bank"${ltr}>`+
+  c.tokens.map((t,i)=>`<button class="tokn" data-i="${i}">${t}</button>`).join('')+
+  `</div><div style="text-align:center;margin-top:18px"><button class="btn" id="checkOrder">تحقّق</button>
+   <button class="btn ghost" id="clearOrder" style="margin-inline-start:8px">مسح</button></div>`}
+ b+=`<div class="feedback" id="fb"></div><div class="tip" id="tip"></div>`;
+ $('qbody').innerHTML=b;
+ if(c.mode==='order'){let ch=[];
+  const draw=()=>{$('slots').innerHTML=ch.map(i=>`<span class="slot">${c.tokens[i]}</span>`).join('')||
+   `<span style="opacity:.5;font-size:14px;align-self:center">اضغط الكلمات بالترتيب</span>`;
+   document.querySelectorAll('#bank .tokn').forEach((x,i)=>x.classList.toggle('used',ch.includes(i)))};
+  draw();
+  $('bank').onclick=e=>{const t=e.target.closest('.tokn');if(!t)return;SFX.tap();ch.push(+t.dataset.i);draw()};
+  $('clearOrder').onclick=()=>{ch=[];draw()};
+  $('checkOrder').onclick=()=>{if(ch.length<c.tokens.length){msg('لم تكتمل الجملة بعد.',false);return}
+   const said=ch.map(i=>c.tokens[i]).join(' ');
+   const ok=(c.answers||[c.answer]).some(a=>a===said);
+   if(ok&&said!==c.answer)msg('صحيحة! هذا ترتيبٌ سليمٌ أيضاً 👏',true);
+   judge(ok,null)};
+ }else{$('opts').onclick=e=>{const t=e.target.closest('.opt');if(!t||answered)return;
+  judge(String(t.dataset.v)===String(c.answer),t)}}
+}
+function msg(t,g){const f=$('fb');f.textContent=t;f.className='feedback '+(g?'good':'soft')}
+function judge(ok,btn){
+ attempts++;
+ if(ok){
+  answered=true;if(btn)btn.classList.add('right');
+  SFX.win();record(CUR.skill,attempts===1);msg(pick(PRAISE()),true);
+  S.streak=attempts===1?(S.streak||0)+1:0;
+  S.stars+=attempts===1?3:1;S.gems+=1;S.missions++;
+  S.visited[CUR.place.id]=(S.visited[CUR.place.id]||0)+1;
+  S.keyProgress=(S.keyProgress||0)+1;
+  if(S.keyProgress>=3){S.keyProgress=0;S.keys=(S.keys||0)+1;S.gotKey=true}
+  const un=OUTFITS.find(o=>o.need===S.missions);
+  if(un){S.newOutfit=un;S.outfit=un.id}
+  if(CURTALE&&!CURTALE.generic){S.tales=S.tales||{};S.tales[CUR.place.id]=(S.tales[CUR.place.id]||0)+1}
+  checkBadges();save();
+  setTimeout(()=>{
+   const out=CURTALE&&CURTALE.tale.outro;
+   if(out)playStory(CURTALE.tale.t,[out],reward);else reward();
+  },1000);
+ }else{
+  S.streak=0;SFX.soft();
+  if(btn){btn.classList.add('wrong');setTimeout(()=>btn.classList.remove('wrong'),450)}
+  msg(pick(SOFTW()),false);
+  $('tip').textContent=attempts>=2?'💡 '+CUR.tip:'💡 خذ نفساً وانظر مرة أخرى.';
+  if(attempts>=3){answered=true;record(CUR.skill,false);
+   $('tip').innerHTML='💡 '+CUR.tip+'<br><b style="color:var(--gold)">'+
+    ((CUR.answers&&CUR.answers.length>1)?'الإجابات الصحيحة:<br>'+CUR.answers.join('<br>'):'الإجابة: '+CUR.answer)+'</b>';
+   setTimeout(()=>{msg('لا بأس — سنعود إلى هذه المهارة في مغامرة أخرى.',true);
+    setTimeout(()=>{layer(null);playing=true;hud()},1700)},900)}
+ }
+}
+function reward(){
+ const got=S.gotKey;S.gotKey=false;
+ const nu=S.newOutfit;S.newOutfit=null;
+ if(nu){setTimeout(()=>{showBadge({e:nu.e,n:nu.n,d:'زيّ جديد فُتح وارتديته! 👗'});SFX.badge()},1400)}
+ $('chestIcon').textContent=got?'🗝':pick(['💎','🏆','✨']);
+ $('trTitle').textContent=got?'حصلتَ على مفتاح!':'أحسنت!';
+ $('trText').textContent=got
+  ?`ثلاث إجاباتٍ صحيحة… فتحرّك المفتاح الذهبي نحو ${S.name}. ابحث الآن عن صندوقٍ لتفتحه به!`
+  :`${CUR.place.n} استعاد ضوءه، و${S.petName} يرقص فرحاً بجانب ${S.name}. بقي ${ar(3-(S.keyProgress||0))} للمفتاح القادم.`;
+ $('trLoot').innerHTML=`<div>⭐ ${ar(attempts===1?3:1)}</div><div>💎 ١</div>`+
+  (got?`<div>🗝 مفتاح جديد</div>`:`<div>🗝 ${ar(S.keyProgress||0)} / ٣</div>`);
+ layer('treasure');confetti();got?SFX.badge():SFX.fanfare();hud();
+}
+function confetti(){
+ const box=document.createElement('div');box.className='confetti';
+ const cols=['#F5C542','#F7A8B8','#7FD1C1','#FFF6E8','#B388FF'];
+ for(let i=0;i<80;i++){const d=document.createElement('div');d.className='cf';
+  d.style.left=Math.random()*100+'%';d.style.top='-20px';d.style.background=pick(cols);
+  d.style.animationDuration=(1.6+Math.random()*1.6)+'s';d.style.animationDelay=(Math.random()*.5)+'s';box.appendChild(d)}
+ document.body.appendChild(box);setTimeout(()=>box.remove(),3600);
+}
+
+/* ================= parent ================= */
+$('pClose').onclick=()=>{if(S.missions>0||S.name!=='الأميرة'){layer(null);playing=true;hud()}else layer('title')};
+function gate(){
+ const a=6+Math.floor(Math.random()*7),b=6+Math.floor(Math.random()*7);
+ $('pWrap').innerHTML=`<div class="gate"><h3 style="color:var(--plum)">هذه الصفحة لوليّ الأمر</h3>
+  <p class="muted">للدخول، اكتب ناتج:</p>
+  <div style="font-size:26px;font-weight:900;color:var(--plum)" dir="ltr">${a} × ${b}</div>
+  <input id="gateIn" inputmode="numeric" placeholder="?">
+  <div><button class="btn" id="gateGo">دخول</button></div></div>`;
+ $('gateGo').onclick=()=>{if(+$('gateIn').value===a*b)renderParent();else $('gateIn').value=''};
+ $('gateIn').onkeydown=e=>{if(e.key==='Enter')$('gateGo').click()};
+}
+const fam=f=>Object.keys(SKILLS).filter(k=>SKILLS[k].fam===f);
+const famAvg=f=>Math.round(fam(f).reduce((s,k)=>s+S.skills[k].m,0)/fam(f).length*100);
+function renderParent(){
+ const mins=Math.round((Date.now()-S.started)/60000);
+ const strong=Object.keys(SKILLS).filter(k=>S.skills[k].seen>=2&&S.skills[k].m>=.7);
+ const weak=Object.keys(SKILLS).filter(k=>S.skills[k].seen>=2&&S.skills[k].m<.5);
+ const rows=f=>fam(f).map(k=>{const d=S.skills[k];return `<div class="skill">
+  <div class="row"><span>${SKILLS[k].n} <span style="opacity:.6;font-weight:500">— المستوى ${ar(d.lvl)}</span></span>
+  <span>${ar(Math.round(d.m*100))}٪</span></div>
+  <div class="bar"><i style="width:${Math.round(d.m*100)}%"></i></div></div>`}).join('');
+ $('pWrap').innerHTML=`
+ <div class="pcard"><h3>📊 ${S.name} — نظرة سريعة</h3><div class="stat-grid">
+  <div class="stat"><b>${ar(S.missions)}</b><small>مغامرة مكتملة</small></div>
+  <div class="stat"><b>${ar(mins)}</b><small>دقيقة داخل المدينة</small></div>
+  <div class="stat"><b>${ar(famAvg('ar'))}٪</b><small>اللغة العربية</small></div>
+  <div class="stat"><b>${ar(famAvg('en'))}٪</b><small>اللغة الإنجليزية</small></div>
+  <div class="stat"><b>${ar(famAvg('ma'))}٪</b><small>الرياضيات</small></div>
+  <div class="stat"><b>${ar(Object.keys(S.badges).length)}</b><small>وسام</small></div>
+ </div></div>
+ <div class="pcard"><h3>📖 اللغة العربية</h3>${rows('ar')}</div>
+ <div class="pcard"><h3>🔤 اللغة الإنجليزية</h3>${rows('en')}</div>
+ <div class="pcard"><h3>🔢 الرياضيات</h3>${rows('ma')}</div>
+ <div class="pcard"><h3>🏘 تخصّص كل بيت</h3>
+  ${['ar','en','ma'].map(f=>`<div style="margin-bottom:10px">
+   <b style="color:var(--plum)">${FAMS[f].e} ${FAMS[f].n}</b><br>
+   <span class="muted">${ALL_PLACES.filter(p=>p.fam===f).map(p=>p.n+' ('+p.label+')').join(' · ')}</span></div>`).join('')}
+  <p class="muted" style="margin:0">كل بيت يدرّب مادة واحدة فقط — فيمكنك توجيه طفلك إلى البيت الذي يحتاجه بالضبط.</p></div>
+ <div class="pcard"><h3>🌟 نقاط القوة</h3>${strong.length?strong.map(k=>`<span class="pill">${SKILLS[k].n}</span>`).join(''):'<p class="muted">ما زلنا نجمع البيانات.</p>'}</div>
+ <div class="pcard"><h3>🔁 تحتاج مراجعة</h3>
+  ${weak.length?weak.map(k=>`<span class="pill warn">${SKILLS[k].n}</span>`).join(''):'<p class="muted">لا توجد مهارات ضعيفة حتى الآن.</p>'}
+  <p class="muted" style="margin-top:10px">النظام يعيد هذه المهارات تلقائياً داخل مغامرات وشخصيات وأماكن مختلفة، دون أن يشعر الطفل أنه يكرّر الدرس.</p></div>
+ <div class="pcard"><h3>🖨 التقرير</h3>
+  <button class="btn" onclick="window.print()">طباعة التقرير</button>
+  <button class="btn ghost" id="resetAll" style="margin-inline-start:8px;color:var(--plum);box-shadow:inset 0 0 0 1.5px #C9B7E6">بدء من جديد</button></div>`;
+ $('resetAll').onclick=async()=>{await Store.set(KEY,null);location.reload()};
+}
+
+/* ================= boot ================= */
+(async()=>{const d=await Store.get(KEY);
+ if(d&&d.skills){S=Object.assign(S,d);GIRL=S.hero!=='hero';if(S.world&&WORLDS[S.world])setWorld(S.world);toWorld();checkBadges();
+  if(S.mpUrl&&S.mpKey&&S.mpRoom)setTimeout(()=>rtConnect(S.mpUrl,S.mpKey,S.mpRoom),1200)}})();
+</script>
+</body>
+</html>
