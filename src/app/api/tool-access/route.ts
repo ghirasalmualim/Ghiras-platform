@@ -25,14 +25,14 @@ type ToolCfg = {
 // الأدوات المحمية
 const TOOLS: Record<string, ToolCfg> = {
   gradebook: {
-    url: 'https://ghiras-games.vercel.app/gradebook/full-review',
+    url: 'https://games.ghiras-edu.com/gradebook/full-review',
     slug: 'gradebook',
     until: 'gradebook_until',
     lock: '/gradebook-locked',
     deviceLimit: true,
   },
   workshops: {
-    url: 'https://ghiras-games.vercel.app/workshops/',
+    url: 'https://games.ghiras-edu.com/workshops/',
     slug: 'workshops',
     until: 'workshops_until',
     lock: '/workshops-locked',
@@ -47,7 +47,8 @@ function b64url(bytes: Uint8Array) {
 }
 
 async function hmac(msg: string) {
-  const secret = process.env.GAME_GATE_SECRET || '';
+  const secret = process.env.GAME_GATE_SECRET;
+  if (!secret) throw new Error('GAME_GATE_SECRET غير مضبوط — رفض آمن (fail-closed)');
   const key = await crypto.subtle.importKey(
     'raw',
     enc.encode(secret),
@@ -114,6 +115,14 @@ export async function GET(req: NextRequest) {
   const sig = await hmac(`t|${tool.slug}|${exp}`);
   const dest = new URL(tool.url);
   dest.searchParams.set('t', `${exp}.${sig}`);
+
+  // توكن موحّد للدفتر: يؤمّن جسر الذكاء الاصطناعي (SEC-001) والتخزين السحابي (REL-002).
+  // يحمل هوية المعلّمة، صالح ٨ ساعات (نفس عمر جلسة الدفتر).
+  if (tool.slug === 'gradebook') {
+    const kExp = Date.now() + 8 * 60 * 60 * 1000;
+    const kSig = await hmac(`k|${user.id}|${kExp}`);
+    dest.searchParams.set('k', `${kExp}.${user.id}.${kSig}`);
+  }
 
   const res = NextResponse.redirect(dest.toString());
   if (newDevice) {

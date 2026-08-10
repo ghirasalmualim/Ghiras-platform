@@ -21,7 +21,8 @@ function b64url(bytes: Uint8Array) {
 }
 
 async function hmac(msg: string) {
-  const secret = process.env.GAME_GATE_SECRET || '';
+  const secret = process.env.GAME_GATE_SECRET;
+  if (!secret) throw new Error('GAME_GATE_SECRET غير مضبوط — رفض آمن (fail-closed)');
   const key = await crypto.subtle.importKey(
     'raw',
     enc.encode(secret),

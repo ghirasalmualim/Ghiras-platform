@@ -2,6 +2,9 @@
 // يحمل المفتاح على الخادم بأمان. المفتاح يُضبط من إعدادات Vercel كمتغيّر ANTHROPIC_API_KEY.
 
 const ALLOWED_ORIGINS = [
+  "https://ghiras-edu.com",
+  "https://www.ghiras-edu.com",
+  "https://games.ghiras-edu.com",
   "https://ghiras-games.vercel.app",
   "https://ghiras-platform.vercel.app",
 ];
@@ -9,13 +12,51 @@ const MODEL = process.env.GRADEBOOK_MODEL || "claude-sonnet-5";
 const MAX_TOKENS_CAP = 8192;
 const MAX_TOKENS_DEFAULT = 1500;
 
+// ===== تحقّق التوكن الموقّع (SEC-001) =====
+// التوكن يصدر من /api/tool-access للمشترِكات فقط بصيغة: `${exp}.${uid}.${sig}`
+// التوقيع على `k|${uid}|${exp}` بمفتاح GAME_GATE_SECRET. يمنع الاستدعاء المفتوح للعالم.
+const _enc = new TextEncoder();
+function _b64url(bytes: Uint8Array) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function _hmac(msg: string) {
+  const secret = process.env.GAME_GATE_SECRET;
+  if (!secret) throw new Error("GAME_GATE_SECRET غير مضبوط — رفض آمن");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    _enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, _enc.encode(msg));
+  return _b64url(new Uint8Array(sig));
+}
+function _eq(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+async function verifyKey(value: string | null): Promise<boolean> {
+  if (!value) return false;
+  const parts = value.split(".");
+  if (parts.length !== 3) return false;
+  const [exp, uid, sig] = parts;
+  if (!/^\d+$/.test(exp) || Date.now() > Number(exp)) return false;
+  const expected = await _hmac(`k|${uid}|${exp}`);
+  return _eq(sig, expected);
+}
+
 function corsHeaders(origin: string | null) {
   const allow =
     origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, x-ghiras-key",
     Vary: "Origin",
   } as Record<string, string>;
 }
@@ -33,6 +74,15 @@ export async function POST(req: Request) {
     "Content-Type": "application/json",
     ...corsHeaders(origin),
   };
+
+  // تحقّق التوكن الموقّع (SEC-001) — لا استدعاء بلا تصريح صادر من المنصّة
+  const authorized = await verifyKey(req.headers.get("x-ghiras-key"));
+  if (!authorized) {
+    return new Response(
+      JSON.stringify({ error: { message: "تصريح غير صالح — افتحي الدفتر من منصّة غراس" } }),
+      { status: 401, headers }
+    );
+  }
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
