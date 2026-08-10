@@ -71,7 +71,7 @@ async function verifyKey(value: string | null): Promise<string | null> {
 function svc() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) throw new Error('إعداد الخادم ناقص (SERVICE_ROLE)');
+  if (!url || !serviceKey) { console.error('GRADEBOOK_MISSING_ENV', {hasUrl:!!url, hasServiceKey:!!serviceKey}); throw new Error('إعداد الخادم ناقص (SERVICE_ROLE)'); }
   return createClient(url, serviceKey, { auth: { persistSession: false } });
 }
 
@@ -96,7 +96,8 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
     if (error) throw error;
     return new NextResponse(JSON.stringify({ value: data?.value ?? null }), { status: 200, headers });
-  } catch {
+  } catch (e) {
+    console.error('GRADEBOOK_GET_ERROR', e);
     return new NextResponse(JSON.stringify({ error: 'تعذّر القراءة' }), { status: 500, headers });
   }
 }
@@ -131,7 +132,8 @@ export async function POST(req: NextRequest) {
       );
     if (error) throw error;
     return new NextResponse(JSON.stringify({ ok: true }), { status: 200, headers });
-  } catch {
+  } catch (e) {
+    console.error('GRADEBOOK_POST_ERROR', e);
     return new NextResponse(JSON.stringify({ error: 'تعذّر الحفظ' }), { status: 500, headers });
   }
 }
