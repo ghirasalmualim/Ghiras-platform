@@ -137,7 +137,8 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60}
   <div class="panel"><h3>◆ مجموعة الدول</h3><div class="chips" id="mods"></div></div>
   <div class="panel"><h3>◆ عدد الفرق</h3><div class="chips" id="tms"></div><div class="names" id="nms"></div></div>
   <div class="panel"><h3>◆ مستوى الصعوبة</h3><div class="chips" id="dif"></div></div>
-  <div class="panel"><h3>◆ مدة اللعب</h3><div class="chips" id="len"></div></div>
+  <div class="panel"><h3>◆ عدد الجولات</h3><div class="chips" id="len"></div></div>
+  <div class="panel"><h3>◆ المؤقّت</h3><div class="chips" id="tmr"></div></div>
   <button class="big-btn" id="start">▶ ابدأ التحدي</button>
 </section>
 
@@ -274,7 +275,7 @@ function tickFx(){
 }
 
 /* ---------- الحالة ---------- */
-const S={model:null,teams:1,names:[],scores:[],turn:0,diff:2,rounds:14,
+const S={model:null,teams:1,names:[],scores:[],turn:0,diff:1,rounds:14,time:0,
          q:0,used:[],lastCountry:null,lastType:null,pool:[],mult:1,lastSurprise:-9};
 
 /* ---------- شاشة الإعداد ---------- */
@@ -299,15 +300,21 @@ function buildSetup(){
   });
 
   const d=$("#dif");d.innerHTML="";
-  [[1,"🟢 سهل"],[2,"🟡 متوسط"],[3,"🔴 تحدٍّ"]].forEach(([n,l])=>{
+  [[1,"🟢 متوسط"],[2,"🔵 صعب"],[3,"🟠 صعب جدًا"],[4,"🔴 خبير"]].forEach(([n,l])=>{
     const b=document.createElement("button");b.className="chip";b.textContent=l;
     b.onclick=()=>{S.diff=n;paintSetup()};d.appendChild(b);
   });
 
   const L=$("#len");L.innerHTML="";
-  [[8,"⚡ سريع"],[14,"🎮 عادي"],[22,"🏆 جولة طويلة"]].forEach(([n,l])=>{
+  [[8,"⚡ قصيرة"],[14,"🎮 عادية"],[22,"🏆 طويلة"]].forEach(([n,l])=>{
     const b=document.createElement("button");b.className="chip";b.textContent=l;
     b.onclick=()=>{S.rounds=n;paintSetup()};L.appendChild(b);
+  });
+
+  const TM=$("#tmr");TM.innerHTML="";
+  [[0,"⏸️ بدون مؤقت"],[20,"🕒 ٢٠ث"],[15,"⏱️ ١٥ث"],[10,"⚡ ١٠ث"]].forEach(([n,l])=>{
+    const b=document.createElement("button");b.className="chip";b.textContent=l;
+    b.onclick=()=>{S.time=n;paintSetup()};TM.appendChild(b);
   });
 
   $("#globeHolder").innerHTML=`<img class="globe" src="${ICO_GLOBE}" alt="">`;
@@ -319,6 +326,7 @@ function paintSetup(){
   [...$("#tms").children].forEach((b,i)=>b.classList.toggle("on",i+1===S.teams));
   [...$("#dif").children].forEach((b,i)=>b.classList.toggle("on",i+1===S.diff));
   [...$("#len").children].forEach((b,i)=>b.classList.toggle("on",[8,14,22][i]===S.rounds));
+  [...$("#tmr").children].forEach((b,i)=>b.classList.toggle("on",[0,20,15,10][i]===S.time));
   const n=$("#nms");n.innerHTML="";
   const def=["الفريق الأول","الفريق الثاني","الفريق الثالث","الفريق الرابع"];
   for(let i=0;i<S.teams;i++){
@@ -333,7 +341,7 @@ function paintSetup(){
 function buildPool(){
   const mo=MODELS.find(x=>x.id===S.model);
   let pool=DB.filter(mo.pick);
-  const band=S.diff===1?[1]:S.diff===2?[1,2]:[1,2,3];
+  const band=S.diff===1?[1]:S.diff===2?[2]:S.diff===3?[3]:[3];
   let f=pool.filter(c=>band.includes(c.d));
   if(f.length<6)f=pool;                       // ضمان ألا تفرغ المجموعة
   S.pool=f;
@@ -346,8 +354,8 @@ function nextCountry(){
 }
 function distract(right,key){
   // مشتّتات منطقية: نفس القارة أولًا، ثم أي دولة
-  let same=S.pool.filter(c=>c.n!==right.n&&c.k===right.k);
-  let other=S.pool.filter(c=>c.n!==right.n&&c.k!==right.k);
+  let same=S.pool.filter(c=>c.n!==right.n&&c.k===right.k&&c[key]!==right[key]);
+  let other=S.pool.filter(c=>c.n!==right.n&&c.k!==right.k&&c[key]!==right[key]);
   const out=[];
   shuffle(same).forEach(c=>{if(out.length<3&&!out.some(o=>o[key]===c[key]))out.push(c)});
   shuffle(other).forEach(c=>{if(out.length<3&&!out.some(o=>o[key]===c[key]))out.push(c)});
@@ -357,12 +365,34 @@ function distract(right,key){
 /* ---------- المؤقّت ---------- */
 let clock=null;
 function stopClock(){if(clock){clearInterval(clock);clock=null}}
+function startQTimer(b,idx,c){
+  if(!S.time)return;
+  const stage=b.querySelector(".stage"),opts=b.querySelector(".opts");
+  if(!stage||!opts)return;
+  const ck=document.createElement("div");ck.className="clock";ck.id="qck";ck.textContent=AR(S.time);
+  stage.insertBefore(ck,opts);
+  let n=S.time;
+  clock=setInterval(()=>{
+    const first=b.querySelector(".opt");
+    if(first&&first.disabled)return stopClock();
+    n--;const e=document.getElementById("qck");if(!e)return stopClock();
+    e.textContent=AR(Math.max(0,n));e.classList.toggle("warn",n<=3);
+    if(n<=3&&n>0)SFX.tick();
+    if(n<=0){stopClock();lockAll(b,idx);
+      const nt=document.getElementById("note");if(nt)nt.textContent=`انتهى الوقت — ${c.n} عاصمتها ${c.c}`;
+      SFX.bad();paintTop();setTimeout(advance,1700);}
+  },1000);
+}
 
 /* ---------- الجولة ---------- */
 const TYPES=["flagCountry","countryCapital","capitalCountry","flagCapital","capitalBig","speed","hidden","which"];
 function pickType(){
   let t=TYPES.filter(x=>x!==S.lastType);
   if(S.diff===1)t=t.filter(x=>x!=="hidden");
+  if(S.diff>=4){
+    const hard=t.filter(x=>["flagCountry","flagCapital","hidden","capitalCountry","capitalBig"].includes(x));
+    if(hard.length)t=hard;
+  }
   S.lastType=rnd(t);return S.lastType;
 }
 const SURPRISES=[
@@ -442,9 +472,11 @@ function render(type,c,base,bonus){
         <button class="opt" data-i="0">🌍 دولة</button>
         <button class="opt" data-i="1">🏛️ عاصمة</button></div>
       <div class="note" id="note"></div></div>`;
-    return wire(b,isCap?1:0,base,()=>{
+    wire(b,isCap?1:0,base,()=>{
       $("#note").textContent = isCap ? `«${c.c}» عاصمة ${c.n}` : `${c.n} عاصمتها ${c.c}`;
     });
+    startQTimer(b,isCap?1:0,c);
+    return;
   }
 
   /* --- الأنواع المعتمدة على خيارات --- */
@@ -508,6 +540,7 @@ function render(type,c,base,bonus){
     ${optionsHTML(list,key)}
     <div class="note" id="note"></div></div>`;
   wire(b,idx,base,()=>{$("#note").textContent=`${c.n} — عاصمتها ${c.c}`});
+  startQTimer(b,idx,c);
 }
 
 function speedPhase(c,list,idx,base,secs,tag,qt){
