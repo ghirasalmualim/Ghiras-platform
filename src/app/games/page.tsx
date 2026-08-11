@@ -13,6 +13,13 @@ export const dynamic = 'force-dynamic';
 
 const GAMES = [
   {
+    href: '/multiplication',
+    tag: 'كورس مستقل · ٣ د.ك',
+    emoji: '✖️',
+    title: 'جدول الضرب التفاعلي',
+    desc: 'كورس كامل لإتقان جدول الضرب: استكشاف بصري، تدريب ذكي بالتكرار المتباعد، سباق ومواجهة، وخريطة إتقان. منتج مستقل بسعره الخاص.',
+  },
+  {
     href: '/millionaire',
     tag: 'مسابقات',
     emoji: '🏆',
