@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     title: 'غراس المعلم',
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: '/icons/icon-192.png?v=2',
+    apple: '/icons/apple-touch-icon.png?v=2',
   },
 };
 
