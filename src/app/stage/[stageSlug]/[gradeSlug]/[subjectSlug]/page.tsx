@@ -10,6 +10,7 @@ import {
   getSubjects,
 } from '@/lib/supabase/data';
 import { Game } from '@/lib/types';
+import { subjectDisplayName } from '@/lib/subject-display';
 
 export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى لكل زائر حسب صلاحياته
 
@@ -127,7 +128,7 @@ export default async function SubjectPage({
         crumbs={[
           { label: stage.name, href: `/stage/${stage.slug}` },
           { label: grade.name, href: `/stage/${stage.slug}/${grade.slug}` },
-          { label: subject.name },
+          { label: subjectDisplayName(subject, grade.slug) },
         ]}
       />
       <section className="flex-1 w-full max-w-5xl mx-auto px-5 py-8">
@@ -142,7 +143,7 @@ export default async function SubjectPage({
             </span>
             <div>
               <h1 className="text-2xl font-black text-sage-deep">
-                {subject.name}
+                {subjectDisplayName(subject, grade.slug)}
               </h1>
               <p className="text-sm text-ink/55">
                 {grade.name} · {stage.name}

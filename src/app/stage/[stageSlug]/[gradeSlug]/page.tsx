@@ -6,6 +6,7 @@ import {
   getGradeBySlug,
   getSubjects,
 } from '@/lib/supabase/data';
+import { subjectDisplayName } from '@/lib/subject-display';
 
 export const revalidate = 300;
 
@@ -69,7 +70,7 @@ export default async function GradePage({
 
               <span className="flex-1">
                 <span className="block font-extrabold text-lg text-ink">
-                  {subject.name}
+                  {subjectDisplayName(subject, grade.slug)}
                 </span>
                 <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink/50">
                   <LockIcon />
