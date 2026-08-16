@@ -9,7 +9,12 @@ import { createBrowserClient } from '@supabase/ssr';
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    // كوكي الجلسة على النطاق الأب حتى تُقرأ في الاستوديو (إنتاج فقط) —
+    // بدونها يكتب تسجيل الدخول كوكي host-only لا تصل إلى studio.*
+    process.env.NODE_ENV === 'production'
+      ? { cookieOptions: { domain: '.ghiras-edu.com', path: '/' } }
+      : undefined
   );
 }
 
