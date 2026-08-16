@@ -10,11 +10,18 @@ export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    // كوكي الجلسة على النطاق الأب حتى تُقرأ في الاستوديو (إنتاج فقط) —
-    // بدونها يكتب تسجيل الدخول كوكي host-only لا تصل إلى studio.*
-    process.env.NODE_ENV === 'production'
-      ? { cookieOptions: { domain: '.ghiras-edu.com', path: '/' } }
-      : undefined
+    // اسم كوكي مخصص: القديمة (sb-<ref>-auth-token) كانت تبقى host-only على
+    // أجهزة المستخدمين وتُظلّل الجديدة فتُسقط الجلسة — الاسم الجديد يتجاهلها.
+    // والنطاق الأب (إنتاج فقط) ليقرأها الاستوديو (دخول موحد).
+    {
+      cookieOptions: {
+        name: 'sb-ghiras-auth',
+        path: '/',
+        ...(process.env.NODE_ENV === 'production'
+          ? { domain: '.ghiras-edu.com' }
+          : {}),
+      },
+    }
   );
 }
 
