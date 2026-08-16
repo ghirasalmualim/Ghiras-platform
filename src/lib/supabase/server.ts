@@ -23,7 +23,13 @@ export function createServerSupabase() {
         setAll(cookiesToSet: CookieToSet[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — في الإنتاج فقط
+                ...(process.env.NODE_ENV === "production"
+                  ? { domain: ".ghiras-edu.com" }
+                  : {}),
+              })
             );
           } catch {
             // تُستدعى من مكوّن خادم — الوسيط (middleware) يتكفل بالتحديث

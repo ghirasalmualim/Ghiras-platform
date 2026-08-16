@@ -25,7 +25,13 @@ export async function middleware(request: NextRequest) {
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, {
+              ...options,
+              // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — في الإنتاج فقط
+              ...(process.env.NODE_ENV === "production"
+                ? { domain: ".ghiras-edu.com" }
+                : {}),
+            })
           );
         },
       },
