@@ -12,11 +12,12 @@ import Link from 'next/link';
 type StageLink = { slug: string; name: string };
 
 /**
- * «سجلات رئيس القسم» — تطبيق HTML مستقل مكتفٍ بذاته في public/rais-qism.html.
- * ليس مسار Next، لذلك يُفتح برابط عادي (لا next/link) حتى لا يُحاول التوجيه من جهة العميل.
+ * «سجلات رئيس القسم» — تطبيق HTML مكتفٍ بذاته يعيش في private/ خارج public،
+ * ولا يُفتح إلا عبر الحارس الذي يتحقق من الدخول والاشتراك ثم يقدّم الملف.
+ * رابط عادي (لا next/link) لأن الوجهة مسار API لا صفحة.
  * اجعليها null لإرجاع الخانة إلى وضع «قريبًا».
  */
-const HEAD_RECORDS_HREF: string | null = '/rais-qism.html';
+const HEAD_RECORDS_HREF: string | null = '/api/head-records';
 
 export default function HomeSections({ stages }: { stages: StageLink[] }) {
   const [open, setOpen] = useState<'games' | 'pro' | null>(null);
