@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Surah } from '../types';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * اختيار السورة ثم المدى.

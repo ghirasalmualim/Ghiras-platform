@@ -132,13 +132,24 @@ export function buildPlaylist(
   const items: PlaylistItem[] = [];
 
   type Unit = { surah: number; ayah: number; basmala: boolean };
-  const units: Unit[] = [];
+  const ayahUnits: Unit[] = [];
+  /**
+   * البسملة موضوعةٌ عند أول آية في مقطعها، لا في رأس القائمة.
+   *
+   * ⚠️ كانت تُدفع كلها إلى الأول، وهو صحيح مع مقطع واحد وغلطٌ فاضح مع
+   * صفحة عابرة: بسملة السورة الثانية تُتلى قبل آخر آية من الأولى.
+   */
+  const basmalaAt = new Map<string, Unit>();
   segments.forEach((seg, i) => {
-    if (flags[i]) units.push({ surah: seg.surah, ayah: 0, basmala: true });
+    if (flags[i])
+      basmalaAt.set(`${seg.surah}:${seg.from_ayah}`, {
+        surah: seg.surah,
+        ayah: 0,
+        basmala: true,
+      });
     for (let a = seg.from_ayah; a <= seg.to_ayah; a++)
-      units.push({ surah: seg.surah, ayah: a, basmala: false });
+      ayahUnits.push({ surah: seg.surah, ayah: a, basmala: false });
   });
-  const ayahUnits = units.filter((u) => !u.basmala);
   if (!ayahUnits.length) return items;
 
   const push = (u: Unit, round: number, of: number) => {
@@ -155,15 +166,32 @@ export function buildPlaylist(
     items.push(item);
   };
 
-  // البسملة تُتلى **مرة واحدة** لا مع كل جولة تكرار: هي افتتاحية للسورة
-  // لا جزء من المقطع المحفوظ، ولو أُعيدت لسُمعت عشر مرات في تمرين من
-  // عشر جولات. وفي الصفحة العابرة تُتلى لكل سورة تبدأ فيها.
-  for (const b of units.filter((u) => u.basmala)) push(b, 1, 1);
+  /**
+   * البسملة تُتلى **مرة واحدة** لا مع كل جولة تكرار: هي افتتاحية للسورة
+   * لا جزء من المقطع المحفوظ، ولو أُعيدت لسُمعت عشر مرات في تمرين من
+   * عشر جولات. وفي الصفحة العابرة تُتلى لكل سورة تبدأ فيها، في موضعها.
+   */
+  const said = new Set<string>();
+  const openIfNeeded = (u: Unit) => {
+    const key = `${u.surah}:${u.ayah}`;
+    const b = basmalaAt.get(key);
+    if (b && !said.has(key)) {
+      said.add(key);
+      push(b, 1, 1);
+    }
+  };
 
   if (scope === 'ayah') {
-    for (const u of ayahUnits) for (let r = 1; r <= times; r++) push(u, r, times);
+    for (const u of ayahUnits) {
+      openIfNeeded(u);
+      for (let r = 1; r <= times; r++) push(u, r, times);
+    }
   } else {
-    for (let r = 1; r <= times; r++) for (const u of ayahUnits) push(u, r, times);
+    for (let r = 1; r <= times; r++)
+      for (const u of ayahUnits) {
+        openIfNeeded(u);
+        push(u, r, times);
+      }
   }
   return items;
 }

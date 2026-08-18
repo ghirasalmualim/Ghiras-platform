@@ -1,4 +1,4 @@
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * البسملة في سطرها المستقل عند بداية السورة.

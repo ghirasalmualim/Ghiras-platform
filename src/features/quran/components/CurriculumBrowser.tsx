@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { Grade, Stage } from '@/lib/types';
 import type { CurriculumLesson } from '../types';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 const REQUIREMENT: Record<
   CurriculumLesson['requirement'],

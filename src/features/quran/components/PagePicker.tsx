@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * اختيار صفحة من المصحف.

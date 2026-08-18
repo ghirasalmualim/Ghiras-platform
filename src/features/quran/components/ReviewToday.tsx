@@ -6,7 +6,7 @@ import { getAllSegments, type StoredSegment } from '../data/practice';
 import { isGuest } from '../data/progress';
 import { dueToday, needsWork } from '../engine/planner';
 import { stateLabel, toDay, progressPercent } from '../engine/review';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * قائمة المراجعة المستحقة اليوم.

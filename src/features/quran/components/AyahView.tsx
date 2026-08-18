@@ -5,7 +5,7 @@ import type { Ayah } from '../types';
 import { hiddenIndices, type HideLevel } from '../engine/hide';
 import { splitOpeningBasmala } from '../engine/basmala';
 import Basmala from './Basmala';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * عرض الآيات — العنصر البصري الأساسي في القسم.

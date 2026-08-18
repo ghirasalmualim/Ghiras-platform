@@ -11,14 +11,14 @@ import {
 } from '../engine/activities';
 import { attemptQuality, sessionQuality, type AttemptResult } from '../engine/review';
 import { seedFrom } from '../engine/random.mjs';
-import { splitOpeningBasmala } from '../engine/basmala';
+import { ayahsForActivities } from '../engine/basmala';
 import {
   finishSession,
   getActivityPerformance,
   recordAttempt,
   recordEvent,
 } from '../data/practice';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * «تدرّب على حفظك» — حصة قصيرة من أربعة تدريبات.
@@ -75,7 +75,7 @@ export default function PracticeCenter({
     // في خيارات «اسمع وحدّد» ملتصقة بالآية بينما الصوت يتلو الآية
     // وحدها، ولجاز أن تُخفى كلمة منها في «الكلمة المفقودة».
     // ونفصلها بنفس الدالة التي تفصلها في العرض، فلا يفترق الاثنان.
-    const forActivities = splitOpeningBasmala(ayahs).ayahs;
+    const forActivities = ayahsForActivities(ayahs);
     setQuestions(buildSession({ segment: forActivities }, perf, seed, 4));
     setIndex(0);
     setPicked(null);

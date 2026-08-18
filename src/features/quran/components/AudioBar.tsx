@@ -10,7 +10,7 @@ import {
   type PlaylistItem,
   type RepeatScope,
 } from '../engine/audio';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * مشغّل التلاوة مع التكرار.

@@ -12,7 +12,7 @@ import {
   type DailyTask,
 } from '../engine/planner';
 import { toDay } from '../engine/review';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * ☀️ مهمة اليوم.

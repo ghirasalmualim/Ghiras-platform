@@ -18,7 +18,7 @@ import AyahView from './AyahView';
 import PracticeCenter from './PracticeCenter';
 import GoalPlanner from './GoalPlanner';
 import AudioBar from './AudioBar';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * شاشة الدراسة — محرك التعلّم الوحيد في القسم.

@@ -12,7 +12,7 @@ import {
   type Plan,
 } from '../engine/planner';
 import { addDays, toDay } from '../engine/review';
-import { toArabic } from './ResumeCard';
+import { toArabic } from '../engine/numerals';
 
 /**
  * هدف الحفظ وخطته.

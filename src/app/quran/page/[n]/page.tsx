@@ -9,7 +9,7 @@ import {
   surahsOfPage,
 } from '@/features/quran/engine/pages';
 import StudyScreen from '@/features/quran/components/StudyScreen';
-import { toArabic } from '@/features/quran/components/ResumeCard';
+import { countAyahs, toArabic } from '@/features/quran/engine/numerals';
 
 /**
  * صفحة من المصحف.
@@ -63,9 +63,9 @@ export default function MushafPage({ params }: { params: { n: string } }) {
       to={head.to_ayah}
       segments={page.segments}
       heading={`صفحة ${toArabic(n)}`}
-      subheading={`${names.join(' و')} — ${
-        count === 1 ? 'آية واحدة' : `${toArabic(count)} آية`
-      } · الجزء ${toArabic(juzOfPage(n))}`}
+      subheading={`${names.join(' و')} — ${countAyahs(count)} · الجزء ${toArabic(
+        juzOfPage(n)
+      )}`}
       prevHref={n > 1 ? `/quran/page/${n - 1}` : undefined}
       nextHref={n < TOTAL_PAGES ? `/quran/page/${n + 1}` : undefined}
       reciter={getReciter()}

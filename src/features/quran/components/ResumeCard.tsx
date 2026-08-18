@@ -1,5 +1,7 @@
 'use client';
 
+import { toArabic } from '../engine/numerals';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getLastPosition } from '../data/progress';
@@ -50,9 +52,4 @@ export default function ResumeCard({ surahNames }: { surahNames: string[] }) {
       </span>
     </Link>
   );
-}
-
-/** الأرقام العربية الشرقية — أنسب لسياق المصحف. */
-export function toArabic(n: number): string {
-  return String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 }

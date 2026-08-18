@@ -12,6 +12,9 @@
  */
 
 import { readFileSync } from "node:fs";
+import { buildPlaylist } from "../../.quran-test/engine/audio.js";
+import { ayahsForActivities } from "../../.quran-test/engine/basmala.js";
+import { buildSession } from "../../.quran-test/engine/activities.js";
 import {
   TOTAL_PAGES,
   getPage,
@@ -194,6 +197,109 @@ ok(
     if (b < a || b > a + 1) monotonic = false;
   }
   ok(monotonic, "رقم الجزء يتصاعد صفحةً صفحة بلا قفز");
+}
+
+// ── ١٠) قائمة التلاوة في الصفحة العابرة ──────────────────────
+//
+// الفحص الذي كشف الخطأ: كل البسملات كانت تُدفع إلى رأس القائمة، وهو
+// صحيح مع مقطع واحد وغلطٌ فاضح مع صفحة تعبر سورة — تُتلى بسملة السورة
+// الثانية قبل آخر آية من الأولى. الفحص يقارن الترتيب لا العدد وحده.
+{
+  const reciter = { base_url: "https://x/y" };
+  const page = getPage(106); // النساء ١٧٦ ثم المائدة ١–٢
+  const segs = page.segments;
+  const flags = segs.map((s) => s.from_ayah === 1);
+
+  const list = buildPlaylist(reciter, segs, 1, "range", flags);
+  const shape = list.map((i) => (i.isBasmala ? "بسملة" : `${i.surah}:${i.ayah}`));
+  ok(
+    shape.join(" ") === "4:176 بسملة 5:1 5:2",
+    "البسملة تسبق سورتها لا رأس القائمة",
+    `وُجد: ${shape.join(" ")}`
+  );
+
+  // التكرار لا يعيد البسملة: هي افتتاحية السورة لا جزء من المحفوظ
+  const rep = buildPlaylist(reciter, segs, 3, "range", flags);
+  ok(
+    rep.filter((i) => i.isBasmala).length === 1,
+    "التكرار ثلاثًا لا يعيد البسملة",
+    `وُجد ${rep.filter((i) => i.isBasmala).length}`
+  );
+  ok(
+    rep.filter((i) => !i.isBasmala).length === 3 * 3,
+    "التكرار يشمل مقاطع الصفحة كلها لا الأول وحده"
+  );
+
+  // تكرار الآية الواحدة: البسملة قبل أول تلاوة لآيتها لا قبل الصفحة
+  const byAyah = buildPlaylist(reciter, segs, 2, "ayah", flags);
+  const at = byAyah.findIndex((i) => i.isBasmala);
+  ok(
+    at === 2 && byAyah[at + 1].surah === 5 && byAyah[at + 1].ayah === 1,
+    "بتكرار الآية: البسملة قبل أول تلاوة للمائدة ١",
+    `موضعها ${at}`
+  );
+
+  // مقطع واحد لا يتأثر بالتوسعة إطلاقًا
+  const plain = buildPlaylist(
+    reciter,
+    { surah: 112, from_ayah: 1, to_ayah: 4 },
+    1,
+    "range",
+    true
+  );
+  ok(
+    plain[0].isBasmala === true && plain.length === 5,
+    "المقطع المفرد كما كان: بسملة ثم أربع آيات"
+  );
+}
+
+// ── ١١) البسملة لا تتسرّب إلى الأنشطة في الصفحة العابرة ──────
+//
+// خطأ وقع مرة في أول السورة وأُصلح، ثم عاد يهدّد من باب الصفحة:
+// `splitOpeningBasmala` تفصل من أول القائمة وحدها، فبسملة السورة التي
+// تبدأ في وسط الصفحة تبقى ملتصقة بآيتها. فتظهر في سؤال أو خيار، أو
+// تُخفى منها كلمة — وكلاهما ممنوع.
+{
+  const page = getPage(106);
+  const text = new Map();
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const a = t.indexOf("|");
+    const b = t.indexOf("|", a + 1);
+    if (a === -1 || b === -1) continue;
+    text.set(`${t.slice(0, a)}:${t.slice(a + 1, b)}`, t.slice(b + 1));
+  }
+  const ayahs = [];
+  for (const sg of page.segments)
+    for (let a = sg.from_ayah; a <= sg.to_ayah; a++)
+      ayahs.push({
+        surah: sg.surah,
+        ayah: a,
+        text_uthmani: text.get(`${sg.surah}:${a}`),
+      });
+
+  // المخزَّن يحوي البسملة — نتأكد أولًا أن الفحص يقيس شيئًا حقيقيًا
+  ok(
+    ayahs.some((a) => a.text_uthmani.startsWith("بِسْمِ")),
+    "النص المخزَّن للمائدة ١ يبدأ بالبسملة — فالفحص له معنى"
+  );
+
+  const clean = ayahsForActivities(ayahs);
+  ok(
+    clean.length === ayahs.length &&
+      !clean.some((a) => a.text_uthmani.startsWith("بِسْمِ")),
+    "بعد الفصل: لا آية تبدأ بالبسملة، ولا آية ضاعت",
+    `بقي ${clean.length} من ${ayahs.length}`
+  );
+
+  // ولا كلمة منها تظهر في أي سؤال أو خيار
+  const qs = buildSession({ segment: clean }, {}, 12345, 4);
+  const blob = JSON.stringify(qs);
+  ok(
+    qs.length > 0 && !blob.includes("ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"),
+    `${qs.length} سؤالًا وُلِّدت، ولا كلمة من البسملة في أيٍّ منها`
+  );
 }
 
 if (failed) {

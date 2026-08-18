@@ -116,3 +116,26 @@ export function opensWithSpokenBasmala(ayahs: Ayah[]): boolean {
   const { basmala, basmalaAyahNumber } = splitOpeningBasmala(ayahs);
   return basmala !== null && basmalaAyahNumber === null;
 }
+
+/**
+ * الآيات بلا بسملة افتتاحية — للأنشطة والتوليد، لا للعرض.
+ *
+ * ⚠️ يفحص **كل آية** لا رأس القائمة وحده. `splitOpeningBasmala` تفصل
+ * من الأولى فقط، وهو كافٍ للمقطع لأنه من سورة واحدة. أما صفحة المصحف
+ * فقد تبدأ فيها سورة في وسطها، فتبقى بسملتها ملتصقة بآيتها ثم تتسرّب
+ * إلى سؤال أو خيار، أو تُخفى منها كلمة في «الكلمة المفقودة».
+ *
+ * وهذا خطأ وقع مرة من قبل في أول السورة وأُصلح، فعاد يهدّد من باب
+ * الصفحة. فمُنِع في دالة واحدة يستعملها كل من يولّد سؤالًا.
+ *
+ * والفاتحة تُسقَط آيتها الأولى عن قصد: بسملتها آية معدودة، فلا يبقى
+ * منها نصّ بعد الفصل.
+ */
+export function ayahsForActivities(ayahs: Ayah[]): Ayah[] {
+  const out: Ayah[] = [];
+  for (const a of ayahs) {
+    const rest = splitOpeningBasmala([a]).ayahs[0];
+    if (rest) out.push(rest);
+  }
+  return out;
+}
