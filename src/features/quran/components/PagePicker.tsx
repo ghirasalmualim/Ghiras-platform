@@ -73,6 +73,7 @@ export default function PagePicker({
             value={typed}
             onChange={(e) => setTyped(e.target.value.replace(/[^\d]/g, ''))}
             placeholder={`١ – ${toArabic(total)}`}
+            aria-label={`رقم الصفحة، من ١ إلى ${toArabic(total)}`}
             className="tap w-28 rounded-xl border border-[var(--q-line)] bg-[var(--q-bg)] px-3 py-2 text-center text-lg font-bold text-[var(--q-ink)] outline-none focus:border-[var(--q-accent)]"
             aria-describedby="page-hint"
           />
@@ -83,12 +84,14 @@ export default function PagePicker({
           >
             افتح
           </button>
-          <span id="page-hint" className="text-[0.82rem] text-[var(--q-mute)]">
-            {typed === ''
-              ? `الصفحات من ١ إلى ${toArabic(total)}`
-              : valid
-                ? `تبدأ بسورة ${labels[n - 1]}`
-                : 'رقم خارج المصحف'}
+          {/* النائب يحمل المدى، فلا يُكرَّر هنا: التلميح يقول شيئًا
+              جديدًا — أي سورة تبدأ بها — أو ينبّه على رقم خارج المصحف */}
+          <span
+            id="page-hint"
+            role="status"
+            className="text-[0.82rem] text-[var(--q-mute)]"
+          >
+            {typed === '' ? '' : valid ? `تبدأ بسورة ${labels[n - 1]}` : 'رقم خارج المصحف'}
           </span>
         </div>
       </form>
@@ -116,12 +119,14 @@ export default function PagePicker({
                   <span className="font-bold text-[var(--q-ink)]">
                     الجزء {toArabic(j)}
                   </span>
+                  {/* سهم لأسفل يدور عند الفتح: لا يعتمد على اتجاه
+                      النص، فلا ينقلب في الواجهة العربية كما ينقلب ‹ */}
                   <span
                     aria-hidden
-                    className="text-[var(--q-mute)] transition"
-                    style={{ transform: open ? 'rotate(90deg)' : 'none' }}
+                    className="text-[var(--q-mute)] transition-transform"
+                    style={{ transform: open ? 'rotate(180deg)' : 'none' }}
                   >
-                    ‹
+                    ⌄
                   </span>
                 </button>
 
