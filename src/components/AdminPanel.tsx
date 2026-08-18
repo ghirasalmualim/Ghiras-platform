@@ -43,6 +43,7 @@ type Perm = {
 };
 
 const TOOL_COLS = [
+  'studio_until',
   'gradebook_until',
   'attendance_until',
   'head_records_until',
@@ -227,6 +228,7 @@ export default function AdminPanel() {
   // الدفتر مستثنى عمدًا: له زرّاه القائمان أعلاه عبر admin_grant، وتُركا كما هما
   // حتى لا نغيّر مسارًا يعمل منذ شهور.
   const TOOLS: { key: string; label: string; emoji: string }[] = [
+    { key: 'studio', label: 'ستوديو الحصة الذكية', emoji: '🎬' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
     { key: 'head_records', label: 'سجلات رئيس القسم', emoji: '🗂️' },
     { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
