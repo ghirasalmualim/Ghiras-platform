@@ -15,9 +15,28 @@ import type { CurriculumLesson } from '../types';
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+/**
+ * عميل بلا ذاكرة مؤقتة.
+ *
+ * ⚠️ `cache: 'no-store'` ضرورة لا احتياط. Next.js يخزّن نتائج الطلبات
+ * تلقائيًا، ورابط استعلام «أي الصفوف فيها دروس» ثابت لا يتغيّر — فحُفظ
+ * جوابه قبل إدخال المتوسط وظلّ يُقدَّم قديمًا، فاختفت الصفوف ٦–٩ من
+ * الشاشة رغم وجود دروسها في القاعدة.
+ *
+ * ولم يظهر العيب في `/api/quran/lessons` لأن رابطه يحمل رقم الصف
+ * فيتغيّر مع كل صف، فكل صف جديد يُطلب من جديد. وهذا ما جعل العيب
+ * مخادعًا: البيانات تصل من مسار وتغيب من مسار.
+ *
+ * والمنهج بيانات تتغيّر بيد المعلمة، فلا يصحّ تخزين جوابها أصلًا.
+ */
 function client() {
   if (!url || !anonKey) return null;
-  return createClient(url, anonKey);
+  return createClient(url, anonKey, {
+    global: {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input, { ...init, cache: 'no-store' }),
+    },
+  });
 }
 
 /**
