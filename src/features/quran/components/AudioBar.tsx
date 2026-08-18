@@ -33,6 +33,8 @@ export default function AudioBar({
   onAyahChange,
   compact = false,
   withBasmala = false,
+  reciters = [],
+  onReciterChange,
 }: {
   reciter: Reciter;
   segment: Segment;
@@ -41,6 +43,9 @@ export default function AudioBar({
   compact?: boolean;
   /** يُسبَق المقطع ببسملة مُتلوّة — يقرّره النص لا المشغّل. */
   withBasmala?: boolean;
+  /** القرّاء المتاحون. أقل من اثنين ← لا يُعرض اختيار أصلًا. */
+  reciters?: Reciter[];
+  onReciterChange?: (id: string) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playlistRef = useRef<PlaylistItem[]>([]);
@@ -90,11 +95,15 @@ export default function AudioBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // تغيّر المقطع يوقف ما يعمل، وإلا استمرّ صوت آيات غادرناها
+  // تغيّر المقطع — أو القارئ — يوقف ما يعمل.
+  //
+  // القارئ في قائمة التبعيات ضرورة لا احتياط: قائمة التشغيل مبنية
+  // بروابط القارئ السابق، فلو تُرك ما يعمل لسُمع صوتان معًا، أو لأكمل
+  // القارئ القديم مقطعًا اختارت له غيره.
   useEffect(() => {
     stopAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segment.surah, segment.from_ayah, segment.to_ayah]);
+  }, [segment.surah, segment.from_ayah, segment.to_ayah, reciter.id]);
 
   function stopAll() {
     const el = audioRef.current;
@@ -263,6 +272,29 @@ export default function AudioBar({
               </p>
             </>
           )}
+
+          {/* ── القارئ ──
+              في آخر اللوحة عن قصد: اختيار يُضبط مرة ويُنسى، فلا يزاحم
+              التشغيل والتكرار وهما ما يُستعمل في كل جلسة. ويختفي أصلًا
+              إذا لم يكن هناك أكثر من قارئ مفعَّل. */}
+          {reciters.length > 1 && onReciterChange ? (
+            <div className="mt-4 border-t border-[var(--q-line)] pt-4">
+              <p className="mb-2 text-[0.78rem] font-bold text-[var(--q-mute)]">
+                القارئ
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {reciters.map((r) => (
+                  <Chip
+                    key={r.id}
+                    active={r.id === reciter.id}
+                    onClick={() => onReciterChange(r.id)}
+                  >
+                    {r.name_ar}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

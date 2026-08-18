@@ -112,6 +112,32 @@ ok(
   "بلا بسملة إذا لم يطلبها النص (التوبة، أو مقطع من وسط السورة)"
 );
 
+// ── ٣ج) قارئ ثانٍ بنفس المحرك ───────────────────────────────
+// الحارس هنا: أن تبديل القارئ **بيانات لا منطق**. لو أُنشئ يومًا مسار
+// تشغيل خاص بقارئ، اختلّت هذه المساواة وسقط الفحص.
+const alafasy = { id: "ar.alafasy", base_url: "https://z/w" };
+const husary = { id: "ar.husary", base_url: "https://x/y" };
+
+for (const [scope, times] of [["range", 5], ["ayah", 3], ["range", 1], ["ayah", 10]]) {
+  const a = buildPlaylist(alafasy, seg, times, scope, true);
+  const h = buildPlaylist(husary, seg, times, scope, true);
+  ok(
+    a.length === h.length &&
+      a.every((x, i) => x.ayah === h[i].ayah && x.round === h[i].round &&
+                        x.of === h[i].of && !!x.isBasmala === !!h[i].isBasmala),
+    `القائمتان متطابقتان بنيةً مع القارئين (${scope} × ${times})`
+  );
+}
+const aList = buildPlaylist(alafasy, seg, 1, "range", true);
+ok(
+  aList.every((i) => i.url.startsWith("https://z/w/")),
+  "روابط العفاسي كلها من مصدره — لا اختلاط بين قارئين في قائمة واحدة"
+);
+ok(
+  basmalaAudioUrl(alafasy) === "https://z/w/1.mp3",
+  "بسملة العفاسي من مصدره هو"
+);
+
 // ── ٤) الرفض عند آية خارج السورة ────────────────────────────
 let threw = false;
 try { globalAyahNumber(1, 8); } catch { threw = true; }

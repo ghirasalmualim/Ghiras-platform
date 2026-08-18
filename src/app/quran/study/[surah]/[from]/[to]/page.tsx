@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getAyahs, getSurah } from '@/features/quran/data/corpus';
-import { getReciter } from '@/features/quran/engine/reciters';
+import { activeReciters, getReciter } from '@/features/quran/engine/reciters';
 import StudyScreen from '@/features/quran/components/StudyScreen';
 
 /**
@@ -50,6 +50,7 @@ export default function StudyPage({
       from={from}
       to={to}
       reciter={getReciter()}
+      reciters={activeReciters()}
       {...(searchParams.lesson
         ? {
             // جاء من المنهج: نرجعه إلى المنهج لا إلى قائمة السور،

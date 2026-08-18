@@ -20,6 +20,7 @@ import type { LastPosition, SegmentProgress, SegmentStatus } from '../types';
 
 const LAST_KEY = 'ghiras.quran.last';
 const SEG_KEY = 'ghiras.quran.segments';
+const RECITER_KEY = 'ghiras.quran.reciter';
 
 // ── المتصفح ────────────────────────────────────────────────
 
@@ -141,6 +142,63 @@ export async function saveSegmentProgress(
     { user_id: user.id, ...merged },
     { onConflict: 'user_id,surah,from_ayah,to_ayah' }
   );
+}
+
+// ── القارئ المختار ──────────────────────────────────────────
+
+/**
+ * اختيار القارئ إعدادٌ بسيط لا يستحق جدولًا خاصًا به، فيسكن عمودًا في
+ * `quran_last_position` — وهو أصلًا سطر واحد لكل طالبة يحمل حالتها في
+ * القسم.
+ *
+ * والمتصفح هو المصدر الأول دائمًا: يعمل للزائرة وللمسجَّلة، وفورًا بلا
+ * انتظار شبكة. والقاعدة تتبعه لتلحق الاختيار بالطالبة بين أجهزتها.
+ *
+ * ⚠️ الكتابة في القاعدة **متساهلة عن قصد**: لو لم يكن العمود موجودًا
+ * بعد (لم يُشغَّل تحديث SQL)، يُتجاهل الخطأ بصمت. اختيار القارئ ميزة
+ * مساعدة، ولا يجوز أن يُسقط حفظَ التقدّم أو يمنع التلاوة لأجلها.
+ */
+export async function getReciterId(): Promise<string | null> {
+  const local = readLocal<string | null>(RECITER_KEY, null);
+  if (local) return local;
+
+  const sb = createClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return null;
+
+  try {
+    const { data } = await sb
+      .from('quran_last_position')
+      .select('reciter_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    return (data as { reciter_id?: string | null } | null)?.reciter_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveReciterId(id: string): Promise<void> {
+  writeLocal(RECITER_KEY, id);
+
+  const sb = createClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return;
+
+  try {
+    // تحديث لا إدراج: سطر الموضع يُنشأ عند فتح أول مقطع، ولا نريد
+    // إنشاء سطر بسورة وهمية لمجرد حفظ تفضيل صوتي.
+    await sb
+      .from('quran_last_position')
+      .update({ reciter_id: id })
+      .eq('user_id', user.id);
+  } catch {
+    /* العمود غير موجود بعد — المتصفح كافٍ */
+  }
 }
 
 /**

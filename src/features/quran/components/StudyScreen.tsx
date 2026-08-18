@@ -5,7 +5,15 @@ import Link from 'next/link';
 import type { Ayah, Reciter, StudyMode, Surah } from '../types';
 import { HIDE_LEVELS, LEVEL_LABEL, type HideLevel } from '../engine/hide';
 import { opensWithSpokenBasmala } from '../engine/basmala';
-import { getSegmentProgress, isGuest, saveLastPosition, saveSegmentProgress } from '../data/progress';
+import {
+  getReciterId,
+  getSegmentProgress,
+  isGuest,
+  saveLastPosition,
+  saveReciterId,
+  saveSegmentProgress,
+} from '../data/progress';
+import { getReciter } from '../engine/reciters';
 import AyahView from './AyahView';
 import AudioBar from './AudioBar';
 import { toArabic } from './ResumeCard';
@@ -26,7 +34,8 @@ export default function StudyScreen({
   ayahs,
   from,
   to,
-  reciter,
+  reciter: defaultReciter,
+  reciters,
   backHref,
   backLabel,
   lessonTitle,
@@ -35,7 +44,10 @@ export default function StudyScreen({
   ayahs: Ayah[];
   from: number;
   to: number;
+  /** القارئ الافتراضي — الحصري. */
   reciter: Reciter;
+  /** القرّاء المفعَّلون، ليختار الطالب بينهم. */
+  reciters: Reciter[];
   backHref: string;
   backLabel: string;
   lessonTitle?: string;
@@ -44,6 +56,17 @@ export default function StudyScreen({
   const [hideLevel, setHideLevel] = useState<HideLevel>(0);
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
   const [guest, setGuest] = useState(false);
+
+  /**
+   * القارئ المختار.
+   *
+   * ⚠️ لا يوجد محرك صوت ثانٍ للعفاسي: المحرك يستقبل القارئ **معطًى**
+   * ويبني منه الروابط، فتبديل القارئ تبديلُ بيانات لا تبديلُ منطق.
+   * كل خصائص الصوت — التكرار والنطاق والانتقال التلقائي والإيقاف —
+   * تعمل مع أي قارئ بلا سطر إضافي.
+   */
+  const [reciter, setReciter] = useState<Reciter>(defaultReciter);
+
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
 
   // هل تُتلى بسملة قبل المقطع؟ يقرّره نصُّ الآيات لا المشغّل، ومن نفس
@@ -67,6 +90,10 @@ export default function StudyScreen({
     void isGuest().then((g) => {
       if (alive) setGuest(g);
     });
+    // القارئ المحفوظ — إن سقط الاختيار أو أُطفئ القارئ عاد الافتراضي
+    void getReciterId().then((id) => {
+      if (alive && id) setReciter(getReciter(id));
+    });
     void getSegmentProgress(surah.number, from, to).then((p) => {
       if (!alive || touched.current || !p) return;
       setHideLevel(Math.min(5, Math.max(0, p.hide_level)) as HideLevel);
@@ -76,6 +103,11 @@ export default function StudyScreen({
       alive = false;
     };
   }, [surah.number, from, to]);
+
+  function changeReciter(id: string) {
+    setReciter(getReciter(id));
+    void saveReciterId(id);
+  }
 
   function changeHide(level: HideLevel) {
     touched.current = true;
@@ -242,6 +274,8 @@ export default function StudyScreen({
             segment={segment}
             onAyahChange={setActiveAyah}
             withBasmala={withBasmala}
+            reciters={reciters}
+            onReciterChange={changeReciter}
             compact={false}
           />
         </section>
