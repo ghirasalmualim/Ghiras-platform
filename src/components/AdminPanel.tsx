@@ -105,6 +105,48 @@ export default function AdminPanel() {
       }
     }
   };
+  // ── سحب الصلاحيات ──
+  // اللوحة كانت تمنح ولا تسحب، فالصلاحية الخطأ كان لا بد من حذفها بأمر SQL.
+  // admin_revoke ترجع عدد الصفوف المحذوفة، فنعرض للمعلمة إن كان هناك ما يُحذف فعلاً.
+  const revokeSpecific = (id: string) => {
+    const sv = sel[id];
+    if (!sv || !sv.target) {
+      setMsg('اختاري المرحلة أو الصف أولاً');
+      return;
+    }
+    const supabase = createClient();
+
+    if (sv.target.startsWith('stage:')) {
+      const sid = sv.target.slice(6);
+      if (!confirm('سحب صلاحية هذه المرحلة كاملة من الحساب؟')) return;
+      act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'stage', p_stage: sid }), 'تم سحب المرحلة');
+      return;
+    }
+
+    if (sv.target.startsWith('grade:')) {
+      const gid = sv.target.slice(6);
+      if (sv.subject) {
+        if (!confirm('سحب صلاحية هذه المادة من الحساب؟')) return;
+        act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'subject', p_subject: sv.subject }), 'تم سحب المادة');
+      } else {
+        if (!confirm('سحب صلاحية هذا الصف كاملاً من الحساب؟')) return;
+        act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'grade', p_grade: gid }), 'تم سحب الصف');
+      }
+    }
+  };
+
+  const revokeAll = (id: string) => {
+    if (!confirm('سحب كل صلاحيات هذا الحساب؟ سيُقفل عليه كل المحتوى، ويبقى الحساب فعّالاً ويمكن منحه من جديد.')) return;
+    const supabase = createClient();
+    act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'all' }), 'تم سحب كل الصلاحيات');
+  };
+
+  const revokeGb = (id: string) => {
+    if (!confirm('سحب اشتراك دفتر الدرجات من هذا الحساب؟')) return;
+    const supabase = createClient();
+    act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'gradebook' }), 'تم سحب الدفتر');
+  };
+
   const suspend = (id: string) => {
     if (!confirm('إيقاف هذا الحساب؟ لن يتمكن من الدخول للمحتوى.')) return;
     const supabase = createClient();
@@ -245,6 +287,11 @@ export default function AdminPanel() {
                   className="rounded-lg bg-sage-dark hover:bg-sage-deep text-white font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   منح المحدَّد ٦ أشهر
                 </button>
+
+                <button disabled={isBusy} onClick={() => revokeSpecific(r.id)}
+                  className="rounded-lg border border-red-300 bg-white hover:bg-red-50 text-red-700 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  − سحب المحدَّد
+                </button>
               </div>
 
               <div className="mt-2.5 flex flex-wrap gap-2">
@@ -255,6 +302,14 @@ export default function AdminPanel() {
                 <button disabled={isBusy} onClick={() => grantGb(r.id)}
                   className="rounded-lg bg-gold hover:bg-gold-dark text-white font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   ＋ الدفتر ٦ أشهر
+                </button>
+                <button disabled={isBusy} onClick={() => revokeGb(r.id)}
+                  className="rounded-lg border border-gold/50 bg-white hover:bg-gold-light text-gold-dark font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  − سحب الدفتر
+                </button>
+                <button disabled={isBusy} onClick={() => revokeAll(r.id)}
+                  className="rounded-lg border border-red-300 bg-white hover:bg-red-50 text-red-700 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  🧹 سحب كل الصلاحيات
                 </button>
                 {r.status === 'suspended' ? (
                   <button disabled={isBusy} onClick={() => reactivate(r.id)}
