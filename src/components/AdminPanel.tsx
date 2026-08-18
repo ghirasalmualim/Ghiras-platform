@@ -250,6 +250,31 @@ export default function AdminPanel() {
     );
   };
 
+  // ── كلمة مرور مؤقتة ──
+  // الدخول برقم الجوال ببريد داخلي وهمي، فلا استعادة ذاتية بالبريد.
+  // تُعرض مرة واحدة هنا لتُرسل للمعلمة، ولا تُخزَّن في أي مكان.
+  const [tempPw, setTempPw] = useState<{ name: string; password: string } | null>(null);
+
+  const resetPassword = async (id: string, name: string) => {
+    if (!confirm(`تعيين كلمة مرور مؤقتة لحساب «${name}»؟\nكلمة المرور الحالية لن تعمل بعدها.`))
+      return;
+    setBusy(id);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) setMsg('تعذّر: ' + (data?.error || 'خطأ غير معروف'));
+      else setTempPw({ name: data.name || name, password: data.password });
+    } catch {
+      setMsg('تعذّر الاتصال بالخادم');
+    }
+    setBusy(null);
+  };
+
   const suspend = (id: string) => {
     if (!confirm('إيقاف هذا الحساب؟ لن يتمكن من الدخول للمحتوى.')) return;
     const supabase = createClient();
@@ -378,6 +403,50 @@ export default function AdminPanel() {
 
   return (
     <main className="min-h-dvh px-4 sm:px-6 py-8 max-w-5xl mx-auto">
+      {/* كلمة المرور المؤقتة — تظهر مرة واحدة ولا تُحفظ */}
+      {tempPw && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="card-3d bg-white w-full max-w-md p-7 text-center">
+            <span aria-hidden className="text-4xl">🔑</span>
+            <h2 className="mt-3 text-lg font-extrabold text-ink">
+              كلمة مرور مؤقتة لحساب «{tempPw.name}»
+            </h2>
+            <p className="mt-1.5 text-sm text-ink/55">
+              أرسليها للمعلمة، واطلبي منها تغييرها بعد الدخول.
+            </p>
+
+            <div
+              dir="ltr"
+              className="mt-5 rounded-xl border-2 border-dashed border-gold bg-gold-light/40 px-4 py-4 font-mono text-xl font-black text-ink tracking-wider select-all"
+            >
+              {tempPw.password}
+            </div>
+
+            <p className="mt-3 text-xs text-ink/50">
+              ⚠️ لن تظهر مرة أخرى — انسخيها الآن. وكلمة المرور القديمة لم تعد تعمل.
+            </p>
+
+            <div className="mt-6 flex gap-2 justify-center">
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(tempPw.password);
+                  setMsg('نُسخت كلمة المرور ✅');
+                }}
+                className="rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-6 py-2.5 transition"
+              >
+                نسخ
+              </button>
+              <button
+                onClick={() => setTempPw(null)}
+                className="rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-extrabold px-6 py-2.5 transition"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center gap-3 flex-wrap">
         <Logo size={44} />
         <div>
@@ -628,6 +697,10 @@ export default function AdminPanel() {
                 <button disabled={isBusy} onClick={() => resetDevices(r.id)}
                   className="rounded-lg border border-gray-200 bg-white hover:border-sage text-ink/70 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   📱 تصفير الأجهزة
+                </button>
+                <button disabled={isBusy} onClick={() => resetPassword(r.id, r.full_name || 'هذا الحساب')}
+                  className="rounded-lg border border-gray-200 bg-white hover:border-gold text-ink/70 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  🔑 كلمة مرور مؤقتة
                 </button>
                 {isBusy && <span className="text-sm text-ink/50 self-center">جارٍ…</span>}
               </div>
