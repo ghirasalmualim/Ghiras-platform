@@ -388,6 +388,24 @@ body {
   word-break: keep-all;
 }
 
+/* ── البسملة ──
+   سطر مستقل موسَّط فوق الآية الأولى، بمسافة تفصله عن النص بوضوح.
+   أصغر قليلًا من نص الآيات وبلون أهدأ: افتتاحية لا آية، فلا تزاحم
+   ما بعدها ولا تُقرأ كجزء منه. ولا يجاورها رقم إطلاقًا. */
+.quran .basmala {
+  font-family: var(--font-amiri), 'Amiri', 'Traditional Arabic', serif;
+  font-size: clamp(1.15rem, 0.9rem + 1.2vw, 1.6rem);
+  line-height: 2.1;
+  color: var(--q-accent);
+  text-align: center;
+  letter-spacing: normal;
+  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
+  padding-bottom: clamp(0.75rem, 2vw, 1.15rem);
+  /* فاصل ذهبي رفيع يتلاشى عند طرفيه — توقيع غراس بنبرة هادئة */
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, #e0d3a8 35%, #e0d3a8 65%, transparent) 1;
+}
+
 /* رقم الآية — دائرة هادئة بعد الآية، بأرقام عربية */
 .quran .ayah-no {
   font-family: var(--font-tajawal), sans-serif;

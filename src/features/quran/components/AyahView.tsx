@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { Ayah } from '../types';
 import { hiddenIndices, type HideLevel } from '../engine/hide';
+import { splitOpeningBasmala } from '../engine/basmala';
+import Basmala from './Basmala';
 import { toArabic } from './ResumeCard';
 
 /**
@@ -16,7 +18,7 @@ import { toArabic } from './ResumeCard';
  * لونها لا محلّها. فلا يُعاد ترتيب شيء، ولا تُقطَّع الآية إلى بطاقات.
  */
 export default function AyahView({
-  ayahs,
+  ayahs: rawAyahs,
   hideLevel = 0,
   activeAyah = null,
   onAyahClick,
@@ -30,6 +32,16 @@ export default function AyahView({
   // الكلمات المكشوفة مؤقتًا باللمس — سند لحظي، يزول عند تغيّر المستوى
   const [peeked, setPeeked] = useState<Set<string>>(new Set());
 
+  /**
+   * فصل البسملة يجري هنا لا في الصفحات، فيسري تلقائيًا على كل من يعرض
+   * آيات: القراءة والاستماع والحفظ والحفظ الخفي والمنهج والقسم العام،
+   * وأي شاشة تُضاف لاحقًا. قاعدة في مكان واحد لا تُنسى في شاشة.
+   *
+   * ويجري **قبل** حساب الإخفاء، فلا تدخل كلمات البسملة في الحفظ الخفي
+   * ولا تُزيح مواضع كلمات الآية الأولى.
+   */
+  const { basmala, basmalaAyahNumber, ayahs } = splitOpeningBasmala(rawAyahs);
+
   const peek = (key: string) =>
     setPeeked((prev) => {
       const next = new Set(prev);
@@ -39,8 +51,10 @@ export default function AyahView({
     });
 
   return (
-    <div className="ayat" dir="rtl" lang="ar">
-      {ayahs.map((a) => {
+    <>
+      {basmala ? <Basmala text={basmala} ayahNumber={basmalaAyahNumber} /> : null}
+      <div className="ayat" dir="rtl" lang="ar">
+        {ayahs.map((a) => {
         const words = a.text_uthmani.split(/\s+/).filter(Boolean);
         // البذرة رقم الآية: فيثبت الإخفاء عبر إعادة الرسم ولا يرتجف النص
         const hidden = hiddenIndices(words.length, hideLevel, a.ayah);
@@ -104,8 +118,9 @@ export default function AyahView({
               {toArabic(a.ayah)}
             </span>
           </span>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

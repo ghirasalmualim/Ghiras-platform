@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { writeFileSync, rmSync, mkdirSync, copyFileSync } from "node:fs";
 
 const OUT = ".quran-test";
 const run = (cmd, args) =>
@@ -24,6 +24,7 @@ run("npx", [
   "tsc",
   "src/features/quran/engine/audio.ts",
   "src/features/quran/engine/hide.ts",
+  "src/features/quran/engine/basmala.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",
@@ -36,8 +37,16 @@ run("npx", [
 // المجلد الأب ليس ESM، فنُعلن ذلك هنا حتى تعمل صيغة import.
 writeFileSync(`${OUT}/package.json`, JSON.stringify({ type: "module" }) + "\n");
 
+// المطبِّع بصيغة .mjs أصلًا، وtsc لا ينسخ ما لا يترجمه. ننسخه كما هو
+// فنختبر نفس الملف الذي يستعمله التطبيق لا نسخة مترجمة منه.
+copyFileSync(
+  "src/features/quran/engine/normalize.mjs",
+  `${OUT}/engine/normalize.mjs`
+);
+
 run("node", ["scripts/quran/test-normalize.mjs"]);
 run("node", ["scripts/quran/test-engine.mjs"]);
+run("node", ["scripts/quran/test-basmala.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");
