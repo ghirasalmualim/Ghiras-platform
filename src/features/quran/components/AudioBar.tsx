@@ -38,12 +38,22 @@ export default function AudioBar({
   playAyahRef,
 }: {
   reciter: Reciter;
-  segment: Segment;
+  /**
+   * المقطع، أو مقاطع صفحة المصحف حين تعبر أكثر من سورة.
+   *
+   * وسّعنا النوع بدل أن نبني مشغّلًا ثانيًا للصفحات: عنصر <audio>
+   * واحد هو ما يمنع تداخل صوتين، ومشغّلان يعنيان صوتين.
+   */
+  segment: Segment | Segment[];
   /** يُبلّغ الشاشة بالآية الجارية لتظليلها. */
   onAyahChange?: (ayah: number | null) => void;
   compact?: boolean;
-  /** يُسبَق المقطع ببسملة مُتلوّة — يقرّره النص لا المشغّل. */
-  withBasmala?: boolean;
+  /**
+   * يُسبَق المقطع ببسملة مُتلوّة — يقرّره النص لا المشغّل.
+   * ومع مقاطع الصفحة: علَمٌ لكل مقطع، لأن السورة الثانية في الصفحة
+   * العابرة تبدأ من أولها فتحتاج بسملتها هي أيضًا.
+   */
+  withBasmala?: boolean | boolean[];
   /** القرّاء المتاحون. أقل من اثنين ← لا يُعرض اختيار أصلًا. */
   reciters?: Reciter[];
   onReciterChange?: (id: string) => void;
@@ -67,7 +77,17 @@ export default function AudioBar({
   const [scope, setScope] = useState<RepeatScope>('range');
   const [error, setError] = useState<string | null>(null);
 
-  const single = segment.from_ayah === segment.to_ayah;
+  const segments = Array.isArray(segment) ? segment : [segment];
+  // مفتاح نصّي للمقاطع: نُقارن به في التبعيات بدل مقارنة مصفوفة
+  // بمرجعها، فلا يُوقَف الصوت في كل إعادة رسم.
+  const segKey = segments
+    .map((s) => `${s.surah}:${s.from_ayah}-${s.to_ayah}`)
+    .join('|');
+  const totalAyahs = segments.reduce(
+    (n, s) => n + (s.to_ayah - s.from_ayah + 1),
+    0
+  );
+  const single = totalAyahs === 1;
 
   // عنصر صوت واحد لكل عمر المكوّن — لا يُنشأ غيره أبدًا
   useEffect(() => {
@@ -112,7 +132,7 @@ export default function AudioBar({
   useEffect(() => {
     stopAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segment.surah, segment.from_ayah, segment.to_ayah, reciter.id]);
+  }, [segKey, reciter.id]);
 
   function stopAll() {
     const el = audioRef.current;
@@ -132,9 +152,14 @@ export default function AudioBar({
     if (!el) return;
     setError(null);
 
-    const seg = fromAyah
-      ? { surah: segment.surah, from_ayah: fromAyah, to_ayah: fromAyah }
-      : segment;
+    // آية مفردة: نبحث عن مقطعها لنعرف سورتها — الصفحة قد تحمل سورتين
+    const owner = fromAyah
+      ? segments.find((s) => fromAyah >= s.from_ayah && fromAyah <= s.to_ayah)
+      : undefined;
+    const seg =
+      fromAyah && owner
+        ? { surah: owner.surah, from_ayah: fromAyah, to_ayah: fromAyah }
+        : segments;
     // آية مفردة اختارها الطالب لا تُسبق ببسملة: هو داخل السورة لا في أولها
     const list = buildPlaylist(
       reciter,

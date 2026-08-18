@@ -107,47 +107,63 @@ export type PlaylistItem = {
  */
 export function buildPlaylist(
   reciter: Reciter,
-  segment: Segment,
+  /**
+   * مقطع واحد، أو مقاطع صفحة تعبر أكثر من سورة.
+   *
+   * ٥١ صفحة من ٦٠٤ تعبر سورة، فالصفحة قائمة مقاطع لا مقطعًا واحدًا.
+   * ووسّعنا هذه الدالة بدل أن نكتب لها نظيرة: منطق التكرار واحد، ولو
+   * تفرّع لاختلف سلوك الصفحة عن سلوك المدى بلا سبب.
+   */
+  segment: Segment | Segment[],
   repeat: number,
   scope: RepeatScope,
   /**
-   * هل يُسبَق المقطع ببسملة مُتلوّة؟
-   * يقرّره `opensWithSpokenBasmala` من نص الآيات نفسه، فلا تفترق
-   * التلاوة عن المكتوب على الشاشة.
+   * هل يُسبَق كل مقطع ببسملة مُتلوّة؟ قيمة واحدة للمقطع المفرد، أو
+   * قائمة بطول المقاطع. يقرّره النص لا المشغّل.
    */
-  withBasmala = false
+  withBasmala: boolean | boolean[] = false
 ): PlaylistItem[] {
+  const segments = Array.isArray(segment) ? segment : [segment];
+  const flags = Array.isArray(withBasmala)
+    ? withBasmala
+    : segments.map((_, i) => (i === 0 ? withBasmala : false));
+
   const times = clampRepeat(repeat);
   const items: PlaylistItem[] = [];
-  const ayahs: number[] = [];
-  for (let a = segment.from_ayah; a <= segment.to_ayah; a++) ayahs.push(a);
 
-  // البسملة تُتلى **مرة واحدة في أول القائمة** لا مع كل جولة تكرار:
-  // هي افتتاحية للسورة لا جزء من المقطع المحفوظ. ولو أُعيدت مع كل
-  // تكرار لسمعها الطالب عشر مرات في تمرين من عشر جولات.
-  if (withBasmala && ayahs.length)
-    items.push({
-      surah: segment.surah,
-      ayah: 0,
-      url: basmalaAudioUrl(reciter),
-      round: 1,
-      of: 1,
-      isBasmala: true,
-    });
+  type Unit = { surah: number; ayah: number; basmala: boolean };
+  const units: Unit[] = [];
+  segments.forEach((seg, i) => {
+    if (flags[i]) units.push({ surah: seg.surah, ayah: 0, basmala: true });
+    for (let a = seg.from_ayah; a <= seg.to_ayah; a++)
+      units.push({ surah: seg.surah, ayah: a, basmala: false });
+  });
+  const ayahUnits = units.filter((u) => !u.basmala);
+  if (!ayahUnits.length) return items;
 
-  const push = (ayah: number, round: number, of: number) =>
-    items.push({
-      surah: segment.surah,
-      ayah,
-      url: ayahAudioUrl(reciter, segment.surah, ayah),
+  const push = (u: Unit, round: number, of: number) => {
+    const item: PlaylistItem = {
+      surah: u.surah,
+      ayah: u.ayah,
+      url: u.basmala
+        ? basmalaAudioUrl(reciter)
+        : ayahAudioUrl(reciter, u.surah, u.ayah),
       round,
       of,
-    });
+    };
+    if (u.basmala) item.isBasmala = true;
+    items.push(item);
+  };
 
-  if (scope === "ayah") {
-    for (const a of ayahs) for (let r = 1; r <= times; r++) push(a, r, times);
+  // البسملة تُتلى **مرة واحدة** لا مع كل جولة تكرار: هي افتتاحية للسورة
+  // لا جزء من المقطع المحفوظ، ولو أُعيدت لسُمعت عشر مرات في تمرين من
+  // عشر جولات. وفي الصفحة العابرة تُتلى لكل سورة تبدأ فيها.
+  for (const b of units.filter((u) => u.basmala)) push(b, 1, 1);
+
+  if (scope === 'ayah') {
+    for (const u of ayahUnits) for (let r = 1; r <= times; r++) push(u, r, times);
   } else {
-    for (let r = 1; r <= times; r++) for (const a of ayahs) push(a, r, times);
+    for (let r = 1; r <= times; r++) for (const u of ayahUnits) push(u, r, times);
   }
   return items;
 }

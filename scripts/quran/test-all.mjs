@@ -35,12 +35,14 @@ run("npx", [
   "src/features/quran/engine/review.ts",
   "src/features/quran/engine/activities.ts",
   "src/features/quran/engine/planner.ts",
+  "src/features/quran/engine/pages.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",
   "--module", "esnext",
   "--target", "es2022",
   "--moduleResolution", "bundler",
+  "--resolveJsonModule",
   "--skipLibCheck",
 ]);
 
@@ -70,12 +72,23 @@ for (const f of readdirSync(`${OUT}/engine`)) {
       (m, a, spec, b) => (/\.(js|mjs|json)$/.test(spec) ? m : `${a}${spec}.js${b}`)
     )
   );
+  // ‏Node بصيغة ESM يطلب إعلانًا صريحًا لاستيراد JSON، والمحزّم لا
+  // يطلبه. نضيفه هنا للسبب نفسه: بيئة الاختبار تتكيّف مع المصدر،
+  // ولا يُشوَّه المصدر لأجلها.
+  writeFileSync(
+    p,
+    readFileSync(p, "utf8").replace(
+      /(from\s+["'][^"']+\.json["'])(?!\s*with)/g,
+      '$1 with { type: "json" }'
+    )
+  );
 }
 
 run("node", ["scripts/quran/test-normalize.mjs"]);
 run("node", ["scripts/quran/test-engine.mjs"]);
 run("node", ["scripts/quran/test-basmala.mjs"]);
 run("node", ["scripts/quran/test-phase2.mjs"]);
+run("node", ["scripts/quran/test-pages.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");

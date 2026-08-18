@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { Ayah, Reciter, StudyMode, Surah } from '../types';
+import type { Ayah, Reciter, Segment, StudyMode, Surah } from '../types';
 import { HIDE_LEVELS, LEVEL_LABEL, type HideLevel } from '../engine/hide';
 import { opensWithSpokenBasmala } from '../engine/basmala';
 import {
@@ -41,6 +41,11 @@ export default function StudyScreen({
   backHref,
   backLabel,
   lessonTitle,
+  segments: pageSegments,
+  heading,
+  subheading,
+  prevHref,
+  nextHref,
 }: {
   surah: Surah;
   ayahs: Ayah[];
@@ -53,6 +58,18 @@ export default function StudyScreen({
   backHref: string;
   backLabel: string;
   lessonTitle?: string;
+  /**
+   * مقاطع الصفحة حين تُفتح صفحة مصحف تعبر أكثر من سورة.
+   *
+   * تُترك فارغة في الحالة المعتادة فيُبنى المقطع من (السورة، من، إلى)
+   * كما كان. ووسّعنا الشاشة بدل أن نكتب لها نظيرة: كل ما بنيناه —
+   * التكرار والإخفاء والتدريب والمراجعة — يعمل على كليهما بلا فرع.
+   */
+  segments?: Segment[];
+  heading?: string;
+  subheading?: string;
+  prevHref?: string;
+  nextHref?: string;
 }) {
   const [mode, setMode] = useState<StudyMode>('read');
   const [hideLevel, setHideLevel] = useState<HideLevel>(0);
@@ -78,11 +95,20 @@ export default function StudyScreen({
   const playAyah = useRef<((ayah: number) => void) | null>(null);
 
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
+  /**
+   * المقاطع المعروضة. الصفحة قد تكون أكثر من مقطع، والمدى مقطع واحد.
+   * ويبقى `segment` مفتاحَ التقدّم والمراجعة — سطر واحد لكل ما يُفتح،
+   * فلا تتشظّى حالة الطالبة على مقاطع الصفحة.
+   */
+  const segments = pageSegments ?? [segment];
 
   // هل تُتلى بسملة قبل المقطع؟ يقرّره نصُّ الآيات لا المشغّل، ومن نفس
   // الدالة التي يعتمدها العرض — فلا تظهر البسملة مكتوبة ولا تُتلى،
   // ولا تُتلى ولا تُكتب.
-  const withBasmala = opensWithSpokenBasmala(ayahs);
+  // لكل مقطع بسملته: الصفحة العابرة تبدأ فيها سورة جديدة فتحتاجها
+  const basmalaFlags = segments.map((sg) =>
+    opensWithSpokenBasmala(ayahs.filter((a) => a.surah === sg.surah && a.ayah >= sg.from_ayah && a.ayah <= sg.to_ayah))
+  );
 
   // هل لمست الطالبة مستوى الإخفاء بنفسها؟
   //
@@ -158,12 +184,13 @@ export default function StudyScreen({
           </p>
         ) : null}
         <h1 className="font-[family-name:var(--font-cairo)] text-2xl font-extrabold text-[var(--q-ink)]">
-          سورة {surah.name_ar}
+          {heading ?? `سورة ${surah.name_ar}`}
         </h1>
         <p className="mt-1 text-[0.84rem] text-[var(--q-mute)]">
-          {span === 1
-            ? `الآية ${toArabic(from)}`
-            : `الآيات ${toArabic(from)} – ${toArabic(to)}`}
+          {subheading ??
+            (span === 1
+              ? `الآية ${toArabic(from)}`
+              : `الآيات ${toArabic(from)} – ${toArabic(to)}`)}
         </p>
       </header>
 
@@ -281,9 +308,9 @@ export default function StudyScreen({
         <section className="mb-5">
           <AudioBar
             reciter={reciter}
-            segment={segment}
+            segment={segments}
             onAyahChange={setActiveAyah}
-            withBasmala={withBasmala}
+            withBasmala={basmalaFlags}
             reciters={reciters}
             onReciterChange={changeReciter}
             playAyahRef={playAyah}
@@ -296,9 +323,9 @@ export default function StudyScreen({
         <section className="mb-5">
           <AudioBar
             reciter={reciter}
-            segment={segment}
+            segment={segments}
             onAyahChange={setActiveAyah}
-            withBasmala={withBasmala}
+            withBasmala={basmalaFlags}
             compact
           />
         </section>
@@ -338,27 +365,30 @@ export default function StudyScreen({
       )}
 
       {/* ── السابق / التالي ── */}
-      {(hasPrev || hasNext) && (
+      {(prevHref || nextHref || hasPrev || hasNext) && (
         <nav className="flex items-center justify-between gap-3">
-          {hasPrev ? (
+          {prevHref ?? hasPrev ? (
             <Link
-              href={`/quran/study/${surah.number}/${prevStart}/${from - 1}`}
+              href={prevHref ?? `/quran/study/${surah.number}/${prevStart}/${from - 1}`}
               className="tap rounded-2xl border border-[var(--q-line)] bg-white px-5 py-3 text-[0.88rem] font-bold text-[var(--q-ink)] transition hover:border-[#cfe0d5]"
             >
-              الآيات السابقة
+              {prevHref ? 'الصفحة السابقة' : 'الآيات السابقة'}
             </Link>
           ) : (
             <span />
           )}
-          {hasNext ? (
+          {nextHref ?? hasNext ? (
             <Link
-              href={`/quran/study/${surah.number}/${nextStart}/${Math.min(
-                surah.ayah_count,
-                nextStart + span - 1
-              )}`}
+              href={
+                nextHref ??
+                `/quran/study/${surah.number}/${nextStart}/${Math.min(
+                  surah.ayah_count,
+                  nextStart + span - 1
+                )}`
+              }
               className="tap rounded-2xl border border-[var(--q-line)] bg-white px-5 py-3 text-[0.88rem] font-bold text-[var(--q-ink)] transition hover:border-[#cfe0d5]"
             >
-              الآيات التالية
+              {nextHref ? 'الصفحة التالية' : 'الآيات التالية'}
             </Link>
           ) : (
             <span />

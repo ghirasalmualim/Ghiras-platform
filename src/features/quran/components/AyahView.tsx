@@ -39,8 +39,20 @@ export default function AyahView({
    *
    * ويجري **قبل** حساب الإخفاء، فلا تدخل كلمات البسملة في الحفظ الخفي
    * ولا تُزيح مواضع كلمات الآية الأولى.
+   *
+   * ⚠️ ويُفحص **كل آية أولى** لا الأولى في القائمة وحدها: صفحة المصحف
+   * قد تنتهي سورة في وسطها وتبدأ أخرى، فتحتاج بسملتها في موضعها. ولو
+   * فحصنا رأس القائمة فقط لظهرت بسملة السورة الثانية ملتصقة بآيتها.
    */
-  const { basmala, basmalaAyahNumber, ayahs } = splitOpeningBasmala(rawAyahs);
+  const blocks: { basmala: string | null; number: number | null; ayah: Ayah | null }[] =
+    rawAyahs.map((a) => {
+      const r = splitOpeningBasmala([a]);
+      return {
+        basmala: r.basmala,
+        number: r.basmalaAyahNumber,
+        ayah: r.ayahs[0] ?? null,
+      };
+    });
 
   const peek = (key: string) =>
     setPeeked((prev) => {
@@ -51,76 +63,81 @@ export default function AyahView({
     });
 
   return (
-    <>
-      {basmala ? <Basmala text={basmala} ayahNumber={basmalaAyahNumber} /> : null}
-      <div className="ayat" dir="rtl" lang="ar">
-        {ayahs.map((a) => {
-        const words = a.text_uthmani.split(/\s+/).filter(Boolean);
-        // البذرة رقم الآية: فيثبت الإخفاء عبر إعادة الرسم ولا يرتجف النص
-        const hidden = hiddenIndices(words.length, hideLevel, a.ayah);
-        const isActive = activeAyah === a.ayah;
+    <div className="ayat" dir="rtl" lang="ar">
+      {blocks.map((blk, bi) => (
+        <span key={blk.ayah?.ayah ?? `b${bi}`}>
+          {blk.basmala ? (
+            <Basmala text={blk.basmala} ayahNumber={blk.number} />
+          ) : null}
+          {blk.ayah ? renderAyah(blk.ayah) : null}
+        </span>
+      ))}
+    </div>
+  );
 
-        return (
-          <span
-            key={a.ayah}
-            className={isActive ? 'ayah-active' : undefined}
-            onClick={onAyahClick ? () => onAyahClick(a.ayah) : undefined}
-            role={onAyahClick ? 'button' : undefined}
-            tabIndex={onAyahClick ? 0 : undefined}
-            onKeyDown={
-              onAyahClick
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onAyahClick(a.ayah);
-                    }
+  function renderAyah(a: Ayah) {
+    const words = a.text_uthmani.split(/\s+/).filter(Boolean);
+    // البذرة رقم الآية: فيثبت الإخفاء عبر إعادة الرسم ولا يرتجف النص
+    const hidden = hiddenIndices(words.length, hideLevel, a.ayah);
+    const isActive = activeAyah === a.ayah;
+
+    return (
+      <span
+        className={isActive ? 'ayah-active' : undefined}
+        onClick={onAyahClick ? () => onAyahClick(a.ayah) : undefined}
+        role={onAyahClick ? 'button' : undefined}
+        tabIndex={onAyahClick ? 0 : undefined}
+        onKeyDown={
+          onAyahClick
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onAyahClick(a.ayah);
+                }
+              }
+            : undefined
+        }
+        aria-label={onAyahClick ? `الآية ${a.ayah}` : undefined}
+      >
+        {words.map((w, i) => {
+          const key = `${a.surah}:${a.ayah}:${i}`;
+          const isHidden = hidden.has(i);
+          const isPeeked = peeked.has(key);
+
+          if (!isHidden)
+            return <span key={key}>{w}{i < words.length - 1 ? ' ' : ''}</span>;
+
+          return (
+            <span key={key}>
+              <span
+                className={`hidden-word${isPeeked ? ' peek' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  peek(key);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    peek(key);
                   }
-                : undefined
-            }
-            aria-label={onAyahClick ? `الآية ${a.ayah}` : undefined}
-          >
-            {words.map((w, i) => {
-              const key = `${a.ayah}:${i}`;
-              const isHidden = hidden.has(i);
-              const isPeeked = peeked.has(key);
-
-              if (!isHidden)
-                return <span key={key}>{w}{i < words.length - 1 ? ' ' : ''}</span>;
-
-              return (
-                <span key={key}>
-                  <span
-                    className={`hidden-word${isPeeked ? ' peek' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      peek(key);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        peek(key);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    // القارئ الصوتي يسمع «كلمة مخفية» لا فراغًا مبهمًا،
-                    // ولا يسمع الكلمة نفسها فيُفسد التمرين.
-                    aria-label={isPeeked ? w : 'كلمة مخفية، اضغط لكشفها'}
-                  >
-                    {w}
-                  </span>
-                  {i < words.length - 1 ? ' ' : ''}
-                </span>
-              );
-            })}
-            <span className="ayah-no" aria-label={`آية ${a.ayah}`}>
-              {toArabic(a.ayah)}
+                }}
+                role="button"
+                tabIndex={0}
+                // القارئ الصوتي يسمع «كلمة مخفية» لا فراغًا مبهمًا،
+                // ولا يسمع الكلمة نفسها فيُفسد التمرين.
+                aria-label={isPeeked ? w : 'كلمة مخفية، اضغط لكشفها'}
+              >
+                {w}
+              </span>
+              {i < words.length - 1 ? ' ' : ''}
             </span>
-          </span>
           );
         })}
-      </div>
-    </>
-  );
+        <span className="ayah-no" aria-label={`آية ${a.ayah}`}>
+          {toArabic(a.ayah)}
+        </span>
+      </span>
+    );
+  }
 }
