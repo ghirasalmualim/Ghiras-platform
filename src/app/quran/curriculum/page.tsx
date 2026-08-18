@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getStages, getGrades } from '@/lib/supabase/data';
 import { getGradesWithLessons } from '@/features/quran/data/curriculum';
+import { getSurahs } from '@/features/quran/data/corpus';
 import CurriculumBrowser from '@/features/quran/components/CurriculumBrowser';
 
 /**
@@ -21,6 +22,16 @@ export default async function CurriculumPage() {
     stages.map(async (s) => ({ stage: s, grades: await getGrades(s.id) }))
   );
   const withLessons = await getGradesWithLessons();
+  const surahNames = getSurahs().map((s) => s.name_ar);
+
+  // لا نعرض مرحلة ليس فيها درس واحد. عرضها متاحةً ثم خذلان الطالبة
+  // بشاشة فارغة أسوأ من ألا تراها. والمتوسط سيظهر يوم تُدخل بياناته.
+  const visible = gradesByStage
+    .map(({ stage, grades }) => ({
+      stage,
+      grades: grades.filter((g) => withLessons.includes(g.slug)),
+    }))
+    .filter((s) => s.grades.length > 0);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-8">
@@ -40,10 +51,21 @@ export default async function CurriculumPage() {
         اختر صفك لتظهر لك دروس المقرر
       </p>
 
-      <CurriculumBrowser
-        stages={gradesByStage}
-        gradesWithLessons={withLessons}
-      />
+      {visible.length === 0 ? (
+        <div className="rounded-[1.5rem] border border-dashed border-[var(--q-line)] bg-white px-5 py-12 text-center">
+          <p className="mb-2 text-3xl" aria-hidden>📚</p>
+          <p className="mb-1.5 font-bold text-[var(--q-ink)]">ما أُدخل المنهج بعد</p>
+          <p className="text-[0.85rem] leading-relaxed text-[var(--q-mute)]">
+            وحتى ذلك الحين تقدرين تقرئين وتحفظين من{' '}
+            <Link href="/quran/browse" className="font-bold text-[var(--q-accent)] underline underline-offset-4">
+              القرآن الكريم
+            </Link>{' '}
+            مباشرة.
+          </p>
+        </div>
+      ) : (
+        <CurriculumBrowser stages={visible} surahNames={surahNames} />
+      )}
     </main>
   );
 }
