@@ -22,6 +22,7 @@ import {
   ayahCountOf,
   globalAyahNumber,
   buildPlaylist,
+  basmalaAudioUrl,
   clampRepeat,
 } from "../../.quran-test/engine/audio.js";
 import { hiddenIndices } from "../../.quran-test/engine/hide.js";
@@ -80,6 +81,35 @@ ok(
   clampRepeat(0) === 1 && clampRepeat(-4) === 1 && clampRepeat(500) === 99 &&
     clampRepeat(NaN) === 1,
   "التكرار المخصص يُقيَّد بين ١ و٩٩ ولا يقبل قيمة فاسدة"
+);
+
+// ── ٣ب) البسملة في قائمة التشغيل ────────────────────────────
+ok(
+  basmalaAudioUrl(reciter) === "https://x/y/1.mp3",
+  "رابط البسملة = الملف رقم ١ (بسملة الفاتحة، ٥٫٢ ثانية بصوت القارئ)"
+);
+
+const withB = buildPlaylist(reciter, seg, 5, "range", true);
+ok(
+  withB.length === 16 && withB[0].isBasmala === true && withB[1].ayah === 1,
+  `البسملة تتقدّم القائمة (${withB.length} عنصرًا بدل ١٥)`
+);
+ok(
+  withB.filter((i) => i.isBasmala).length === 1,
+  "البسملة تُتلى مرة واحدة لا مع كل جولة تكرار"
+);
+ok(
+  withB[0].ayah === 0,
+  "البسملة بلا رقم آية — فلا تُظلَّل ولا يُعرض لها رقم"
+);
+const withBAyah = buildPlaylist(reciter, seg, 3, "ayah", true);
+ok(
+  withBAyah.filter((i) => i.isBasmala).length === 1 && withBAyah[0].isBasmala,
+  "وكذلك في نطاق «آية آية»: بسملة واحدة في الأول"
+);
+ok(
+  buildPlaylist(reciter, seg, 5, "range", false).every((i) => !i.isBasmala),
+  "بلا بسملة إذا لم يطلبها النص (التوبة، أو مقطع من وسط السورة)"
 );
 
 // ── ٤) الرفض عند آية خارج السورة ────────────────────────────

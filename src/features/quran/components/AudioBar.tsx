@@ -32,12 +32,15 @@ export default function AudioBar({
   segment,
   onAyahChange,
   compact = false,
+  withBasmala = false,
 }: {
   reciter: Reciter;
   segment: Segment;
   /** يُبلّغ الشاشة بالآية الجارية لتظليلها. */
   onAyahChange?: (ayah: number | null) => void;
   compact?: boolean;
+  /** يُسبَق المقطع ببسملة مُتلوّة — يقرّره النص لا المشغّل. */
+  withBasmala?: boolean;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playlistRef = useRef<PlaylistItem[]>([]);
@@ -64,7 +67,7 @@ export default function AudioBar({
       if (next < list.length) {
         indexRef.current = next;
         setCurrent(list[next]);
-        onAyahChange?.(list[next].ayah);
+        onAyahChange?.(list[next].isBasmala ? null : list[next].ayah);
         el.src = list[next].url;
         void el.play().catch(() => stopAll());
       } else {
@@ -114,13 +117,20 @@ export default function AudioBar({
     const seg = fromAyah
       ? { surah: segment.surah, from_ayah: fromAyah, to_ayah: fromAyah }
       : segment;
-    const list = buildPlaylist(reciter, seg, repeat, fromAyah ? 'ayah' : scope);
+    // آية مفردة اختارها الطالب لا تُسبق ببسملة: هو داخل السورة لا في أولها
+    const list = buildPlaylist(
+      reciter,
+      seg,
+      repeat,
+      fromAyah ? 'ayah' : scope,
+      fromAyah ? false : withBasmala
+    );
     if (!list.length) return;
 
     playlistRef.current = list;
     indexRef.current = 0;
     setCurrent(list[0]);
-    onAyahChange?.(list[0].ayah);
+    onAyahChange?.(list[0].isBasmala ? null : list[0].ayah);
     el.src = list[0].url;
 
     // ‏.play() يُستدعى مباشرة داخل معالج اللمسة — شرط Safari
@@ -164,13 +174,15 @@ export default function AudioBar({
             {reciter.style ? ` · ${reciter.style}` : ''}
           </p>
           <p className="truncate text-[0.76rem] text-[var(--q-mute)]">
-            {current
-              ? `الآية ${toArabic(current.ayah)}${
-                  current.of > 1
-                    ? ` · التكرار ${toArabic(current.round)} من ${toArabic(current.of)}`
-                    : ''
-                }`
-              : 'جاهز'}
+            {!current
+              ? 'جاهز'
+              : current.isBasmala
+                ? 'البسملة'
+                : `الآية ${toArabic(current.ayah)}${
+                    current.of > 1
+                      ? ` · التكرار ${toArabic(current.round)} من ${toArabic(current.of)}`
+                      : ''
+                  }`}
           </p>
         </div>
 

@@ -54,6 +54,20 @@ export function ayahAudioUrl(reciter: Reciter, surah: number, ayah: number): str
   return `${reciter.base_url}/${globalAyahNumber(surah, ayah)}.mp3`;
 }
 
+/**
+ * رابط تلاوة البسملة.
+ *
+ * ملفات المصدر مرقّمة بالآيات، والبسملة في ١١٣ سورة ليست آية معدودة
+ * فلا ملف لها. لكنها **في الفاتحة آية**، ورقمها العام ١، فملفّها موجود
+ * ويحوي البسملة وحدها (٥٫٢ ثانية بصوت الحصري — مقيسة لا مفترَضة).
+ *
+ * فنستعملها بسملةً لأول أي سورة: نفس القارئ، ونفس الكلمات، ونفس
+ * المصدر المرخَّص. لا نُنشئ صوتًا ولا نقتطع من ملف.
+ */
+export function basmalaAudioUrl(reciter: Reciter): string {
+  return `${reciter.base_url}/1.mp3`;
+}
+
 /** خيارات التكرار المعروضة. «مخصص» يُدخله الطالب بنفسه. */
 export const REPEAT_PRESETS = [1, 3, 5, 7, 10] as const;
 
@@ -75,6 +89,8 @@ export type PlaylistItem = {
   /** الجولة الحالية من أصل `of` — لعرض «٢ من ٥» للطالب. */
   round: number;
   of: number;
+  /** البسملة الافتتاحية: ليست آية، فلا تُظلَّل ولا يُعرض لها رقم. */
+  isBasmala?: boolean;
 };
 
 /**
@@ -93,12 +109,31 @@ export function buildPlaylist(
   reciter: Reciter,
   segment: Segment,
   repeat: number,
-  scope: RepeatScope
+  scope: RepeatScope,
+  /**
+   * هل يُسبَق المقطع ببسملة مُتلوّة؟
+   * يقرّره `opensWithSpokenBasmala` من نص الآيات نفسه، فلا تفترق
+   * التلاوة عن المكتوب على الشاشة.
+   */
+  withBasmala = false
 ): PlaylistItem[] {
   const times = clampRepeat(repeat);
   const items: PlaylistItem[] = [];
   const ayahs: number[] = [];
   for (let a = segment.from_ayah; a <= segment.to_ayah; a++) ayahs.push(a);
+
+  // البسملة تُتلى **مرة واحدة في أول القائمة** لا مع كل جولة تكرار:
+  // هي افتتاحية للسورة لا جزء من المقطع المحفوظ. ولو أُعيدت مع كل
+  // تكرار لسمعها الطالب عشر مرات في تمرين من عشر جولات.
+  if (withBasmala && ayahs.length)
+    items.push({
+      surah: segment.surah,
+      ayah: 0,
+      url: basmalaAudioUrl(reciter),
+      round: 1,
+      of: 1,
+      isBasmala: true,
+    });
 
   const push = (ayah: number, round: number, of: number) =>
     items.push({

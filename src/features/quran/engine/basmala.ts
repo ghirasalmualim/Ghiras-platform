@@ -101,3 +101,18 @@ export function splitOpeningBasmala(ayahs: Ayah[]): BasmalaSplit {
     ayahs: [{ ...first, text_uthmani: rest }, ...ayahs.slice(1)],
   };
 }
+
+/**
+ * هل يفتتح هذا المقطع ببسملة **ليست آية معدودة**؟
+ *
+ * يستعمله المشغّل ليقرّر هل يسبق التلاوةَ ملفُّ بسملة أم لا. وهو نفس
+ * القرار الذي يتخذه العرض، مشتقًّا من نفس الدالة — فلا يمكن أن تظهر
+ * البسملة مكتوبة ولا تُتلى، ولا أن تُتلى ولا تُكتب.
+ *
+ * يُرجع false في الفاتحة عن قصد: البسملة فيها آية لها ملفها الصوتي
+ * ضمن الترقيم، فيكفي أن تُتلى في موضعها من قائمة التشغيل.
+ */
+export function opensWithSpokenBasmala(ayahs: Ayah[]): boolean {
+  const { basmala, basmalaAyahNumber } = splitOpeningBasmala(ayahs);
+  return basmala !== null && basmalaAyahNumber === null;
+}

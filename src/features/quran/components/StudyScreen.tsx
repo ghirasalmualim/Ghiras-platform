@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Ayah, Reciter, StudyMode, Surah } from '../types';
 import { HIDE_LEVELS, LEVEL_LABEL, type HideLevel } from '../engine/hide';
+import { opensWithSpokenBasmala } from '../engine/basmala';
 import { getSegmentProgress, isGuest, saveLastPosition, saveSegmentProgress } from '../data/progress';
 import AyahView from './AyahView';
 import AudioBar from './AudioBar';
@@ -44,6 +45,11 @@ export default function StudyScreen({
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
   const [guest, setGuest] = useState(false);
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
+
+  // هل تُتلى بسملة قبل المقطع؟ يقرّره نصُّ الآيات لا المشغّل، ومن نفس
+  // الدالة التي يعتمدها العرض — فلا تظهر البسملة مكتوبة ولا تُتلى،
+  // ولا تُتلى ولا تُكتب.
+  const withBasmala = opensWithSpokenBasmala(ayahs);
 
   // هل لمست الطالبة مستوى الإخفاء بنفسها؟
   //
@@ -235,6 +241,7 @@ export default function StudyScreen({
             reciter={reciter}
             segment={segment}
             onAyahChange={setActiveAyah}
+            withBasmala={withBasmala}
             compact={false}
           />
         </section>
@@ -246,6 +253,7 @@ export default function StudyScreen({
             reciter={reciter}
             segment={segment}
             onAyahChange={setActiveAyah}
+            withBasmala={withBasmala}
             compact
           />
         </section>
