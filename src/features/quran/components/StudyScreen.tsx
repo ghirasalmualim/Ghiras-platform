@@ -15,6 +15,8 @@ import {
 } from '../data/progress';
 import { getReciter } from '../engine/reciters';
 import AyahView from './AyahView';
+import PracticeCenter from './PracticeCenter';
+import GoalPlanner from './GoalPlanner';
 import AudioBar from './AudioBar';
 import { toArabic } from './ResumeCard';
 
@@ -66,6 +68,14 @@ export default function StudyScreen({
    * تعمل مع أي قارئ بلا سطر إضافي.
    */
   const [reciter, setReciter] = useState<Reciter>(defaultReciter);
+
+  /**
+   * مقبض تشغيل آية مفردة، يملؤه `AudioBar`.
+   *
+   * مركز التدريب يستعمله في «اسمع وحدّد» فيمرّ بمحرك الصوت نفسه —
+   * لا مشغّل ثانٍ لهذا النشاط، ولا احتمال لتداخل صوتين.
+   */
+  const playAyah = useRef<((ayah: number) => void) | null>(null);
 
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
 
@@ -276,6 +286,7 @@ export default function StudyScreen({
             withBasmala={withBasmala}
             reciters={reciters}
             onReciterChange={changeReciter}
+            playAyahRef={playAyah}
             compact={false}
           />
         </section>
@@ -292,6 +303,22 @@ export default function StudyScreen({
           />
         </section>
       )}
+
+      {/* ── مركز التدريب ──
+          في وضع الحفظ وحده: التدريب يأتي بعد الاستماع والتكرار
+          والإخفاء، لا قبلها. */}
+      {mode === 'memorize' ? (
+        <GoalPlanner segment={segment} surahName={surah.name_ar} />
+      ) : null}
+
+      {mode === 'memorize' ? (
+        <PracticeCenter
+          ayahs={ayahs}
+          segment={segment}
+          reciter={reciter}
+          onPlayAyah={(a) => playAyah.current?.(a)}
+        />
+      ) : null}
 
       {/* ── تلميح تسجيل الدخول — بلطف ومرة واحدة، وليس بابًا ── */}
       {guest && (

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getManifest, getSurahs } from '@/features/quran/data/corpus';
 import ResumeCard from '@/features/quran/components/ResumeCard';
+import DailyTaskCard from '@/features/quran/components/DailyTaskCard';
 
 /**
  * بوابة قسم القرآن — أول شاشة.
@@ -40,6 +41,9 @@ export default function QuranGate() {
         </p>
       </header>
 
+      {/* مهمة اليوم — للمسجَّلة فقط، وتختفي تمامًا إن لم يكن عليها شيء */}
+      <DailyTaskCard surahNames={surahNames} />
+
       <ResumeCard surahNames={surahNames} />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -56,6 +60,24 @@ export default function QuranGate() {
           desc="اقرأ واحفظ وراجع من سور القرآن الكريم"
         />
       </div>
+
+      {/* مراجعة اليوم — مدخل هادئ، والصفحة نفسها تتكفّل بحال الزائرة */}
+      <Link
+        href="/quran/review"
+        className="tap mt-4 flex items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--q-line)] bg-white px-5 py-4 transition hover:border-[#cfe0d5]"
+      >
+        <span>
+          <span className="block font-[family-name:var(--font-cairo)] text-[1rem] font-extrabold text-[var(--q-ink)]">
+            🔄 مراجعة اليوم
+          </span>
+          <span className="mt-0.5 block text-[0.8rem] text-[var(--q-mute)]">
+            ما يحتاج تثبيتًا اليوم فقط
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-xl text-[var(--q-accent)]">
+          ←
+        </span>
+      </Link>
 
       {/* الإسناد — واجب ترخيصي، وموضعه هنا هادئ وقابل للوصول */}
       <footer className="mt-12 text-center">

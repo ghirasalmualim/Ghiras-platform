@@ -35,6 +35,7 @@ export default function AudioBar({
   withBasmala = false,
   reciters = [],
   onReciterChange,
+  playAyahRef,
 }: {
   reciter: Reciter;
   segment: Segment;
@@ -46,6 +47,14 @@ export default function AudioBar({
   /** القرّاء المتاحون. أقل من اثنين ← لا يُعرض اختيار أصلًا. */
   reciters?: Reciter[];
   onReciterChange?: (id: string) => void;
+  /**
+   * يضع فيه المشغّل دالةَ تشغيل آية مفردة.
+   *
+   * مركز التدريب يحتاج تشغيل آية في «اسمع وحدّد»، ويجب أن يمرّ بهذا
+   * المشغّل نفسه لا بمشغّل ثانٍ: عنصر <audio> واحد هو ما يمنع تداخل
+   * صوتين، وهو أيضًا شرط Safari لاستمرار التشغيل.
+   */
+  playAyahRef?: React.MutableRefObject<((ayah: number) => void) | null>;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playlistRef = useRef<PlaylistItem[]>([]);
@@ -151,6 +160,15 @@ export default function AudioBar({
         stopAll();
       });
   }
+
+  // نُسلّم دالة التشغيل للأعلى بعد تعريفها
+  useEffect(() => {
+    if (!playAyahRef) return;
+    playAyahRef.current = (ayah: number) => start(ayah);
+    return () => {
+      playAyahRef.current = null;
+    };
+  });
 
   function toggle() {
     const el = audioRef.current;

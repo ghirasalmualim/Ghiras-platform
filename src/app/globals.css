@@ -470,3 +470,55 @@ body {
     animation: none !important;
   }
 }
+
+/* ── مركز التدريب ──
+   ⚠️ القاعدة الحاكمة هنا بصرية لا برمجية: الخيار الخاطئ في هذه
+   الأنشطة **كلام قرآني صحيح في غير موضعه** — لا شيء مخترع. فلو عُرض
+   بخط المصحف وعلى أرضيته لبدا آيةً، ولالتبس على الطفل ما ليس ملتبسًا.
+   فالنص القرآني وحده يبقى بخط أميري على أرضية بيضاء، والخيارات في
+   بطاقات رمادية بخط الواجهة، ويفصلهما عنوان صريح. */
+.quran .practice-card {
+  background: #f7f9f7;
+  border: 1px solid var(--q-line);
+  border-radius: 1.25rem;
+}
+
+/* بطاقة إجابة — بخط الواجهة لا بخط المصحف، وبأرضية مغايرة */
+.quran .answer-card {
+  font-family: var(--font-tajawal), sans-serif;
+  font-size: 1.05rem;
+  line-height: 2;
+  text-align: center;
+  background: #fff;
+  border: 1.5px solid var(--q-line);
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  width: 100%;
+}
+.quran .answer-card:hover:not(:disabled) {
+  border-color: #cfe0d5;
+}
+.quran .answer-card:disabled {
+  cursor: default;
+}
+.quran .answer-card.is-right {
+  border-color: var(--q-accent);
+  background: var(--q-accent-soft);
+}
+.quran .answer-card.is-wrong {
+  border-color: #e6c9bd;
+  background: #fdf4f0;
+}
+
+/* الفراغ في «الكلمة المفقودة» — يبقى في موضع الكلمة تمامًا */
+.quran .blank {
+  display: inline-block;
+  min-width: 3.5em;
+  border-bottom: 3px solid var(--q-accent);
+  vertical-align: middle;
+  margin: 0 0.15em;
+}
+.quran .blank.filled {
+  border-bottom-color: #cfe0d5;
+}

@@ -29,6 +29,7 @@ import {
   rankActivities,
 } from '../../.quran-test/engine/activities.js';
 import { buildPlan, todaySlice, buildDailyTask, welcomeBack, dueToday } from '../../.quran-test/engine/planner.js';
+import { splitOpeningBasmala } from '../../.quran-test/engine/basmala.js';
 
 let failed = 0;
 const ok = (cond, label, extra = '') => {
@@ -251,6 +252,26 @@ ok(
   `كل نص معروض (${allTexts.size} نصًا) موجود حرفيًا في ملف المصحف`,
   notFound.slice(0, 2).join(' | ')
 );
+
+// ١٧ب) البسملة لا تتسرّب إلى الأنشطة
+// عيب أمسكناه بالتجربة: خيار «اسمع وحدّد» كان يعرض البسملة ملتصقة
+// بالآية الأولى بينما الصوت يتلو الآية وحدها.
+const withBasmala = seg(112, 1, 4);
+const split = splitOpeningBasmala(withBasmala).ayahs;
+const bas = 'بِسْمِ';
+ok(
+  withBasmala[0].text_uthmani.startsWith(bas) && !split[0].text_uthmani.startsWith(bas),
+  'النص المخزَّن يبدأ بالبسملة، والمعروض للأنشطة لا يبدأ بها'
+);
+let leaked = false;
+for (let s4 = 0; s4 < 10; s4++) {
+  for (const q of buildSession({ segment: split }, {}, s4, 4)) {
+    for (const c of q.choices) if (c.text.startsWith(bas)) leaked = true;
+    if (q.kind === 'missing_word' && q.words.some((w) => w.startsWith(bas))) leaked = true;
+    if (q.kind === 'next_ayah' && q.promptText.startsWith(bas)) leaked = true;
+  }
+}
+ok(!leaked, 'ولا كلمة من البسملة تظهر في سؤال ولا خيار ولا تُخفى');
 
 // ١٨) الحتمية
 const a1 = JSON.stringify(buildSession(src, {}, 42, 4));
