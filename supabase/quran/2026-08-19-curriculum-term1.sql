@@ -1,8 +1,8 @@
 -- ============================================================
--- Quran curriculum — primary stage, term 1
+-- Quran curriculum — primary and middle stages, term 1
 --
 -- GENERATED. Do not edit by hand.
--- Source of truth: src/features/quran/curriculum/primary-term1.ts
+-- Source of truth: src/features/quran/curriculum/{primary,middle}-term1.ts
 -- Regenerate with: npm run quran:curriculum
 --
 -- Extracted from the official Ministry of Education distribution plan
@@ -13,8 +13,9 @@
 -- ayah range; the text always comes from the platform's reference
 -- mushaf. The curriculum tells us WHICH verses, never WHAT they say.
 --
--- Only primary grades (grade-1..grade-5) and only term 1. Middle and
--- secondary stages are deliberately absent and await their own data.
+-- Primary (grade-1..5) and middle (grade-6..9), term 1 only.
+-- Secondary is deliberately absent: the owner deferred it and may drop
+-- it, so no secondary stage and no grades 10-12 exist in Ghiras.
 --
 -- Safe to run more than once: a unique key on
 -- (grade_slug, term, sort_order) turns re-runs into updates.
@@ -28,7 +29,7 @@ create unique index if not exists quran_curriculum_lesson_key
   on public.quran_curriculum_lesson (grade_slug, term, sort_order);
 
 
--- ── grade-1 — 33 lessons ──
+-- ── grade-1 (primary) — 33 lessons ──
 insert into public.quran_curriculum_lesson
   (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
 values
@@ -74,7 +75,7 @@ on conflict (grade_slug, term, sort_order) do update set
   requirement = excluded.requirement,
   is_visible  = excluded.is_visible;
 
--- ── grade-2 — 16 lessons ──
+-- ── grade-2 (primary) — 16 lessons ──
 insert into public.quran_curriculum_lesson
   (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
 values
@@ -103,7 +104,7 @@ on conflict (grade_slug, term, sort_order) do update set
   requirement = excluded.requirement,
   is_visible  = excluded.is_visible;
 
--- ── grade-3 — 26 lessons ──
+-- ── grade-3 (primary) — 26 lessons ──
 insert into public.quran_curriculum_lesson
   (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
 values
@@ -142,7 +143,7 @@ on conflict (grade_slug, term, sort_order) do update set
   requirement = excluded.requirement,
   is_visible  = excluded.is_visible;
 
--- ── grade-4 — 24 lessons ──
+-- ── grade-4 (primary) — 24 lessons ──
 insert into public.quran_curriculum_lesson
   (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
 values
@@ -179,7 +180,7 @@ on conflict (grade_slug, term, sort_order) do update set
   requirement = excluded.requirement,
   is_visible  = excluded.is_visible;
 
--- ── grade-5 — 24 lessons ──
+-- ── grade-5 (primary) — 24 lessons ──
 insert into public.quran_curriculum_lesson
   (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
 values
@@ -207,6 +208,97 @@ values
   ('primary', 'grade-5', 1, 'مراجعة سورة الإنسان (أ–ب)', 76, 1, 11, 'review', 22, true),
   ('primary', 'grade-5', 1, 'مراجعة عامة: سورة المرسلات', 77, 1, 50, 'review', 23, true),
   ('primary', 'grade-5', 1, 'مراجعة عامة: سورة الإنسان', 76, 1, 11, 'review', 24, true)
+on conflict (grade_slug, term, sort_order) do update set
+  stage_slug  = excluded.stage_slug,
+  title       = excluded.title,
+  surah       = excluded.surah,
+  from_ayah   = excluded.from_ayah,
+  to_ayah     = excluded.to_ayah,
+  requirement = excluded.requirement,
+  is_visible  = excluded.is_visible;
+
+-- ── grade-6 (middle) — 10 lessons ──
+insert into public.quran_curriculum_lesson
+  (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
+values
+  ('middle', 'grade-6', 1, 'الرسول ﷺ النذير', 74, 1, 10, 'memorize', 1, true),
+  ('middle', 'grade-6', 1, 'الجحود يزيل النعم', 74, 11, 17, 'memorize', 2, true),
+  ('middle', 'grade-6', 1, 'عاقبة المستهزئين بالدين', 74, 18, 30, 'memorize', 3, true),
+  ('middle', 'grade-6', 1, 'الملائكة جنود الله تعالى', 74, 31, 31, 'memorize', 4, true),
+  ('middle', 'grade-6', 1, 'التقدم بالطاعة والتأخر بالمعصية', 74, 32, 38, 'memorize', 5, true),
+  ('middle', 'grade-6', 1, 'تحاور أهل الجنة مع أهل النار', 74, 39, 47, 'memorize', 6, true),
+  ('middle', 'grade-6', 1, 'القرآن عظة وذكرى', 74, 48, 56, 'memorize', 7, true),
+  ('middle', 'grade-6', 1, 'حياة القلوب بذكر الله تعالى', 73, 1, 4, 'memorize', 8, true),
+  ('middle', 'grade-6', 1, 'حياة القلوب بذكر الله تعالى', 73, 5, 9, 'memorize', 9, true),
+  ('middle', 'grade-6', 1, 'الصبر على الدعوة', 73, 10, 14, 'memorize', 10, true)
+on conflict (grade_slug, term, sort_order) do update set
+  stage_slug  = excluded.stage_slug,
+  title       = excluded.title,
+  surah       = excluded.surah,
+  from_ayah   = excluded.from_ayah,
+  to_ayah     = excluded.to_ayah,
+  requirement = excluded.requirement,
+  is_visible  = excluded.is_visible;
+
+-- ── grade-7 (middle) — 10 lessons ──
+insert into public.quran_curriculum_lesson
+  (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
+values
+  ('middle', 'grade-7', 1, 'نوح عليه السلام النذير المبين', 71, 1, 4, 'memorize', 1, true),
+  ('middle', 'grade-7', 1, 'لا يأس مع الدعوة إلى الله تعالى', 71, 5, 7, 'memorize', 2, true),
+  ('middle', 'grade-7', 1, 'لا يأس مع الدعوة إلى الله تعالى', 71, 8, 9, 'memorize', 3, true),
+  ('middle', 'grade-7', 1, 'الاستغفار من سبل الرزق', 71, 10, 14, 'memorize', 4, true),
+  ('middle', 'grade-7', 1, 'التفكر في آيات الله تعالى عبادة', 71, 15, 20, 'memorize', 5, true),
+  ('middle', 'grade-7', 1, 'الشكوى إلى الله تعالى من أسباب النجاة', 71, 21, 24, 'memorize', 6, true),
+  ('middle', 'grade-7', 1, 'إهلاك العصاة في الدنيا والآخرة', 71, 25, 28, 'memorize', 7, true),
+  ('middle', 'grade-7', 1, 'تهديد الله ووعيده للمكذبين', 70, 1, 7, 'memorize', 8, true),
+  ('middle', 'grade-7', 1, 'وصف القرآن الكريم ليوم القيامة', 70, 8, 18, 'memorize', 9, true),
+  ('middle', 'grade-7', 1, 'علاج القرآن لطبيعة الإنسان', 70, 19, 28, 'memorize', 10, true)
+on conflict (grade_slug, term, sort_order) do update set
+  stage_slug  = excluded.stage_slug,
+  title       = excluded.title,
+  surah       = excluded.surah,
+  from_ayah   = excluded.from_ayah,
+  to_ayah     = excluded.to_ayah,
+  requirement = excluded.requirement,
+  is_visible  = excluded.is_visible;
+
+-- ── grade-8 (middle) — 10 lessons ──
+insert into public.quran_curriculum_lesson
+  (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
+values
+  ('middle', 'grade-8', 1, 'الرسول ﷺ على خلق عظيم', 68, 1, 7, 'memorize', 1, true),
+  ('middle', 'grade-8', 1, 'دفاع الله تعالى عن أهل الحق', 68, 8, 12, 'memorize', 2, true),
+  ('middle', 'grade-8', 1, 'دفاع الله تعالى عن أهل الحق', 68, 13, 16, 'memorize', 3, true),
+  ('middle', 'grade-8', 1, 'قصة أصحاب البستان', 68, 17, 27, 'memorize', 4, true),
+  ('middle', 'grade-8', 1, 'قصة أصحاب البستان', 68, 28, 33, 'memorize', 5, true),
+  ('middle', 'grade-8', 1, 'الله تعالى أحكم الحاكمين', 68, 34, 39, 'memorize', 6, true),
+  ('middle', 'grade-8', 1, 'الله تعالى أحكم الحاكمين', 68, 40, 43, 'memorize', 7, true),
+  ('middle', 'grade-8', 1, 'استدراج الله تعالى للكافرين', 68, 44, 47, 'memorize', 8, true),
+  ('middle', 'grade-8', 1, 'صاحب الحوت', 68, 48, 52, 'memorize', 9, true),
+  ('middle', 'grade-8', 1, 'تطبيقات على أحكام النون الساكنة والتنوين (الإظهار الحلقي - الإدغام)', 68, 1, 52, 'read', 10, true)
+on conflict (grade_slug, term, sort_order) do update set
+  stage_slug  = excluded.stage_slug,
+  title       = excluded.title,
+  surah       = excluded.surah,
+  from_ayah   = excluded.from_ayah,
+  to_ayah     = excluded.to_ayah,
+  requirement = excluded.requirement,
+  is_visible  = excluded.is_visible;
+
+-- ── grade-9 (middle) — 9 lessons ──
+insert into public.quran_curriculum_lesson
+  (stage_slug, grade_slug, term, title, surah, from_ayah, to_ayah, requirement, sort_order, is_visible)
+values
+  ('middle', 'grade-9', 1, 'آية الكرسي أعظم آية في كتاب الله', 2, 255, 255, 'memorize', 1, true),
+  ('middle', 'grade-9', 1, 'توجيه رقيق للنبي ﷺ', 66, 1, 3, 'memorize', 2, true),
+  ('middle', 'grade-9', 1, 'الله ينصر أولياءه', 66, 4, 5, 'memorize', 3, true),
+  ('middle', 'grade-9', 1, 'الوقاية من النار', 66, 6, 7, 'memorize', 4, true),
+  ('middle', 'grade-9', 1, 'التوبة النصوح', 66, 8, 9, 'memorize', 5, true),
+  ('middle', 'grade-9', 1, 'أمثال وعبر', 66, 10, 10, 'memorize', 6, true),
+  ('middle', 'grade-9', 1, 'أمثال وعبر', 66, 11, 12, 'memorize', 7, true),
+  ('middle', 'grade-9', 1, 'إيمان ودعاء — خواتيم سورة البقرة', 2, 285, 285, 'memorize', 8, true),
+  ('middle', 'grade-9', 1, 'إيمان ودعاء — خواتيم سورة البقرة', 2, 286, 286, 'memorize', 9, true)
 on conflict (grade_slug, term, sort_order) do update set
   stage_slug  = excluded.stage_slug,
   title       = excluded.title,
