@@ -1,0 +1,17 @@
+{
+  "source_name": "Tanzil Project",
+  "source_url": "https://tanzil.net",
+  "edition": "Tanzil Quran Text (Uthmani, Version 1.1)",
+  "riwayah": "hafs",
+  "licence": "Creative Commons Attribution 3.0",
+  "licence_url": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution_required": true,
+  "text_file": "quran-uthmani.txt",
+  "text_sha256": "bf4f57b968d03f4131c070b1e285da9be0e0a108a21c910e872801ca273312c8",
+  "surah_count": 114,
+  "ayah_count": 6236,
+  "word_count": 77881,
+  "imported_at": "2026-08-18",
+  "reviewed_by": null,
+  "reviewed_at": null
+}

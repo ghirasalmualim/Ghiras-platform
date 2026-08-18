@@ -1,4 +1,24 @@
 -- ============================================================
+-- ⛔️ SUPERSEDED — DO NOT RUN THIS FILE.
+--
+-- Kept for history only. This file was written and approved in Phase 0
+-- but was never executed against any database.
+--
+-- In Phase 1 the Quran text moved out of Postgres and into the repo as
+-- a file (src/features/quran/corpus/), because the text never changes:
+-- Git shows any altered word as a red line in review, the published
+-- SHA-256 is computed over a file anyone can download and compare, and
+-- the attribution travels in the same commit as the text it describes.
+-- No table gives those guarantees.
+--
+-- The live schema is:  supabase/quran/2026-08-19-phase1.sql
+-- It holds only what genuinely changes: reciters, learner progress,
+-- and curriculum lessons.
+--
+-- Running this file would create six tables that nothing reads.
+-- ============================================================
+
+-- ============================================================
 -- Quran section — Phase 0: reference corpus tables
 --
 -- These tables hold the Quranic text. They are READ-ONLY to the

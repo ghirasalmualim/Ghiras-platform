@@ -454,6 +454,9 @@ export default function AdminPanel() {
           <p className="text-sm text-ink/55">إدارة المشتركين والتفعيل المجاني</p>
         </div>
         <div className="flex-1" />
+        <Link href="/admin/quran" className="rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-bold text-sm px-4 py-2 transition">
+          🌿 منهج القرآن
+        </Link>
         <Link href="/" className="rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-bold text-sm px-4 py-2 transition">
           ← الرئيسية
         </Link>

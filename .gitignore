@@ -21,3 +21,6 @@ npm-debug.log*
 yarn-error.log*
 .vercel
 *.tsbuildinfo
+
+# مجلد مؤقت لاختبارات قسم القرآن
+.quran-test

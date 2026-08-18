@@ -1,103 +1,157 @@
 /**
- * قراءة نص المصحف من قاعدة البيانات — المرحلة ٠.
+ * قراءة نص المصحف — المرحلة ١.
  *
- * ⚠️ هذا الملف للقراءة فقط، ولا يحتوي — ولا يجوز أن يحتوي — أي دالة
- * تكتب في جداول القرآن. الكتابة الوحيدة المسموحة تأتي من سكربت
- * الاستيراد بمفتاح service_role، وقاعدة البيانات نفسها تمنع غير ذلك:
- * لا سياسة كتابة لأي دور، وصلاحيات الكتابة منزوعة عن anon و authenticated.
+ * النص يعيش **ملفًا في المستودع** لا سطورًا في قاعدة بيانات:
+ * `corpus/quran-uthmani.txt` كما نزل من Tanzil حرفًا بحرف، بترويسة
+ * ترخيصه كما هي. وبجانبه `manifest.json` يحمل مصدره وترخيصه وبصمته.
  *
- * لا يوجد بديل احتياطي (fallback) هنا خلافًا لـ src/lib/supabase/data.ts.
- * هناك، سقوط القاعدة يعني عرض قائمة مواد قديمة — أمر محتمل. وهنا يعني
- * عرض نص قرآني من مصدر غير موثّق، وهذا لا يُحتمل. فإن تعذّرت القراءة
- * نُرجع فراغًا وتُظهر الواجهة خطأً صريحًا.
+ * لماذا ملف لا جدول:
+ *   • النص لا يتغيّر أبدًا، فوضعه في جدول يُحدَّث نوع من الادّعاء.
+ *   • في Git تُرى أي كلمة تتغيّر كسطر أحمر في المراجعة. لا يوجد جدول
+ *     يعطي هذا الضمان.
+ *   • البصمة المنشورة تُحسب على ملف موجود فعلًا، فيقدر أي أحد أن ينزّل
+ *     من Tanzil ويقارن بنفسه.
+ *   • الإسناد يسافر في نفس الالتزام مع النص، فلا ينفصل عنه أبدًا.
+ *
+ * ⚠️ للخادم فقط. النص كامل ١٫٣ ميغابايت ولا يُرسل إلى المتصفح إطلاقًا؛
+ * الصفحات تُصيّر على الخادم ولا يصل المتصفح إلا الآيات المطلوبة.
+ *
+ * ⚠️ للقراءة فقط. لا توجد هنا — ولا يجوز أن توجد — أي دالة تكتب في النص.
  */
 
-import { createClient } from "@supabase/supabase-js";
-import type { Ayah, CorpusMeta, QuranWord, Surah } from "../types";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import path from "node:path";
+import type { Ayah, CorpusManifest, QuranWord, Surah } from "../types";
+import { normalizeForComparison, splitWords } from "../engine/normalize.mjs";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-function client() {
-  if (!url || !anonKey) return null;
-  return createClient(url, anonKey);
+if (typeof window !== "undefined") {
+  throw new Error("corpus.ts للخادم فقط — لا يُستورد في مكوّن عميل.");
 }
 
-/** فهرس السور الـ١١٤ مرتّبًا بترتيب المصحف. */
-export async function getSurahs(): Promise<Surah[]> {
-  const sb = client();
-  if (!sb) return [];
-  const { data, error } = await sb
-    .from("quran_surah")
-    .select("*")
-    .order("number");
-  if (error) return [];
-  return (data ?? []) as Surah[];
-}
+const DIR = path.join(process.cwd(), "src", "features", "quran", "corpus");
 
-export async function getSurah(number: number): Promise<Surah | null> {
-  const sb = client();
-  if (!sb) return null;
-  const { data, error } = await sb
-    .from("quran_surah")
-    .select("*")
-    .eq("number", number)
-    .maybeSingle();
-  if (error) return null;
-  return (data as Surah) ?? null;
-}
+type Loaded = {
+  manifest: CorpusManifest;
+  surahs: Surah[];
+  /** الآيات مفهرسة بالسورة: ayahsBySurah[3] = آيات سورة آل عمران مرتّبة. */
+  ayahsBySurah: Map<number, Ayah[]>;
+};
 
-/** آيات سورة كاملة مرتّبة. المدى اختياري لعرض مقطع محدد. */
-export async function getAyahs(
-  surah: number,
-  from?: number,
-  to?: number
-): Promise<Ayah[]> {
-  const sb = client();
-  if (!sb) return [];
-  let q = sb.from("quran_ayah").select("*").eq("surah", surah);
-  if (from !== undefined) q = q.gte("ayah", from);
-  if (to !== undefined) q = q.lte("ayah", to);
-  const { data, error } = await q.order("ayah");
-  if (error) return [];
-  return (data ?? []) as Ayah[];
+let cache: Loaded | null = null;
+
+/**
+ * يُحمَّل مرة واحدة لكل نسخة تشغيل ثم يبقى في الذاكرة.
+ *
+ * التحقق من البصمة يجري هنا في كل إقلاع، لا مرة واحدة عند الاستيراد.
+ * فلو تغيّر الملف بأي سبب — تحرير بالغلط، أو ضرر في النقل — يتوقف
+ * القسم كله بخطأ صريح بدل أن يعرض نصًا لا نعرف مصدره.
+ */
+function load(): Loaded {
+  if (cache) return cache;
+
+  const manifest = JSON.parse(
+    readFileSync(path.join(DIR, "manifest.json"), "utf8")
+  ) as CorpusManifest;
+
+  const raw = readFileSync(path.join(DIR, manifest.text_file), "utf8");
+  const sha = createHash("sha256").update(raw, "utf8").digest("hex");
+  if (sha !== manifest.text_sha256) {
+    throw new Error(
+      `بصمة نص المصحف لا تطابق المُعلنة.\n` +
+        `  المتوقع: ${manifest.text_sha256}\n` +
+        `  الموجود: ${sha}\n` +
+        `النص تغيّر عن المصدر الموثّق — القسم متوقف حتى يُراجَع.`
+    );
+  }
+
+  const surahs = JSON.parse(
+    readFileSync(path.join(DIR, "surahs.json"), "utf8")
+  ) as Surah[];
+
+  // صيغة Tanzil:  سورة|آية|نص   والأسطر التي تبدأ بـ # ترويسة الترخيص.
+  const ayahsBySurah = new Map<number, Ayah[]>();
+  let count = 0;
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const a = t.indexOf("|");
+    const b = t.indexOf("|", a + 1);
+    if (a === -1 || b === -1) continue;
+    const surah = Number(t.slice(0, a));
+    const ayah = Number(t.slice(a + 1, b));
+    if (!Number.isInteger(surah) || !Number.isInteger(ayah)) continue;
+    const list = ayahsBySurah.get(surah) ?? [];
+    list.push({ surah, ayah, text_uthmani: t.slice(b + 1) });
+    ayahsBySurah.set(surah, list);
+    count++;
+  }
+
+  if (count !== manifest.ayah_count)
+    throw new Error(`عدد الآيات ${count} بدل ${manifest.ayah_count}`);
+  if (surahs.length !== manifest.surah_count)
+    throw new Error(`عدد السور ${surahs.length} بدل ${manifest.surah_count}`);
+  for (const s of surahs) {
+    const got = ayahsBySurah.get(s.number)?.length ?? 0;
+    if (got !== s.ayah_count)
+      throw new Error(`السورة ${s.number}: ${got} آية بدل ${s.ayah_count}`);
+  }
+
+  cache = { manifest, surahs, ayahsBySurah };
+  return cache;
 }
 
 /**
- * كلمات مقطع من آيات، مرتّبة بالسورة ثم الآية ثم الموضع.
- * الترتيب مقصود ولا يجوز لأي مستهلك أن يخلطه.
+ * بيانات الإسناد: المصدر والطبعة والرواية والترخيص والبصمة.
+ * تُقرأ من نفس الملف الذي يحمل النص، فلا يمكن أن تنفصل عنه ولا أن تصف
+ * نسخة غير النسخة المعروضة فعلًا.
  */
-export async function getWords(
-  surah: number,
-  from: number,
-  to: number
-): Promise<QuranWord[]> {
-  const sb = client();
-  if (!sb) return [];
-  const { data, error } = await sb
-    .from("quran_word")
-    .select("*")
-    .eq("surah", surah)
-    .gte("ayah", from)
-    .lte("ayah", to)
-    .order("ayah")
-    .order("position");
-  if (error) return [];
-  return (data ?? []) as QuranWord[];
+export function getManifest(): CorpusManifest {
+  return load().manifest;
+}
+
+/** فهرس السور الـ١١٤ بترتيب المصحف. */
+export function getSurahs(): Surah[] {
+  return load().surahs;
+}
+
+export function getSurah(number: number): Surah | null {
+  return load().surahs.find((s) => s.number === number) ?? null;
 }
 
 /**
- * سجل النص المعتمد حاليًا: مصدره وترخيصه وبصمته ومن راجعه.
- * تعرضه صفحة «مصدر النص» ليطّلع عليه أي معلم أو ولي أمر.
+ * آيات سورة، أو مقطعًا منها. المدى شامل للطرفين.
+ * تُرجع نسخة جديدة حتى لا يعدّل مستهلكٌ الذاكرة المشتركة.
  */
-export async function getCurrentCorpusMeta(): Promise<CorpusMeta | null> {
-  const sb = client();
-  if (!sb) return null;
-  const { data, error } = await sb
-    .from("quran_corpus_meta")
-    .select("*")
-    .eq("is_current", true)
-    .maybeSingle();
-  if (error) return null;
-  return (data as CorpusMeta) ?? null;
+export function getAyahs(surah: number, from?: number, to?: number): Ayah[] {
+  const all = load().ayahsBySurah.get(surah);
+  if (!all) return [];
+  const start = from ?? 1;
+  const end = to ?? all.length;
+  return all.filter((a) => a.ayah >= start && a.ayah <= end).map((a) => ({ ...a }));
+}
+
+/**
+ * كلمات مقطع، مرتّبة بالآية ثم الموضع.
+ *
+ * تُشتق من النص وقت الطلب لا تُخزَّن: مصدرها الوحيد `text_uthmani`،
+ * والاشتقاق حتمي فلا فائدة من تخزينه، ولا خطر من انحرافه.
+ *
+ * `position` يبدأ من ١، والترتيب جزء أصيل من البيانات: لا يخلطه أي
+ * مستهلك، ولا يوجد في المنصة نشاط يعيد ترتيب كلمات الآية.
+ */
+export function getWords(surah: number, from: number, to: number): QuranWord[] {
+  const out: QuranWord[] = [];
+  for (const a of getAyahs(surah, from, to)) {
+    splitWords(a.text_uthmani).forEach((w, i) =>
+      out.push({
+        surah: a.surah,
+        ayah: a.ayah,
+        position: i + 1,
+        text_uthmani: w,
+        text_normalized: normalizeForComparison(w),
+      })
+    );
+  }
+  return out;
 }

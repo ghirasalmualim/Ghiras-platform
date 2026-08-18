@@ -1,9 +1,39 @@
 /**
- * أنواع قسم القرآن — المرحلة ٠.
+ * أنواع قسم القرآن.
  *
- * تعكس جداول `supabase/quran/2026-08-18-phase0-corpus.sql` حرفيًا.
- * أي تغيير هنا يجب أن يقابله تغيير هناك، والعكس.
+ * مصدران لا ثالث لهما:
+ *   • النص الثابت — ملفات `corpus/` في المستودع (السور، الآيات، البصمة).
+ *   • ما يتغيّر فعلًا — جداول `supabase/quran/2026-08-19-phase1.sql`
+ *     (القرّاء، تقدّم الطالبة، دروس المنهج).
+ *
+ * أي تغيير هنا يقابله تغيير هناك، والعكس.
  */
+
+/**
+ * بطاقة تعريف النسخة المعروضة: مصدرها وترخيصها وبصمتها.
+ *
+ * تُقرأ من `corpus/manifest.json` الذي يجاور ملف النص في نفس المجلد
+ * ونفس الالتزام. صفحة الإسناد تعرض هذه القيم لا نصًا مكتوبًا بأيدينا،
+ * حتى لا يبقى الإسناد يصف نسخة بينما المعروض نسخة أخرى.
+ */
+export type CorpusManifest = {
+  source_name: string;
+  source_url: string;
+  edition: string;
+  riwayah: string;
+  licence: string;
+  licence_url: string;
+  /** الترخيص يوجب ذكر المصدر — انظر README القسم ١. */
+  attribution_required: boolean;
+  text_file: string;
+  text_sha256: string;
+  surah_count: number;
+  ayah_count: number;
+  word_count: number;
+  imported_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+};
 
 /** سورة من فهرس المصحف. */
 export type Surah = {
@@ -19,15 +49,16 @@ export type Surah = {
 /**
  * آية.
  *
- * `text_uthmani` هو النص المرجعي، وهو **الوحيد** الذي يُعرض للمستخدم.
- * `text_simple` نسخة المقارنة كما وردت من المصدر نفسه (لا نشتقّها نحن)،
- * تُستعمل في البحث ولا تُعرض.
+ * `text_uthmani` هو النص المرجعي والوحيد المخزَّن والوحيد المعروض.
+ *
+ * لا نحتفظ بنسخة مبسّطة إلى جانبه: كل ما يحتاجه البحث والمقارنة
+ * يُشتقّ منه وقت الطلب عبر `engine/normalize.mjs`، والاشتقاق حتمي.
+ * نسخةٌ ثانية مخزَّنة تعني نصّين قد يفترقان يومًا، والقرآن لا يحتمل ذلك.
  */
 export type Ayah = {
   surah: number;
   ayah: number;
   text_uthmani: string;
-  text_simple: string;
 };
 
 /**
@@ -64,32 +95,57 @@ export type Reciter = {
   is_active: boolean;
 };
 
-/** ملف صوتي لآية بصوت قارئ. */
-export type AyahAudio = {
-  reciter_id: string;
+/** مقطع من المصحف: سورة ومدى آيات. وحدة العمل في القراءة والحفظ والمنهج. */
+export type Segment = {
   surah: number;
-  ayah: number;
-  url: string;
-  duration_ms: number | null;
+  from_ayah: number;
+  to_ayah: number;
 };
 
-/** سجل نزاهة النص: بصمة كل استيراد ومن راجعه. */
-export type CorpusMeta = {
-  id: number;
-  source_name: string;
-  source_url: string;
-  edition: string;
-  riwayah: string;
-  licence: string;
-  uthmani_sha256: string;
-  simple_sha256: string;
-  surah_count: number;
-  ayah_count: number;
-  word_count: number;
-  imported_at: string;
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  is_current: boolean;
+/** أوضاع شاشة الدراسة الثلاثة في المرحلة ١. */
+export type StudyMode = "read" | "listen" | "memorize";
+
+/** حالة مقطع عند الطالبة. */
+export type SegmentStatus = "new" | "learning" | "memorized";
+
+/**
+ * تقدّم الطالبة في مقطع.
+ * `hide_level` مستوى الإخفاء الذي بلغته في الحفظ الخفي (٠ = النص كامل).
+ */
+export type SegmentProgress = Segment & {
+  status: SegmentStatus;
+  hide_level: number;
+  updated_at: string;
+};
+
+/** آخر موضع وقفت عنده الطالبة، لتُستأنف القراءة من مكانها. */
+export type LastPosition = {
+  surah: number;
+  ayah: number;
+  updated_at: string;
+};
+
+/** نوع المطلوب في درس المنهج. */
+export type LessonRequirement = "read" | "memorize" | "review";
+
+/**
+ * درس من المنهج الدراسي.
+ *
+ * البيانات تُدخلها المعلمة من محرر الإدارة. لا نضع نحن أي مقرر من عندنا
+ * ولا نخمّنه — المنهج مرجعه وزارة التربية، والتخمين فيه ضرر لا نفع فيه.
+ */
+export type CurriculumLesson = {
+  id: string;
+  stage_slug: string;
+  grade_slug: string;
+  term: number;
+  title: string;
+  surah: number;
+  from_ayah: number;
+  to_ayah: number;
+  requirement: LessonRequirement;
+  sort_order: number;
+  is_visible: boolean;
 };
 
 /**

@@ -78,6 +78,29 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
             ←
           </div>
         </button>
+
+        {/* ── الكرت الثالث: القرآن الكريم ──
+            رابط مباشر لا زر لوحة: القسم له بوابته الخاصة، وفتح لوحة
+            هنا يضيف خطوة بلا فائدة. ومجاني بالكامل. */}
+        <Link className="main q" href="/quran">
+          <div>
+            <div className="ico">🌿</div>
+            <h2>
+              القرآن الكريم
+              <span className="tag free">مجاني</span>
+            </h2>
+            <p>اقرأ واستمع واحفظ، على مهلك</p>
+            <div className="chips">
+              <span className="chip">منهجي الدراسي</span>
+              <span className="chip">قراءة</span>
+              <span className="chip">استماع وتكرار</span>
+              <span className="chip">حفظ</span>
+            </div>
+          </div>
+          <div className="arrow" aria-hidden="true">
+            ←
+          </div>
+        </Link>
       </div>
 
       {/* ── لوحة الألعاب ── */}
