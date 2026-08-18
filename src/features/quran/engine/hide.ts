@@ -20,6 +20,8 @@
  */
 
 /** مستويات الإخفاء: ٠ = النص كامل … ٥ = كل الكلمات مخفية. */
+import { seededRandom } from './random.mjs';
+
 export const HIDE_LEVELS = [0, 1, 2, 3, 4, 5] as const;
 export type HideLevel = (typeof HIDE_LEVELS)[number];
 
@@ -43,24 +45,6 @@ export const LEVEL_LABEL: Record<HideLevel, string> = {
 };
 
 /**
- * مولّد أرقام شبه عشوائي ببذرة ثابتة (mulberry32).
- *
- * نحتاج اختيارًا يبدو عشوائيًا لكنه **يتكرّر بنفسه**: لو استعملنا
- * Math.random لتغيّرت الكلمات المخفية مع كل إعادة رسم، فيرى الطالب
- * النص يرتجف أمامه ولا يستقر على شيء يحفظه.
- */
-function seeded(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/**
  * يختار مواضع الكلمات المخفية في آية.
  *
  * @param wordCount عدد كلمات الآية
@@ -82,7 +66,7 @@ export function hiddenIndices(
   // ترتيب ثابت للكلمات، ثم نأخذ منه بادئة بطول النسبة المطلوبة.
   // البادئة هي سرّ التراكم: كل مستوى يأخذ ما أخذه سابقه وزيادة.
   const order = Array.from({ length: wordCount }, (_, i) => i);
-  const rand = seeded(seed);
+  const rand = seededRandom(seed);
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];

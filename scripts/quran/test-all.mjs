@@ -10,7 +10,14 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { writeFileSync, rmSync, mkdirSync, copyFileSync } from "node:fs";
+import {
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  mkdirSync,
+  copyFileSync,
+} from "node:fs";
 
 const OUT = ".quran-test";
 const run = (cmd, args) =>
@@ -25,6 +32,9 @@ run("npx", [
   "src/features/quran/engine/audio.ts",
   "src/features/quran/engine/hide.ts",
   "src/features/quran/engine/basmala.ts",
+  "src/features/quran/engine/review.ts",
+  "src/features/quran/engine/activities.ts",
+  "src/features/quran/engine/planner.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",
@@ -39,14 +49,33 @@ writeFileSync(`${OUT}/package.json`, JSON.stringify({ type: "module" }) + "\n");
 
 // المطبِّع بصيغة .mjs أصلًا، وtsc لا ينسخ ما لا يترجمه. ننسخه كما هو
 // فنختبر نفس الملف الذي يستعمله التطبيق لا نسخة مترجمة منه.
-copyFileSync(
-  "src/features/quran/engine/normalize.mjs",
-  `${OUT}/engine/normalize.mjs`
-);
+for (const f of ["normalize.mjs", "random.mjs"])
+  copyFileSync(`src/features/quran/engine/${f}`, `${OUT}/engine/${f}`);
+
+/**
+ * إضافة لاحقة .js للمسارات النسبية في المخرجات.
+ *
+ * المشروع يُبنى بمحزّم (Next.js) يقبل `./review` بلا لاحقة، فمصدرنا
+ * مكتوب بهذه الصيغة. أما Node بصيغة ESM فيطلب المسار كاملًا. ولأننا
+ * نشغّل مخرجات tsc خامًا هنا لا محزَّمة، نصلح الفرق في هذه الخطوة
+ * وحدها — ولا نغيّر المصدر لأجل بيئة الاختبار.
+ */
+for (const f of readdirSync(`${OUT}/engine`)) {
+  if (!f.endsWith(".js")) continue;
+  const p = `${OUT}/engine/${f}`;
+  writeFileSync(
+    p,
+    readFileSync(p, "utf8").replace(
+      /(from\s+["'])(\.\.?\/[^"']+?)(["'])/g,
+      (m, a, spec, b) => (/\.(js|mjs|json)$/.test(spec) ? m : `${a}${spec}.js${b}`)
+    )
+  );
+}
 
 run("node", ["scripts/quran/test-normalize.mjs"]);
 run("node", ["scripts/quran/test-engine.mjs"]);
 run("node", ["scripts/quran/test-basmala.mjs"]);
+run("node", ["scripts/quran/test-phase2.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");
