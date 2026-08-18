@@ -438,6 +438,9 @@ export default function AdminPanel() {
           const endLabel = end === Infinity ? null : fmt(new Date(end).toISOString());
           const endSoon = end !== Infinity && end - Date.now() <= 30 * DAY;
           const activeTools = TOOL_COLS.filter((c) => stillValid(tools[r.id]?.[c] ?? null));
+          // نشطة خلال آخر ٧ أيام — مؤشّر سريع لمن يستفيد من اشتراكه فعلًا
+          const activeRecently =
+            !!r.last_active && Date.now() - new Date(r.last_active).getTime() <= 7 * DAY;
           return (
             <div key={r.id} className="card-3d p-5">
               {/* السطر المضغوط: اسم وحالة وأقرب انتهاء — والتفاصيل تنفتح بالضغط */}
@@ -452,9 +455,9 @@ export default function AdminPanel() {
                   <span className="block text-sm text-ink/55 truncate" dir="ltr" style={{ textAlign: 'right' }}>
                     {r.phone || r.username || '—'}
                   </span>
-                  {/* يُسجَّل عند تسجيل الدخول (touch_last_active) — أي أنه آخر دخول لا آخر تصفّح */}
-                  <span className="block text-xs text-ink/40 mt-0.5">
-                    آخر دخول: {r.last_active ? `${fmt(r.last_active)} (${sinceLabel(r.last_active)})` : 'لم تدخل بعد'}
+                  {/* يُحدَّث عند الدخول وعند استخدام المنصة (touch_activity، مخنوق بساعة) */}
+                  <span className={`block text-xs mt-0.5 ${activeRecently ? 'text-sage-dark font-bold' : 'text-ink/40'}`}>
+                    آخر نشاط: {r.last_active ? `${fmt(r.last_active)} (${sinceLabel(r.last_active)})` : 'لم تدخل بعد'}
                   </span>
                 </span>
                 <span className="flex items-center gap-1.5 flex-wrap justify-end text-xs font-bold">

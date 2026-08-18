@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Tajawal, Cairo } from 'next/font/google';
+import ActivityPing from '@/components/ActivityPing';
 import './globals.css';
 
 const tajawal = Tajawal({
@@ -46,6 +47,8 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className={`${tajawal.variable} ${cairo.variable}`}>
       <body className="font-tajawal bg-cream text-ink antialiased min-h-dvh">
         {children}
+        {/* تسجيل نشاط المعلمة — مخنوق بساعة، ولا يعرض شيئًا */}
+        <ActivityPing />
       </body>
     </html>
   );
