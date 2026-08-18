@@ -32,6 +32,16 @@ type Cat = {
 /** صلاحية كل أداة مدفوعة — تُقرأ من profiles مباشرة (الأدمِن يقرأ الكل بحكم RLS) */
 type ToolState = Record<string, string | null>;
 
+/** صف صلاحية خام من جدول permissions */
+type Perm = {
+  id: string;
+  user_id: string;
+  scope: string;
+  stage_id: string | null;
+  grade_id: string | null;
+  subject_id: string | null;
+};
+
 const TOOL_COLS = [
   'gradebook_until',
   'attendance_until',
@@ -55,6 +65,7 @@ const TABS: { key: TabKey; label: string }[] = [
 export default function AdminPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [tools, setTools] = useState<Record<string, ToolState>>({});
+  const [perms, setPerms] = useState<Record<string, Perm[]>>({});
   const [cat, setCat] = useState<Cat[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -96,6 +107,20 @@ export default function AdminPanel() {
         map[rec.id] = rec;
       }
       setTools(map);
+    }
+
+    // تفاصيل الصلاحيات — الملخّص القادم من admin_list_users يقول «subject»
+    // بلا تحديد أي مادة أو صف. سياسة «own permissions read» تتيح للأدمِن قراءة
+    // الجدول كاملًا، فنفكّ المعرّفات إلى أسماء عبر الكتالوج.
+    const { data: pdata } = await supabase
+      .from('permissions')
+      .select('id, user_id, scope, stage_id, grade_id, subject_id');
+    if (pdata) {
+      const map: Record<string, Perm[]> = {};
+      for (const p of pdata as unknown as Perm[]) {
+        (map[p.user_id] = map[p.user_id] || []).push(p);
+      }
+      setPerms(map);
     }
 
     setLoading(false);
@@ -239,6 +264,17 @@ export default function AdminPanel() {
   };
 
   const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString('ar-KW') : '—');
+
+  /** «قبل ٣ أيام» — أوضح من التاريخ وحده عند تصفّح قائمة طويلة */
+  const sinceLabel = (s: string | null) => {
+    if (!s) return '';
+    const days = Math.floor((Date.now() - new Date(s).getTime()) / 86400000);
+    if (days <= 0) return 'اليوم';
+    if (days === 1) return 'أمس';
+    if (days < 30) return `قبل ${days} يومًا`;
+    const months = Math.floor(days / 30);
+    return months === 1 ? 'قبل شهر' : `قبل ${months} أشهر`;
+  };
   const stillValid = (s: string | null) => !!s && new Date(s) > new Date();
 
   const stages = Array.from(new Map(cat.map((c) => [c.stage_id, c.stage_name])).entries()).map(([id, name]) => ({ id, name }));
@@ -254,6 +290,33 @@ export default function AdminPanel() {
       if (!list.some((s) => s.id === c.subject_id)) list.push({ id: c.subject_id, name: c.subject_name || '' });
     }
   }
+
+  // خرائط الأسماء من الكتالوج — لتحويل معرّفات الصلاحيات إلى نص مفهوم
+  const stageName: Record<string, string> = {};
+  const gradeName: Record<string, string> = {};
+  const subjectName: Record<string, string> = {};
+  const subjectGrade: Record<string, string> = {};
+  for (const c of cat) {
+    stageName[c.stage_id] = c.stage_name;
+    if (c.grade_id) gradeName[c.grade_id] = c.grade_name || '';
+    if (c.subject_id) {
+      subjectName[c.subject_id] = c.subject_name || '';
+      if (c.grade_id) subjectGrade[c.subject_id] = c.grade_name || '';
+    }
+  }
+
+  /** نص مقروء لصلاحية واحدة: «العلوم · الصف الخامس» بدل «subject» */
+  const permLabel = (p: Perm): string => {
+    if (p.scope === 'all') return 'وصول كامل — كل المواد';
+    if (p.scope === 'stage') return `كل ${stageName[p.stage_id || ''] || 'المرحلة'}`;
+    if (p.scope === 'grade') return `${gradeName[p.grade_id || ''] || 'صف'} — كل المواد`;
+    if (p.scope === 'subject') {
+      const s = subjectName[p.subject_id || ''] || 'مادة';
+      const g = subjectGrade[p.subject_id || ''];
+      return g ? `${s} · ${g}` : s;
+    }
+    return p.scope;
+  };
 
   /** أقرب تاريخ انتهاء لهذا الحساب (المحتوى أو أي أداة) — أساس الترتيب والفلترة */
   const nearestEnd = (r: Row): number => {
@@ -389,6 +452,10 @@ export default function AdminPanel() {
                   <span className="block text-sm text-ink/55 truncate" dir="ltr" style={{ textAlign: 'right' }}>
                     {r.phone || r.username || '—'}
                   </span>
+                  {/* يُسجَّل عند تسجيل الدخول (touch_last_active) — أي أنه آخر دخول لا آخر تصفّح */}
+                  <span className="block text-xs text-ink/40 mt-0.5">
+                    آخر دخول: {r.last_active ? `${fmt(r.last_active)} (${sinceLabel(r.last_active)})` : 'لم تدخل بعد'}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5 flex-wrap justify-end text-xs font-bold">
                   {r.status === 'suspended' ? (
@@ -426,7 +493,22 @@ export default function AdminPanel() {
                   <span className={`px-2 py-0.5 rounded-full ${gbOk ? 'bg-gold-light text-gold-dark' : 'bg-gray-50 text-ink/50 border border-gray-200'}`}>
                     الدفتر: {gbOk ? 'حتى ' + fmt(r.gradebook_until) : 'مقفول'}
                   </span>
-                  {r.access ? <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">صلاحيات: {r.access}</span> : null}
+                </div>
+
+                {/* الصلاحيات مفصّلة بالاسم — أي مادة وأي صف بالضبط */}
+                <div className="mt-2.5">
+                  <div className="text-xs font-bold text-ink/45 mb-1">الصلاحيات</div>
+                  {(perms[r.id] || []).length === 0 ? (
+                    <span className="text-sm text-ink/45">لا توجد صلاحيات على المحتوى</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {(perms[r.id] || []).map((p) => (
+                        <span key={p.id} className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 text-xs font-bold border border-blue-100">
+                          {permLabel(p)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
