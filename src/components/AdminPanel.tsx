@@ -29,14 +29,48 @@ type Cat = {
   subject_name: string | null;
 };
 
+/** صلاحية كل أداة مدفوعة — تُقرأ من profiles مباشرة (الأدمِن يقرأ الكل بحكم RLS) */
+type ToolState = Record<string, string | null>;
+
+const TOOL_COLS = [
+  'gradebook_until',
+  'attendance_until',
+  'head_records_until',
+  'adventure_until',
+  'multiplication_until',
+  'workshops_until',
+] as const;
+
+type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'all', label: 'الكل' },
+  { key: 'active', label: 'فعّالات' },
+  { key: 'soon', label: 'تنتهي خلال ٣٠ يومًا' },
+  { key: 'expired', label: 'منتهية' },
+  { key: 'suspended', label: 'موقوفة' },
+  { key: 'none', label: 'بلا اشتراك' },
+];
+
 export default function AdminPanel() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [tools, setTools] = useState<Record<string, ToolState>>({});
   const [cat, setCat] = useState<Cat[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [q, setQ] = useState('');
+  const [tab, setTab] = useState<TabKey>('all');
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [sel, setSel] = useState<Record<string, { target?: string; subject?: string }>>({});
+
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +83,21 @@ export default function AdminPanel() {
     } else {
       setRows((data as Row[]) || []);
     }
+
+    // حالة الأدوات المدفوعة — تُقرأ من profiles مباشرة.
+    // سياسة «own profile read» تسمح للأدمِن بقراءة كل الملفات، فلا حاجة لدالة جديدة.
+    // فشلها لا يعطّل اللوحة: تظهر الحسابات بلا شارات الأدوات فقط.
+    const { data: tdata } = await supabase
+      .from('profiles')
+      .select(['id', ...TOOL_COLS].join(','));
+    if (tdata) {
+      const map: Record<string, ToolState> = {};
+      for (const rec of tdata as unknown as (ToolState & { id: string })[]) {
+        map[rec.id] = rec;
+      }
+      setTools(map);
+    }
+
     setLoading(false);
   }, []);
 
@@ -206,6 +255,31 @@ export default function AdminPanel() {
     }
   }
 
+  /** أقرب تاريخ انتهاء لهذا الحساب (المحتوى أو أي أداة) — أساس الترتيب والفلترة */
+  const nearestEnd = (r: Row): number => {
+    const dates = [r.sub_end, ...TOOL_COLS.map((c) => tools[r.id]?.[c] ?? null)]
+      .filter(Boolean)
+      .map((d) => new Date(d as string).getTime())
+      .filter((t) => !Number.isNaN(t) && t > Date.now());
+    return dates.length ? Math.min(...dates) : Infinity;
+  };
+
+  const hasAnything = (r: Row): boolean =>
+    Boolean(r.sub_end) || TOOL_COLS.some((c) => Boolean(tools[r.id]?.[c]));
+
+  const DAY = 86400000;
+  const matchesTab = (r: Row): boolean => {
+    if (tab === 'all') return true;
+    if (tab === 'suspended') return r.status === 'suspended';
+    if (tab === 'none') return !hasAnything(r);
+    const end = nearestEnd(r);
+    const anyValid = end !== Infinity;
+    if (tab === 'active') return r.status !== 'suspended' && anyValid;
+    if (tab === 'soon') return r.status !== 'suspended' && anyValid && end - Date.now() <= 30 * DAY;
+    if (tab === 'expired') return hasAnything(r) && !anyValid;
+    return true;
+  };
+
   const filtered = rows.filter(
     (r) =>
       !q ||
@@ -214,7 +288,26 @@ export default function AdminPanel() {
       (r.phone || '').includes(q) ||
       (r.email || '').includes(q)
   );
-  const teachers = filtered.filter((r) => r.role !== 'admin');
+  const teachers = filtered
+    .filter((r) => r.role !== 'admin')
+    .filter(matchesTab)
+    // الأقرب انتهاءً أولًا، فتطفو التجديدات المستحقّة إلى أعلى القائمة
+    .sort((a, b) => nearestEnd(a) - nearestEnd(b));
+
+  const tabCount = (k: TabKey) =>
+    rows.filter((r) => r.role !== 'admin').filter((r) => {
+      const save = tab;
+      void save;
+      if (k === 'all') return true;
+      if (k === 'suspended') return r.status === 'suspended';
+      if (k === 'none') return !hasAnything(r);
+      const end = nearestEnd(r);
+      const anyValid = end !== Infinity;
+      if (k === 'active') return r.status !== 'suspended' && anyValid;
+      if (k === 'soon') return r.status !== 'suspended' && anyValid && end - Date.now() <= 30 * DAY;
+      if (k === 'expired') return hasAnything(r) && !anyValid;
+      return true;
+    }).length;
 
   const selCls = 'rounded-lg border border-sage/30 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-sage';
 
@@ -245,6 +338,29 @@ export default function AdminPanel() {
         <span className="text-sm text-ink/55 font-bold">{loading ? 'جارٍ التحميل…' : `${teachers.length} حساب`}</span>
       </div>
 
+      {/* تبويبات الفلترة — ضغطة واحدة توصل للمجموعة المطلوبة */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {TABS.map((t) => {
+          const on = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`rounded-full text-sm font-bold px-3.5 py-1.5 border transition ${
+                on
+                  ? 'bg-sage-dark border-sage-dark text-white'
+                  : 'bg-white border-sage/30 text-ink/70 hover:border-sage'
+              }`}
+            >
+              {t.label}
+              <span className={`ms-1.5 text-xs ${on ? 'text-white/80' : 'text-ink/45'}`}>
+                {tabCount(t.key)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {msg && <p className="mt-4 rounded-xl bg-gold-light/70 text-gold-dark text-sm font-bold px-4 py-3 text-center">{msg}</p>}
 
       <div className="mt-5 space-y-3">
@@ -252,10 +368,48 @@ export default function AdminPanel() {
           const contentOk = r.status === 'active' && stillValid(r.sub_end) && (r.access || '').length > 0;
           const gbOk = r.status !== 'suspended' && stillValid(r.gradebook_until);
           const isBusy = busy === r.id;
+          const isOpen = openIds.has(r.id);
           const sv = sel[r.id] || {};
           const gid = sv.target && sv.target.startsWith('grade:') ? sv.target.slice(6) : '';
+          const end = nearestEnd(r);
+          const endLabel = end === Infinity ? null : fmt(new Date(end).toISOString());
+          const endSoon = end !== Infinity && end - Date.now() <= 30 * DAY;
+          const activeTools = TOOL_COLS.filter((c) => stillValid(tools[r.id]?.[c] ?? null));
           return (
             <div key={r.id} className="card-3d p-5">
+              {/* السطر المضغوط: اسم وحالة وأقرب انتهاء — والتفاصيل تنفتح بالضغط */}
+              <button
+                onClick={() => toggleOpen(r.id)}
+                className="w-full flex items-center gap-3 text-right"
+                aria-expanded={isOpen}
+              >
+                <span className={`text-ink/40 text-lg transition-transform ${isOpen ? 'rotate-90' : ''}`}>‹</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-extrabold text-ink truncate">{r.full_name || '—'}</span>
+                  <span className="block text-sm text-ink/55 truncate" dir="ltr" style={{ textAlign: 'right' }}>
+                    {r.phone || r.username || '—'}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1.5 flex-wrap justify-end text-xs font-bold">
+                  {r.status === 'suspended' ? (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700">موقوف</span>
+                  ) : endLabel ? (
+                    <span className={`px-2 py-0.5 rounded-full ${endSoon ? 'bg-gold-light text-gold-dark' : 'bg-sage-light text-sage-deep'}`}>
+                      حتى {endLabel}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-gray-50 text-ink/45 border border-gray-200">بلا اشتراك</span>
+                  )}
+                  {activeTools.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                      {activeTools.length} أدوات
+                    </span>
+                  )}
+                </span>
+              </button>
+
+              {!isOpen ? null : (
+              <div className="mt-4 pt-4 border-t border-sage/15">
               <div className="flex-1 min-w-[220px]">
                 <div className="font-extrabold text-ink text-lg">{r.full_name || '—'}</div>
                 <div className="text-sm text-ink/60 mt-0.5" dir="ltr" style={{ textAlign: 'right' }}>
@@ -344,10 +498,16 @@ export default function AdminPanel() {
               <div className="mt-3 pt-3 border-t border-sage/15">
                 <div className="text-xs font-bold text-ink/45 mb-2">الأدوات المدفوعة</div>
                 <div className="flex flex-wrap gap-2">
-                  {TOOLS.map((t) => (
-                    <span key={t.key} className="inline-flex items-center rounded-lg border border-sage/25 bg-white overflow-hidden">
+                  {TOOLS.map((t) => {
+                    const until = tools[r.id]?.[`${t.key}_until`] ?? null;
+                    const on = stillValid(until);
+                    return (
+                    <span key={t.key} className={`inline-flex items-center rounded-lg border overflow-hidden ${on ? 'border-sage/50 bg-sage-light/40' : 'border-sage/25 bg-white'}`}>
                       <span className="px-2.5 py-1.5 text-sm font-bold text-ink/75">
                         {t.emoji} {t.label}
+                        <span className={`ms-1.5 text-xs font-extrabold ${on ? 'text-sage-deep' : 'text-ink/40'}`}>
+                          {on ? `حتى ${fmt(until)}` : 'مقفل'}
+                        </span>
                       </span>
                       <button disabled={isBusy} onClick={() => setTool(r.id, t.key, t.label, 6)}
                         title={`منح ${t.label} ٦ أشهر`}
@@ -360,7 +520,8 @@ export default function AdminPanel() {
                         −
                       </button>
                     </span>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -383,6 +544,8 @@ export default function AdminPanel() {
                 </button>
                 {isBusy && <span className="text-sm text-ink/50 self-center">جارٍ…</span>}
               </div>
+              </div>
+              )}
             </div>
           );
         })}
