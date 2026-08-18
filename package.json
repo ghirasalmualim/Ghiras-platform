@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:quran": "node scripts/quran/test-all.mjs",
-    "quran:curriculum": "node scripts/quran/build-curriculum-sql.mjs"
+    "quran:curriculum": "node scripts/quran/build-curriculum-sql.mjs",
+    "quran:reciter": "node scripts/quran/verify-reciter.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
