@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
+import AdminLink from '@/components/AdminLink';
 import { getStages } from '@/lib/supabase/data';
 
 export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين مؤقت للسرعة
@@ -24,6 +25,9 @@ export default async function HomePage() {
         >
           دخول
         </Link>
+
+        {/* يظهر للأدمِن وحده — يفحص الهوية في المتصفح فلا يكسر التخزين المؤقت */}
+        <AdminLink />
       </header>
 
       <section className="flex-1 flex flex-col items-center px-5 pt-10 pb-10 text-center">

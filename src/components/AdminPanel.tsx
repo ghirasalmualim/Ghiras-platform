@@ -147,6 +147,33 @@ export default function AdminPanel() {
     act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'gradebook' }), 'تم سحب الدفتر');
   };
 
+  // ── الأدوات المدفوعة ──
+  // كل أداة لها عمود صلاحية مستقل في profiles. كانت اللوحة تدير الدفتر وحده،
+  // فبقية الأدوات كانت تُفعَّل بأمر SQL يدوي. admin_set_tool تمنح وتسحب لأي منها.
+  // الدفتر مستثنى عمدًا: له زرّاه القائمان أعلاه عبر admin_grant، وتُركا كما هما
+  // حتى لا نغيّر مسارًا يعمل منذ شهور.
+  const TOOLS: { key: string; label: string; emoji: string }[] = [
+    { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
+    { key: 'head_records', label: 'سجلات رئيس القسم', emoji: '🗂️' },
+    { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
+    { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
+    { key: 'workshops', label: 'الورش التعليمية', emoji: '🎓' },
+  ];
+
+  const setTool = (id: string, tool: string, label: string, months: number) => {
+    const q =
+      months > 0
+        ? `منح «${label}» لهذا الحساب ٦ أشهر؟`
+        : `سحب «${label}» من هذا الحساب؟`;
+    if (!confirm(q)) return;
+    const supabase = createClient();
+    act(
+      id,
+      () => supabase.rpc('admin_set_tool', { p_user: id, p_tool: tool, p_months: months }),
+      months > 0 ? `تم منح ${label} ٦ أشهر ✅` : `تم سحب ${label}`
+    );
+  };
+
   const suspend = (id: string) => {
     if (!confirm('إيقاف هذا الحساب؟ لن يتمكن من الدخول للمحتوى.')) return;
     const supabase = createClient();
@@ -311,6 +338,34 @@ export default function AdminPanel() {
                   className="rounded-lg border border-red-300 bg-white hover:bg-red-50 text-red-700 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   🧹 سحب كل الصلاحيات
                 </button>
+              </div>
+
+              {/* الأدوات المدفوعة الأخرى — كل أداة باشتراكها المستقل */}
+              <div className="mt-3 pt-3 border-t border-sage/15">
+                <div className="text-xs font-bold text-ink/45 mb-2">الأدوات المدفوعة</div>
+                <div className="flex flex-wrap gap-2">
+                  {TOOLS.map((t) => (
+                    <span key={t.key} className="inline-flex items-center rounded-lg border border-sage/25 bg-white overflow-hidden">
+                      <span className="px-2.5 py-1.5 text-sm font-bold text-ink/75">
+                        {t.emoji} {t.label}
+                      </span>
+                      <button disabled={isBusy} onClick={() => setTool(r.id, t.key, t.label, 6)}
+                        title={`منح ${t.label} ٦ أشهر`}
+                        className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        ＋
+                      </button>
+                      <button disabled={isBusy} onClick={() => setTool(r.id, t.key, t.label, 0)}
+                        title={`سحب ${t.label}`}
+                        className="px-2.5 py-1.5 text-sm font-black text-red-600 hover:bg-red-50 border-r border-sage/20 disabled:opacity-40 transition">
+                        −
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* إدارة الحساب نفسه */}
+              <div className="mt-3 flex flex-wrap gap-2">
                 {r.status === 'suspended' ? (
                   <button disabled={isBusy} onClick={() => reactivate(r.id)}
                     className="rounded-lg border border-sage/40 bg-white hover:border-sage text-sage-deep font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
