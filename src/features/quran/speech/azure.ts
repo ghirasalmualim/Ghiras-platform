@@ -224,12 +224,36 @@ export function buildAssessmentHeader(referenceText: string): string {
   return btoa(unescape(encodeURIComponent(JSON.stringify(params))));
 }
 
-export function azureEndpoint(resourceName: string, languageTag: string): string {
-  return (
-    `https://${resourceName}.cognitiveservices.azure.com` +
-    `/stt/speech/recognition/conversation/cognitiveservices/v1` +
-    `?language=${encodeURIComponent(languageTag)}&format=detailed`
-  );
+/**
+ * أين يعيش المورد.
+ *
+ * ⚠️ لعنوان Azure صيغتان، والفرق بينهما ليس تجميلًا:
+ *
+ * • **بالمنطقة** — `<region>.stt.speech.microsoft.com`. تعمل مع **كل**
+ *   مورد بلا شرط، وهي الصيغة التي نفضّلها.
+ * • **باسم المورد** — `<name>.cognitiveservices.azure.com`. تحتاج أن
+ *   يكون للمورد **نطاق فرعي مخصص**، وأكثر موارد Speech تُنشأ بلا
+ *   واحد. فاسم المضيف لا يُحلّ في DNS أصلًا، ويفشل الطلب في ملّي
+ *   ثوانٍ قبل أن يغادر الجهاز — بخطأ `fetch failed` لا بخطأ HTTP،
+ *   وهو ما يُربك التشخيص لأنه لا يبدو خطأ مصادقة ولا خطأ خدمة.
+ *
+ * وهذا وقع لنا فعلًا في أول تجربة حقيقية، فوثّقناه هنا لا في رسالة.
+ */
+export type AzureTarget = {
+  /** مثل `eastus` — الصيغة المفضَّلة، تعمل دائمًا. */
+  region?: string;
+  /** اسم المورد — لا يعمل إلا مع نطاق فرعي مخصص. */
+  resourceName?: string;
+};
+
+export function azureEndpoint(target: AzureTarget, languageTag: string): string {
+  const base = target.region
+    ? `https://${target.region}.stt.speech.microsoft.com` +
+      `/speech/recognition/conversation/cognitiveservices/v1`
+    : `https://${target.resourceName}.cognitiveservices.azure.com` +
+      `/stt/speech/recognition/conversation/cognitiveservices/v1`;
+
+  return `${base}?language=${encodeURIComponent(languageTag)}&format=detailed`;
 }
 
 /**
@@ -243,7 +267,7 @@ export class AzureSpeechProvider implements SpeechProvider {
   readonly id = 'azure' as const;
 
   constructor(
-    private readonly resourceName: string,
+    private readonly target: AzureTarget,
     private readonly key: string,
     private readonly source: TokenSource = 'lexical'
   ) {}
@@ -260,7 +284,7 @@ export class AzureSpeechProvider implements SpeechProvider {
     };
 
     try {
-      const res = await fetch(azureEndpoint(this.resourceName, req.languageTag), {
+      const res = await fetch(azureEndpoint(this.target, req.languageTag), {
         method: 'POST',
         headers: {
           'Ocp-Apim-Subscription-Key': this.key,
@@ -301,7 +325,12 @@ export class AzureSpeechProvider implements SpeechProvider {
         diagnostics: {
           ...base,
           latencyMs: Date.now() - started,
-          errorMessage: e instanceof Error ? e.message : 'network',
+          // ⚠️ نُرفق العنوان: «fetch failed» وحدها لا تقول شيئًا، وقد
+          // ضاع علينا وقتٌ بسببها. العنوان لا يحوي المفتاح ولا الصوت.
+          errorMessage: `${e instanceof Error ? e.message : 'network'} — ${azureEndpoint(
+            this.target,
+            req.languageTag
+          )}`,
         },
       };
     }

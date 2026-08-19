@@ -36,7 +36,10 @@ export default async function TasmeeLabPage({
   const ayahs = getAyahs(surahNo, from, to);
   if (!ayahs.length) notFound();
 
-  const configured = Boolean(process.env.AZURE_SPEECH_RESOURCE && process.env.AZURE_SPEECH_KEY);
+  const configured = Boolean(
+    (process.env.AZURE_SPEECH_REGION || process.env.AZURE_SPEECH_RESOURCE) &&
+      process.env.AZURE_SPEECH_KEY
+  );
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-8">

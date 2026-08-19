@@ -102,11 +102,26 @@ console.log("  ── ترويسة التقييم ──");
 // ── ٢) الرابط ────────────────────────────────────────────────
 console.log("\n  ── الرابط ──");
 {
-  const url = azureEndpoint("ghiras-speech", "ar-SA");
+  // بالمنطقة — الصيغة المفضَّلة، تعمل مع كل مورد
+  const url = azureEndpoint({ region: "eastus" }, "ar-SA");
   ok(url.indexOf("language=ar-SA") !== -1, "اللغة في الرابط — بدونها يرفض Azure الطلب");
   ok(url.indexOf("format=detailed") !== -1, "detailed — بدونه لا NBest ولا كلمات");
   ok(url.indexOf("cognitiveservices/v1") !== -1, "مسار الصوت القصير الموثَّق");
-  ok(url.indexOf("ghiras-speech.cognitiveservices.azure.com") !== -1, "اسم المورد في المضيف");
+  ok(
+    url.indexOf("https://eastus.stt.speech.microsoft.com/") === 0,
+    `⚠️ المضيف يُبنى من المنطقة — وُجد: ${url.split("?")[0]}`
+  );
+
+  // باسم المورد — لا تعمل إلا مع نطاق فرعي مخصص
+  const byName = azureEndpoint({ resourceName: "ghiras-speech" }, "ar-SA");
+  ok(
+    byName.indexOf("https://ghiras-speech.cognitiveservices.azure.com/stt/") === 0,
+    "وصيغة اسم المورد باقية لمن يملك نطاقًا مخصصًا"
+  );
+
+  // المنطقة تسبق الاسم إن وُجدا معًا
+  const both = azureEndpoint({ region: "eastus", resourceName: "ghiras-speech" }, "ar-SA");
+  ok(both === url, "المنطقة تُقدَّم على الاسم — لأنها تعمل دائمًا");
 }
 
 // ── ٣) المصدر الافتراضي: النص الحرّ ──────────────────────────

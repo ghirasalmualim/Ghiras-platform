@@ -45,9 +45,14 @@ export async function POST(req: NextRequest) {
   if (!(await isLabOwner()))
     return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
 
-  const resource = process.env.AZURE_SPEECH_RESOURCE;
+  /**
+   * ⚠️ المنطقة أولًا: عنوان المنطقة يعمل مع كل مورد، وعنوان الاسم
+   * يحتاج نطاقًا فرعيًا مخصصًا لا تملكه أكثر الموارد.
+   */
+  const region = process.env.AZURE_SPEECH_REGION;
+  const resourceName = process.env.AZURE_SPEECH_RESOURCE;
   const key = process.env.AZURE_SPEECH_KEY;
-  if (!resource || !key)
+  if ((!region && !resourceName) || !key)
     return NextResponse.json({ error: 'PROVIDER_NOT_CONFIGURED' }, { status: 503 });
 
   const q = req.nextUrl.searchParams;
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
   const uthmani = expected.map((w) => w.uthmani).join(' ');
   const referenceText = refForm === 'uthmani' ? uthmani : (normalizeForComparison(uthmani) as string);
 
-  const provider = new AzureSpeechProvider(resource, key, source);
+  const provider = new AzureSpeechProvider({ region, resourceName }, key, source);
   const heard = await provider.transcribe({
     audio,
     referenceText,
