@@ -28,6 +28,7 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
   const [task, setTask] = useState<DailyTask | null>(null);
   const [welcome, setWelcome] = useState<string | null>(null);
   const [hidden, setHidden] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -74,7 +75,37 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
     };
   }, [surahNames]);
 
-  if (hidden || !task || task.items.length === 0) {
+  /**
+   * إخفاء المهمة **لليوم وحده**.
+   *
+   * ⚠️ ولا تُحذف كما تُحذف المراجعة: مهمة اليوم ليست بيانات بل اقتراحٌ
+   * يُحسب كل صباح من الخطة وجدول المراجعة. فحذفها نهائيًا لا معنى له —
+   * ستُبنى غدًا من جديد. وما تحتاجه الطالبة أن تقول «مو اليوم».
+   *
+   * ⚠️ والتاريخ محفوظٌ لا مجرّد علَم: بلا تاريخٍ يبقى الإخفاء إلى
+   * الأبد، فتظنّ أن الميزة تعطّلت. وبالتاريخ يعود غدًا وحده.
+   */
+  const dismissKey = 'ghiras.quran.task.dismissed';
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(dismissKey) === todayKey) setDismissed(true);
+    } catch {
+      /* التخزين مقفل — تظهر المهمة، وهذا أهون من إخفائها بالغلط */
+    }
+  }, [todayKey]);
+
+  function dismissToday() {
+    setDismissed(true);
+    try {
+      window.localStorage.setItem(dismissKey, todayKey);
+    } catch {
+      /* تُخفى هذه الجلسة فقط */
+    }
+  }
+
+  if (dismissed || hidden || !task || task.items.length === 0) {
     // رسالة العودة تظهر ولو لم تكن هناك مهمة — الترحيب لا يُشترط بعمل
     if (!hidden && welcome)
       return (
@@ -98,8 +129,19 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
           <h2 className="font-[family-name:var(--font-cairo)] text-[1.05rem] font-extrabold text-[var(--q-ink)]">
             ☀️ مهمة اليوم
           </h2>
-          <span className="text-[0.76rem] text-[var(--q-mute)]">
-            حوالي {toArabic(task.minutes)} دقائق
+          <span className="flex items-center gap-1">
+            <span className="text-[0.76rem] text-[var(--q-mute)]">
+              حوالي {toArabic(task.minutes)} دقائق
+            </span>
+            <button
+              type="button"
+              onClick={dismissToday}
+              aria-label="أخفِ مهمة اليوم — تعود غدًا"
+              title="مو اليوم"
+              className="tap -mr-1 px-2 text-[1.05rem] leading-none text-[#b9c4bb] transition hover:text-[var(--q-ink)]"
+            >
+              ×
+            </button>
           </span>
         </div>
 

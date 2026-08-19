@@ -158,6 +158,30 @@ export async function saveSegmentProgress(
  * بعد (لم يُشغَّل تحديث SQL)، يُتجاهل الخطأ بصمت. اختيار القارئ ميزة
  * مساعدة، ولا يجوز أن يُسقط حفظَ التقدّم أو يمنع التلاوة لأجلها.
  */
+/**
+ * مسح موضع القراءة المحفوظ.
+ *
+ * ⚠️ يُمسح من المتصفح ومن قاعدة البيانات معًا. ولو مسحناه من أحدهما
+ * فقط لعاد في الجلسة القادمة من الآخر، فتظنّ الطالبة أن الزر لا يعمل.
+ *
+ * والزائرة موضعها في متصفحها وحده، فيكفيها الأول.
+ */
+export async function clearLastPosition(): Promise<void> {
+  try {
+    window.localStorage.removeItem(LAST_KEY);
+  } catch {
+    /* التخزين المحلي قد يكون مقفلًا — لا يمنع مسح الخادم */
+  }
+
+  const sb = createClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return;
+
+  await sb.from('quran_last_position').delete().eq('user_id', user.id);
+}
+
 export async function getReciterId(): Promise<string | null> {
   const local = readLocal<string | null>(RECITER_KEY, null);
   if (local) return local;
