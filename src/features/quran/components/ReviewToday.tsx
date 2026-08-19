@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getAllSegments, type StoredSegment } from '../data/practice';
 import { isGuest } from '../data/progress';
 import { dueToday, needsWork } from '../engine/planner';
+import { removeSegment } from '../data/practice';
 import { stateLabel, toDay, progressPercent } from '../engine/review';
 import { toArabic } from '../engine/numerals';
 
@@ -16,6 +17,26 @@ import { toArabic } from '../engine/numerals';
  */
 export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
   const [segments, setSegments] = useState<StoredSegment[] | null>(null);
+  /** المقطع الذي طُلبت إزالته وينتظر تأكيدًا — واحدٌ لا أكثر. */
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const keyOf = (s: { surah: number; from_ayah: number; to_ayah: number }) =>
+    `${s.surah}:${s.from_ayah}-${s.to_ayah}`;
+
+  /**
+   * الإزالة تُطبَّق على الشاشة فورًا ثم تُرسَل.
+   *
+   * ⚠️ ولو فشل الإرسال أعدناه إلى مكانه: إخفاءُ ما لم يُحذف يجعل
+   * الطالبة تظنّه راح، ثم يعود غدًا بلا تفسير.
+   */
+  async function remove(seg: StoredSegment) {
+    const key = keyOf(seg);
+    const before = segments;
+    setConfirming(null);
+    setSegments((list) => (list ?? []).filter((x) => keyOf(x) !== key));
+    const ok = await removeSegment(seg);
+    if (!ok) setSegments(before);
+  }
   const [guest, setGuest] = useState(false);
 
   useEffect(() => {
@@ -92,10 +113,13 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
           </p>
           <ul className="grid gap-2">
             {due.map((s) => (
-              <li key={`${s.surah}:${s.from_ayah}-${s.to_ayah}`}>
+              <li
+                key={keyOf(s)}
+                className="flex items-stretch gap-2 rounded-2xl border border-[var(--q-line)] bg-white transition hover:border-[#cfe0d5]"
+              >
                 <Link
                   href={`/quran/study/${s.surah}/${s.from_ayah}/${s.to_ayah}`}
-                  className="tap flex items-center gap-3 rounded-2xl border border-[var(--q-line)] bg-white px-4 py-3.5 transition hover:border-[#cfe0d5]"
+                  className="tap flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-4"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-[family-name:var(--font-cairo)] text-[1.02rem] font-bold text-[var(--q-ink)]">
@@ -110,6 +134,36 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
                     {toArabic(progressPercent(s.state))}٪
                   </span>
                 </Link>
+
+                {/* ⚠️ زرٌّ مستقلٌّ لا داخل الرابط: عنصرٌ قابل للنقر
+                    داخل آخر يربك قارئات الشاشة ولوحة المفاتيح. */}
+                {confirming === keyOf(s) ? (
+                  <span className="flex shrink-0 items-center gap-1 pl-2">
+                    <button
+                      type="button"
+                      onClick={() => remove(s)}
+                      className="tap rounded-xl bg-[#c9463a] px-3 py-1.5 text-[0.76rem] font-bold text-white"
+                    >
+                      إزالة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(null)}
+                      className="tap rounded-xl px-2 py-1.5 text-[0.76rem] font-bold text-[var(--q-mute)]"
+                    >
+                      تراجع
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(keyOf(s))}
+                    aria-label={`إزالة ${name(s.surah)} ${toArabic(s.from_ayah)}–${toArabic(s.to_ayah)} من المراجعة`}
+                    className="tap shrink-0 px-3 text-[1.1rem] text-[#b9c4bb] transition hover:text-[#c9463a]"
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             ))}
           </ul>

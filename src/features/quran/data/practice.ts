@@ -145,6 +145,36 @@ export async function getAllSegments(): Promise<StoredSegment[]> {
   }));
 }
 
+/**
+ * إزالة مقطع من المراجعة.
+ *
+ * ── لماذا نحتاجها ──
+ * المقطع يدخل المراجعة بمجرّد أن تفتحه الطالبة، وقد تفتحه ثم تعدل
+ * عنه — أو تجرّب المنصة أول مرة فتخلّف وراءها مقاطع لا تنوي حفظها.
+ * وبلا إزالة تبقى معلّقة في مراجعتها أبدًا، فتثقل قائمتها كل يوم
+ * وتُشعرها بتأخّرٍ لا ذنب لها فيه.
+ *
+ * ⚠️ ولا تُحذف إلا حالة المراجعة: التدريبات السابقة وموضع القراءة
+ * يبقيان. فإن عادت إلى المقطع يومًا بدأ جدولُه من جديد، ولم يضِع
+ * تاريخُها معه.
+ *
+ * ⚠️ والحذف مقصورٌ على صفوف الطالبة نفسها بسياسة قاعدة البيانات —
+ * لا بشرطٍ في هذا السطر وحده.
+ */
+export async function removeSegment(seg: Segment): Promise<boolean> {
+  const uid = await currentUserId();
+  if (!uid) return false;
+  const sb = createClient();
+  const { error } = await sb
+    .from('quran_review_state')
+    .delete()
+    .eq('user_id', uid)
+    .eq('surah', seg.surah)
+    .eq('from_ayah', seg.from_ayah)
+    .eq('to_ayah', seg.to_ayah);
+  return !error;
+}
+
 /** أداء الطالبة حسب نوع النشاط — يوجّه اختيار التدريب القادم. */
 export async function getActivityPerformance(
   seg: Segment
