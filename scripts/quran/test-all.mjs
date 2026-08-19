@@ -36,6 +36,8 @@ run("npx", [
   "src/features/quran/engine/activities.ts",
   "src/features/quran/engine/planner.ts",
   "src/features/quran/engine/pages.ts",
+  "src/features/quran/engine/alignment.ts",
+  "src/features/quran/engine/alignment-tuning.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",
@@ -89,6 +91,7 @@ run("node", ["scripts/quran/test-engine.mjs"]);
 run("node", ["scripts/quran/test-basmala.mjs"]);
 run("node", ["scripts/quran/test-phase2.mjs"]);
 run("node", ["scripts/quran/test-pages.mjs"]);
+run("node", ["scripts/quran/test-alignment.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");
