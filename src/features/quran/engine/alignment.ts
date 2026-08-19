@@ -101,7 +101,9 @@ export type UncertainReason =
   /** التسجيل يبدو مقطوعًا من آخره. */
   | 'TRUNCATED_END'
   /** سُمع أقل من نصف المتوقَّع — تسجيل ناقص لا حفظ ناقص. */
-  | 'TRANSCRIPT_TOO_SHORT';
+  | 'TRANSCRIPT_TOO_SHORT'
+  /** كلمة زائدة موجودة في النص المتوقَّع — قد تكون صدى من المزوّد. */
+  | 'ECHO_OF_PASSAGE';
 
 export type AlignmentEntry = {
   kind: AlignmentKind;
@@ -409,6 +411,27 @@ function near(a: number, b: number): boolean {
  * (سورة + من آية + إلى آية). فالسياق مقيَّد أصلًا بما اختارته الطالبة،
  * وهذا وحده يزيل أكثر التباس الآيات المتشابهة عبر السور.
  */
+/**
+ * كلمات المقطع المتوقَّع، للكشف عن «صدى المزوّد».
+ *
+ * ⚠️ قيسَ هذا على صوت حقيقي لا على حدس: في تسجيلين فيهما تعثّر،
+ * أضاف المزوّد في كلٍّ منهما كلمةً لم تُقَل — و**كلتاهما كلمة موجودة
+ * في النص المتوقَّع الذي زوّدناه به**، ومرة في أول المقطع ومرة في
+ * آخره. وفي تسجيلين صحيحين لم يُضِف شيئًا.
+ *
+ * فالتفسير أن المزوّد، حين يسمع ترددًا أو نفَسًا أو مقطعًا غامضًا،
+ * يملأ الفراغ بكلمة من النص الذي أعطيناه. وهذا ليس تزويرًا كاملًا —
+ * فقد أسقط الآية المتخطّاة بأمانة — لكنه صدى صغير عند كل تعثّر.
+ *
+ * ⚠️ وأثره وخيم: **كل تعثّر يصير تهمة**، وبثقة عالية فلا تلتقطه
+ * بوابة الثقة المنخفضة. وهو بالضبط ما لا نريده مع طفلة تحفظ.
+ */
+function passageWords(expected: ExpectedWord[]): { [key: string]: true } {
+  const set: { [key: string]: true } = Object.create(null);
+  for (const w of expected) set[w.norm] = true;
+  return set;
+}
+
 function ambiguousPositions(expected: ExpectedWord[]): boolean[] {
   const counts: { [key: string]: number } = Object.create(null);
   const keys: string[] = [];
@@ -467,7 +490,7 @@ export function alignRecitation(
 
   // الحكم النهائي يأتي أخيرًا: يرى الصورة كاملة فيخفّض ما لا يُوثق به
   const tooShort = trimmed.length < expected.length * t.minCoverageRatio;
-  entries = applyConservatism(entries, expected, ambiguous, tooShort, t);
+  entries = applyConservatism(entries, expected, ambiguous, passageWords(expected), tooShort, t);
 
   const summary = summarize(entries, expected.length, trimmed.length);
 
@@ -702,6 +725,7 @@ function applyConservatism(
   entries: AlignmentEntry[],
   expected: ExpectedWord[],
   ambiguous: boolean[],
+  inPassage: { [key: string]: true },
   tooShort: boolean,
   t: AlignmentTuning
 ): AlignmentEntry[] {
@@ -745,7 +769,14 @@ function applyConservatism(
     )
       return uncertain('NEAR_MISS');
 
-    // ٥) حذفٌ في طرفي التسجيل ⇒ الأرجح أنه قُصّ لا أنها نسيت
+    // ٥) كلمة زائدة موجودة في المقطع ⇒ قد تكون صدى المزوّد لا صوتها
+    //
+    // ⚠️ فإن زادت كلمة **من خارج** المقطع فهي زيادة حقيقية: المزوّد
+    // لا يخترع ما لم نعطه إياه. فلا تُعطَّل الإضافة، بل يُحرَس بابها.
+    if (e.kind === 'INSERTION' && e.heard.length && e.heard.every((h) => inPassage[h.norm]))
+      return uncertain('ECHO_OF_PASSAGE');
+
+    // ٦) حذفٌ في طرفي التسجيل ⇒ الأرجح أنه قُصّ لا أنها نسيت
     if (e.kind === 'OMISSION' || e.kind === 'SKIP') {
       const startsAtFirst = e.expected.length > 0 && e.expected[0].position === 0;
       const endsAtLast =

@@ -509,6 +509,55 @@ console.log("\n  ── ١٩) أدب التلاوة ──");
   );
 }
 
+// ══════════════ ١٩ب) صدى المزوّد — من قياس حقيقي ══════════════
+//
+// ⚠️ هذا الفحص مكتوب من تسجيلين حقيقيين لا من حدس. في كليهما تخطّت
+// القارئة آية، فأضاف المزوّد كلمةً لم تُقَل — «قل» مرة و«هو» مرة —
+// وكلتاهما موجودة في النص المتوقَّع الذي زوّدناه به. وفي تسجيلين
+// صحيحين لم يُضِف شيئًا. فالتعثّر وحده هو ما يستدعي الصدى.
+console.log("\n  ── ١٩ب) صدى المزوّد ──");
+{
+  const exp = buildExpected(ayahs(112, 1, 4));
+  const words = perfect(exp);
+
+  // الحالة كما وقعت: تُخطّى الآية ٢ ويضيف المزوّد «هو» قرب آخر المقطع
+  const said = perfect(exp.filter((w) => w.ayah !== 2));
+  const at = said.length - 2;
+  const withEcho = said.slice(0, at).concat([words[1]], said.slice(at));
+
+  const r = run(exp, withEcho, { confidence: 0.86 });
+  ok(
+    countOf(r, "SKIP") === 1,
+    "التخطّي يبقى مكشوفًا — الحارس لا يُعطّل الكشف الحقيقي"
+  );
+  ok(
+    countOf(r, "INSERTION") === 0,
+    "والكلمة المخترعة لا تُعدّ إضافةً",
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+  );
+  ok(
+    reasons(r).indexOf("ECHO_OF_PASSAGE") !== -1,
+    "بل «لم أتأكد» بسبب صدى المقطع — بثقة عالية ٠٫٨٦، فبوابة الثقة لا تلتقطها"
+  );
+  ok(
+    r.weakSpots.length === 1 && r.weakSpots[0].ayah === 2,
+    "ولا يُرسَل للمراجعة إلا التخطّي الحقيقي"
+  );
+
+  // ⚠️ والزيادة من خارج المقطع تبقى خطأً مؤكَّدًا — الحارس ليس تعطيلًا
+  const alien = CORPUS.get("36:1").split(/\s+/)[0];
+  const outside = words.slice(0, 6).concat([alien], words.slice(6));
+  const r2 = run(exp, outside, { confidence: 0.9 });
+  ok(
+    countOf(r2, "INSERTION") === 1,
+    `كلمة من خارج المقطع («${alien}») تبقى إضافةً مؤكَّدة — المزوّد لا يخترع ما لم نعطه`,
+    `التصنيفات: ${JSON.stringify(kinds(r2).filter((k) => k !== "MATCH"))}`
+  );
+
+  // والقراءة الصحيحة تبقى نظيفة
+  ok(run(exp, words).summary.confirmedErrors === 0, "والقراءة الصحيحة تبقى نظيفة");
+}
+
 // ══════════════ ٢٠) الحتمية ══════════════
 console.log("\n  ── ٢٠) الحتمية ──");
 {
