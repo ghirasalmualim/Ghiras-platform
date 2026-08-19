@@ -7,6 +7,7 @@ import {
 } from '@/features/quran/engine/alignment';
 import { normalizeForComparison } from '@/features/quran/engine/normalize.mjs';
 import { AzureSpeechProvider, type TokenSource } from '@/features/quran/speech/azure';
+import { isLabOwner } from '@/features/quran/speech/lab-guard';
 
 /**
  * مسار التسميع التجريبي — نموذج أوّلي لا ميزة.
@@ -27,8 +28,9 @@ import { AzureSpeechProvider, type TokenSource } from '@/features/quran/speech/a
  * ⚠️ الحكم من محرّك غراس وحده. تصنيفات المزوّد ودرجات النطق تُنقل
  * في `diagnostics` للقياس، ولا تدخل في تقرير خطأ ولا في إتقان.
  *
- * ⚠️ مقفل خلف `QURAN_LAB=1`. ليس مسارًا للطالبات، وليس ميزةً معتمدة،
- * ولا يُفتح على الإنتاج إلا وقت القياس.
+ * ⚠️ مقفل بشرطين: `QURAN_LAB=1` **و** أن تكون صاحبة الطلب أدمِن.
+ * وهذا المسار بالذات هو الذي يصرف المال: كل نداء يرسل صوتًا إلى مزوّد
+ * بفاتورة. فتركه مفتوحًا لمن يعرف الرابط يعني رصيدًا يُستهلك بلا حساب.
  */
 
 export const runtime = 'nodejs';
@@ -39,8 +41,9 @@ const MAX_SECONDS = 30;
 const MAX_BYTES = 16000 * 2 * MAX_SECONDS + 1024;
 
 export async function POST(req: NextRequest) {
-  if (process.env.QURAN_LAB !== '1')
-    return NextResponse.json({ error: 'LAB_DISABLED' }, { status: 404 });
+  // ٤٠٤ لا ٤٠٣: من لا يملك الحق لا يعرف أن هنا مسارًا أصلًا
+  if (!(await isLabOwner()))
+    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
 
   const resource = process.env.AZURE_SPEECH_RESOURCE;
   const key = process.env.AZURE_SPEECH_KEY;

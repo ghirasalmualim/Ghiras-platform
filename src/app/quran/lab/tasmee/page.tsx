@@ -2,23 +2,27 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAyahs, getSurah } from '@/features/quran/data/corpus';
 import TasmeeLab from '@/features/quran/components/TasmeeLab';
+import { isLabOwner } from '@/features/quran/speech/lab-guard';
 
 /**
  * مختبر التسميع — مقفل خلف `QURAN_LAB=1`.
  *
  * ⚠️ ليست شاشة للطالبات ولا ميزةً معتمدة. أداة قياس تُفتح وقت
  * الاختبار وتُقفل بعده، ولا تظهر في أي قائمة ولا رابط في المنصة.
- * والإقفال بمتغيّر بيئة لا بتحقّق دخول: أبسط، ولا يُفتح سهوًا.
+ *
+ * ⚠️ والإقفال بشرطين: علَم البيئة **و** أن تكون صاحبة الطلب أدمِن.
+ * فالعلَم وحده يفتح المختبر للجميع، والمختبر يفتح ميكروفونًا ويستهلك
+ * رصيدًا مدفوعًا — فلا يُترك مشاعًا لمن يعرف الرابط.
  */
 
 export const dynamic = 'force-dynamic';
 
-export default function TasmeeLabPage({
+export default async function TasmeeLabPage({
   searchParams,
 }: {
   searchParams: { surah?: string; from?: string; to?: string };
 }) {
-  if (process.env.QURAN_LAB !== '1') notFound();
+  if (!(await isLabOwner())) notFound();
 
   // الإخلاص افتراضًا: قصيرة، معروفة، وتقلّ فيها المتشابهات
   const surahNo = Number(searchParams.surah ?? 112);
