@@ -237,7 +237,12 @@ export type EventKind =
   | 'segment_mastered'
   | 'streak_days'
   | 'returned_after_break'
-  | 'review_without_hint';
+  | 'review_without_hint'
+  // ── أحداث التسميع (المرحلة ٣) — تُسجَّل الآن وتقرأها الحديقة لاحقًا
+  | 'recitation_completed'
+  | 'recitation_without_help'
+  | 'weak_spot_improved'
+  | 'review_completed';
 
 /**
  * يسجّل حدثًا يستحق الاحتفاء لاحقًا.

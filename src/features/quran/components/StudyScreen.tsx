@@ -284,21 +284,21 @@ export default function StudyScreen({
           </p>
 
           {/* ── سمّع لي ──
-              معطّل في المرحلة ١ ولم يُربط بأي تعرّف على الكلام بعد.
-              يظهر مكانه محجوزًا حتى لا يتغيّر شكل الشاشة على الطالب
-              حين يُفعَّل، وحتى تكون البنية جاهزة لاستقباله. */}
+              يفتح شاشة مستقلة لا يعمل داخل هذه: التسميع يحتاج هدوءًا
+              تامًا وشاشة لا شيء فيها غير «أنا أسمّع الآن». وإقحامه هنا
+              بين التكرار والإخفاء يشتّت من تحفظ. */}
           <div className="mt-4 border-t border-[var(--q-line)] pt-4">
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="tap flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--q-line)] px-4 py-3 text-[0.92rem] font-bold text-[#a9b8ac]"
+            <Link
+              href={`/quran/recite/${surah.number}/${from}/${to}${
+                lessonTitle ? `?lesson=${encodeURIComponent(lessonTitle)}` : ''
+              }`}
+              className="tap flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--q-accent)] px-4 py-3 text-[0.95rem] font-extrabold text-[var(--q-accent)] transition hover:bg-[#f2f7f3]"
             >
               <span aria-hidden>🎙️</span> سمّع لي
-              <span className="rounded-full bg-[#f2f5f2] px-2 py-0.5 text-[0.68rem]">
-                قريبًا
-              </span>
-            </button>
+            </Link>
+            <p className="mt-2 text-center text-[0.74rem] text-[var(--q-mute)]">
+              صوتك ما يُحفظ — نسمعه، نطلع النتيجة، وينمسح
+            </p>
           </div>
         </section>
       )}

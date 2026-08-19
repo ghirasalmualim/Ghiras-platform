@@ -46,6 +46,12 @@ export class CaptureFailure extends Error {
 export type CaptureResult = {
   /** WAV أحادي ١٦ ك.هرتز، ١٦ بت. */
   wav: ArrayBuffer;
+  /**
+   * العيّنات بعد إعادة العيّنة — يقسّمها منظّم الجلسة عند السكتات.
+   *
+   * ⚠️ في الذاكرة وحدها. لا تُكتب ولا تُرفع، وتزول بانتهاء الجلسة.
+   */
+  samples: Float32Array;
   durationSec: number;
   /** جذر متوسط المربّعات ٠..١ — لكشف التسجيل الضعيف قبل إرساله. */
   rms: number;
@@ -158,6 +164,26 @@ export class Recorder {
     this.recording = true;
   }
 
+  /**
+   * طاقة آخر لحظات التسجيل — لكشف السكوت في وضع التدريب.
+   *
+   * ⚠️ يُحسب في الجهاز على العيّنات الخام، فلا ينتظر شبكةً ولا مزوّدًا.
+   * ولهذا تظهر «خذي وقتك 🌱» في حينها لا بعد أربع ثوانٍ من ردّ المزوّد.
+   *
+   * ولا يقول إنها أخطأت — يقول إنها سكتت، وقد تتنفّس أو تتذكّر.
+   */
+  liveRms(seconds = 0.4): number {
+    if (!this.ctx || !this.chunks.length) return 0;
+    const need = Math.floor(this.ctx.sampleRate * seconds);
+    let have = 0;
+    let sum = 0;
+    for (let i = this.chunks.length - 1; i >= 0 && have < need; i--) {
+      const c = this.chunks[i];
+      for (let j = c.length - 1; j >= 0 && have < need; j--, have++) sum += c[j] * c[j];
+    }
+    return have ? Math.sqrt(sum / have) : 0;
+  }
+
   /** الإيقاف وبناء WAV. يُنادى مرة واحدة. */
   async stop(): Promise<CaptureResult> {
     if (!this.ctx) throw new CaptureFailure('INTERRUPTED');
@@ -179,6 +205,7 @@ export class Recorder {
 
     return {
       wav: encodeWav(samples, TARGET_SAMPLE_RATE),
+      samples,
       durationSec: samples.length / TARGET_SAMPLE_RATE,
       rms: samples.length ? Math.sqrt(sum / samples.length) : 0,
       peak,

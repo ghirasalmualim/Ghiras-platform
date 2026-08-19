@@ -39,6 +39,11 @@ run("npx", [
   "src/features/quran/engine/alignment.ts",
   "src/features/quran/engine/alignment-tuning.ts",
   "src/features/quran/speech/azure.ts",
+  "src/features/quran/speech/limits.ts",
+  "src/features/quran/engine/artifacts.ts",
+  "src/features/quran/engine/session.ts",
+  "src/features/quran/engine/grading.ts",
+  "src/features/quran/engine/hints.ts",
   "src/features/quran/speech/types.ts",
   "src/features/quran/capture/recorder.ts",
   "--outDir", OUT,
@@ -97,6 +102,7 @@ run("node", ["scripts/quran/test-phase2.mjs"]);
 run("node", ["scripts/quran/test-pages.mjs"]);
 run("node", ["scripts/quran/test-alignment.mjs"]);
 run("node", ["scripts/quran/test-azure-adapter.mjs"]);
+run("node", ["scripts/quran/test-recitation.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");
