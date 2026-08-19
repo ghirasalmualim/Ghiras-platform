@@ -208,6 +208,15 @@ export default function ReciteScreen({
     try {
       const chunks = splitIntoChunks(samples, TARGET_SAMPLE_RATE);
       const tokens: { text: string; confidence?: number }[] = [];
+      /**
+       * حال كل مقطع ونقاء صوته.
+       *
+       * ⚠️ كانت تُهمَل: المزوّد يردّ «ضجّة» أو «ما سمعت» بحالة HTTP
+       * ناجحة وكلماتٍ فارغة، فنمضي صامتين وننتهي إلى «الصوت ما كان
+       * واضحًا» — رسالةٌ صادقة لكنها لا تقول لماذا ولا ماذا تفعل.
+       */
+      const statuses: string[] = [];
+      let worstSnr: number | null = null;
       let at = 0;
 
       for (const chunk of chunks) {
@@ -223,6 +232,12 @@ export default function ReciteScreen({
           return;
         }
         const j = await res.json();
+        if (j.status) statuses.push(j.status);
+        const snr = j.meta?.snr;
+        if (typeof snr === 'number' && (worstSnr === null || snr < worstSnr)) worstSnr = snr;
+
+        // ⚠️ لا نقطع الجلسة عند مقطع متعثّر: قد تكون بقيتها سليمة،
+        // وحُرّاس المحاذاة يتولّون الفجوة. نجمع الخبر ونشرحه في آخرها.
         for (const t of j.tokens ?? []) tokens.push({ text: t.text, confidence: t.confidence });
         at = Math.min(expected.length - 1, tokens.length);
       }
@@ -245,7 +260,11 @@ export default function ReciteScreen({
         const j = await done.json().catch(() => ({}));
         setResult(unusable(serverMessage(j.error)));
       } else {
-        setResult((await done.json()) as FinishResult);
+        const r = (await done.json()) as FinishResult;
+        // النتيجة غير صالحة ⇒ نقول لماذا بما قِسناه، لا بعبارة عامة
+        setResult(
+          r.usable ? r : { ...r, verdict: { ...r.verdict, detail: whyUnusable(statuses, worstSnr) } }
+        );
       }
     } catch {
       setResult(unusable('انقطع الاتصال أثناء المراجعة.'));
@@ -651,6 +670,32 @@ function unusable(detail: string): FinishResult {
 }
 
 /** ⚠️ رسائل بلغة الطالبة — لا رموز خطأ ولا مصطلحات مزوّد. */
+/**
+ * لماذا لم نستطع الحكم — بلغة الطالبة، ومن قياسٍ لا من تخمين.
+ *
+ * ⚠️ ونقاء الصوت (SNR) **يشرح** الفشل ولا **يسبّبه**: قِيس تسجيلٌ عند
+ * ٢١ ومرّ سليمًا تمامًا، فلو جعلناه سببًا للرفض لمنعنا تسميعًا صحيحًا.
+ * فلا يُذكر إلا بعد أن يفشل الحكم لسببٍ آخر.
+ */
+function whyUnusable(statuses: string[], snr: number | null): string {
+  const has = (s: string) => statuses.indexOf(s) !== -1;
+
+  if (has('NOISE') || (snr !== null && snr < QUIET_ENOUGH_SNR))
+    return 'يبدو فيه ضجّة حواليك. جرّبي في مكان أهدأ 🌿';
+  if (has('SILENCE')) return 'ما وصلني صوتك. قرّبي الميكروفون شوي وجرّبي.';
+  if (has('NO_SPEECH')) return 'ما قدرت أميّز التلاوة. اقرئي بصوت أوضح شوي.';
+  if (has('PROVIDER_ERROR')) return 'صار خلل مؤقت. جرّبي مرة ثانية بعد لحظة.';
+  return 'الصوت ما كان واضحًا كفاية عشان أحكم على التسميع.';
+}
+
+/**
+ * دون هذا النقاء نرجّح أن الضجّة هي السبب.
+ *
+ * ⚠️ رقمٌ من قياسٍ صغير: التسجيل الهادئ أعطى ٢٨–٣٢، والتلفزيون ٢١.
+ * فوضعناه بينهما. ولم يُقَس على صفٍّ فيه أطفال بعد.
+ */
+const QUIET_ENOUGH_SNR = 25;
+
 function serverMessage(code?: string): string {
   switch (code) {
     case 'SIGN_IN_REQUIRED':
