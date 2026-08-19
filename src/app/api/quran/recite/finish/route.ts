@@ -149,6 +149,21 @@ export async function POST(req: NextRequest) {
        * ما يُعرض في «نراجعها معًا» — الأخطاء المؤكَّدة وحدها.
        * ⚠️ `UNCERTAIN` لا يخرج من هنا إطلاقًا: يُعدّ ولا يُسمّى خطأً.
        */
+      /**
+       * مواضع لم نتأكد منها — تُعرض **مطمئِنةً لا متّهِمة**.
+       *
+       * ⚠️ ولولا عرضها لبقي في الشاشة فراغ: تقول «أتقنتِ ٤ من ٦»
+       * ولا تقول أين الاثنتان. والرقم حينئذٍ يقلق بلا أن يفيد، وهو
+       * أسوأ من الصمت ومن الاتهام معًا.
+       */
+      unsure: result.usable
+        ? result.entries
+            .filter((e) => e.kind === 'UNCERTAIN')
+            .map((e) => ({
+              ayah: e.expected[0]?.ayah ?? null,
+              words: e.expected.map((w) => w.uthmani),
+            }))
+        : [],
       mistakes: result.usable
         ? result.entries
             .filter((e) => e.kind !== 'MATCH' && e.kind !== 'UNCERTAIN' && e.kind !== 'LONG_PAUSE')

@@ -44,6 +44,7 @@ type FinishResult = {
   verdict: Verdict;
   summary: { expectedWords: number; matched: number; confirmedErrors: number; uncertain: number };
   mistakes: Mistake[];
+  unsure: { ayah: number | null; words: string[] }[];
   weakSpots: { surah: number; ayah: number; atTransition: boolean }[];
 };
 
@@ -535,6 +536,7 @@ function Result({ result, onAgain }: { result: FinishResult; onAgain: () => void
 
   const mastered = result.summary.matched;
   const total = result.summary.expectedWords;
+  const unsure = result.unsure ?? [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -549,6 +551,38 @@ function Result({ result, onAgain }: { result: FinishResult; onAgain: () => void
           {toArabic(mastered)} كلمة من {toArabic(total)}
         </p>
       </div>
+
+      {/* ⚠️ الفراغ يقلق أكثر من الخبر: لو قلنا «٤ من ٦» وسكتنا، بقي
+          السؤال «وين الاثنتان؟» بلا جواب. فكل كلمة لم تُحتسب متقنةً
+          يُقال عنها شيء — إما خطأ مؤكَّد، وإما أننا لم نتأكد. */}
+      {unsure.length > 0 && (
+        <div className="rounded-2xl border border-[var(--q-line)] bg-[#faf9f4] p-4">
+          <p className="text-[0.9rem] font-bold text-[var(--q-ink)]">
+            🌿 ما قدرت أتأكد
+          </p>
+          <p className="mt-1 text-[0.83rem] leading-relaxed text-[var(--q-mute)]">
+            {unsure.length === 1 ? 'فيه موضع' : `فيه ${toArabic(unsure.length)} مواضع`} ما
+            وصلني واضحًا — يمكن الصوت أو الميكروفون.{' '}
+            <strong className="text-[var(--q-ink)]">وما حسبته عليك.</strong>
+          </p>
+          {unsure.some((u) => u.words.length > 0) && (
+            <ul className="mt-3 flex flex-col gap-2">
+              {unsure
+                .filter((u) => u.words.length > 0)
+                .map((u, i) => (
+                  <li key={i} className="rounded-xl bg-white/70 px-3 py-2">
+                    <p className="text-[0.75rem] text-[var(--q-mute)]">
+                      الآية {u.ayah !== null ? toArabic(u.ayah) : '—'}
+                    </p>
+                    <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
+                      {u.words.join(' ')}
+                    </p>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {result.mistakes.length > 0 && (
         <div className="rounded-2xl border border-[var(--q-line)] bg-[var(--q-card)] p-4">
@@ -611,6 +645,7 @@ function unusable(detail: string): FinishResult {
     verdict: { level: 'UNJUDGED', headline: 'ما قدرت أتأكد 🌿', detail },
     summary: { expectedWords: 0, matched: 0, confirmedErrors: 0, uncertain: 0 },
     mistakes: [],
+    unsure: [],
     weakSpots: [],
   };
 }
