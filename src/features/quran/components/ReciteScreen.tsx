@@ -81,7 +81,7 @@ type FinishResult = {
   verdict: Verdict;
   summary: { expectedWords: number; matched: number; confirmedErrors: number; uncertain: number };
   mistakes: Mistake[];
-  unsure: { ayah: number | null; words: string[] }[];
+  unsure: { ayah: number | null; words: string[]; heard?: string[] }[];
   weakSpots: { surah: number; ayah: number; atTransition: boolean }[];
 };
 
@@ -812,22 +812,24 @@ function Result({
             وصلني واضحًا — يمكن الصوت أو الميكروفون.{' '}
             <strong className="text-[var(--q-ink)]">وما حسبته عليك.</strong>
           </p>
-          {unsure.some((u) => u.words.length > 0) && (
-            <ul className="mt-3 flex flex-col gap-2">
-              {unsure
-                .filter((u) => u.words.length > 0)
-                .map((u, i) => (
-                  <li key={i} className="rounded-xl bg-white/70 px-3 py-2">
-                    <p className="text-[0.75rem] text-[var(--q-mute)]">
-                      الآية {u.ayah !== null ? toArabic(u.ayah) : '—'}
-                    </p>
-                    <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
-                      {u.words.join(' ')}
-                    </p>
-                  </li>
-                ))}
-            </ul>
-          )}
+          {/* ⚠️ تُعرض كلها لا ما له كلمةٌ متوقَّعة فقط: من قرأت تريد أن
+              تعرف **أين** لم يصلنا صوتها لتنتبه له في المرة القادمة.
+              وعددٌ بلا مواضع يقلق ولا يفيد. */}
+          <ul className="mt-3 flex flex-col gap-2">
+            {unsure.map((u, i) => (
+              <li key={i} className="rounded-xl bg-white/70 px-3 py-2">
+                <p className="text-[0.75rem] text-[var(--q-mute)]">
+                  {u.ayah !== null ? `الآية ${toArabic(u.ayah)}` : 'موضع'}
+                  {u.words.length === 0 ? ' · وصلني كلام زايد' : ''}
+                </p>
+                <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
+                  {u.words.length > 0
+                    ? u.words.join(' ')
+                    : (u.heard ?? []).join(' ') || '—'}
+                </p>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

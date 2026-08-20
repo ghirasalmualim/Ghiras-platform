@@ -158,11 +158,29 @@ export async function POST(req: NextRequest) {
        */
       unsure: result.usable
         ? result.entries
-            .filter((e) => e.kind === 'UNCERTAIN')
-            .map((e) => ({
-              ayah: e.expected[0]?.ayah ?? null,
-              words: e.expected.map((w) => w.uthmani),
-            }))
+            .map((e, i) => {
+              if (e.kind !== 'UNCERTAIN') return null;
+
+              /**
+               * ⚠️ ولا يكفي نقل المتوقَّع: موضعٌ سببه كلمةٌ اخترعها
+               * المزوّد لا كلمة متوقَّعة له، فكان يُعدّ ولا يُعرض —
+               * فتقرأ الطالبة «فيه أربعة مواضع» ولا تعرف أين، وهذا
+               * يقلق ولا يفيد. وموضعُه يُؤخذ من آخر كلمة سبقته.
+               */
+              let anchor = e.expected[0];
+              for (let k = i - 1; k >= 0 && !anchor; k--) {
+                const prev = result.entries[k].expected;
+                if (prev.length) anchor = prev[prev.length - 1];
+              }
+
+              return {
+                ayah: anchor?.ayah ?? null,
+                words: e.expected.map((w) => w.uthmani),
+                /** ما وصلنا في هذا الموضع — هو الخبر حين لا متوقَّع له. */
+                heard: e.heard.map((h) => h.text),
+              };
+            })
+            .filter((u): u is NonNullable<typeof u> => u !== null)
         : [],
       /**
        * المواضع المؤكَّدة.
