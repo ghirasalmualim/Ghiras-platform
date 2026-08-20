@@ -184,6 +184,35 @@ export class Recorder {
     return have ? Math.sqrt(sum / have) : 0;
   }
 
+  /** كم ثانيةً تراكمت ولم تُسحب بعد. */
+  heldSeconds(): number {
+    if (!this.ctx) return 0;
+    let n = 0;
+    for (const c of this.chunks) n += c.length;
+    return n / this.ctx.sampleRate;
+  }
+
+  /**
+   * سحب ما تراكم وإفراغه — **والتسجيل مستمرّ**.
+   *
+   * ── لماذا ──
+   * كنّا نسجّل الجلسة كلها ثم نرسل قطعها بعد «انتهيت»، فينتظر القارئ
+   * أربع ثوانٍ لكل قطعة مجموعةً بعضها إلى بعض. وأكثر ذلك الانتظار
+   * كان يمكن أن يمضي **وهو يقرأ**.
+   *
+   * فصار ما يتمّ من الصوت يُرسل في حينه، ولا يبقى عند «انتهيت» إلا
+   * آخر قطعة. والقارئ لا يشعر بشيء: يقرأ متصلًا كما كان.
+   *
+   * ⚠️ ويُفرَّغ المخزَن هنا لا يُنسَخ: ما سُحب أُرسل، وإبقاؤه يعني
+   * إرساله مرتين فتُحسب الآيات مكرَّرة على القارئ.
+   */
+  drain(): Float32Array {
+    if (!this.ctx) return new Float32Array(0);
+    const raw = concat(this.chunks);
+    this.chunks = [];
+    return resample(raw, this.ctx.sampleRate, TARGET_SAMPLE_RATE);
+  }
+
   /** الإيقاف وبناء WAV. يُنادى مرة واحدة. */
   async stop(): Promise<CaptureResult> {
     if (!this.ctx) throw new CaptureFailure('INTERRUPTED');

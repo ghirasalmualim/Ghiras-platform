@@ -7,7 +7,7 @@ import { toArabic } from '../engine/numerals';
 import { buildExpected, type ExpectedWord } from '../engine/alignment';
 import { nextHint, type Hint, type HintLevel } from '../engine/hints';
 import type { MasteryLevel } from '../engine/grading';
-import { SESSION_TUNING, splitIntoChunks } from '../engine/session';
+import { SESSION_TUNING } from '../engine/session';
 import { Recorder, CaptureFailure, encodeWav, TARGET_SAMPLE_RATE } from '../capture/recorder';
 import { ayahAudioUrl } from '../engine/audio';
 
@@ -36,6 +36,16 @@ import { ayahAudioUrl } from '../engine/audio';
 
 type Mode = 'train' | 'test';
 type Phase = 'setup' | 'reciting' | 'paused' | 'processing' | 'result';
+
+type ChunkOutcome = {
+  tokens: { text: string; confidence?: number }[];
+  status: string;
+  snr: number | null;
+  confidence: number | null;
+  seconds: number;
+  artifactsRemoved: number;
+  failed?: string;
+};
 
 type ChunkDiag = {
   index: number;
@@ -128,6 +138,16 @@ export default function ReciteScreen({
   const recorder = useRef<Recorder | null>(null);
   /** أجزاء التسجيل — تنقطع عند كل تلميح صوتي ثم تُوصل. */
   const parts = useRef<Float32Array[]>([]);
+  /**
+   * القطع المرسَلة أثناء القراءة، بترتيبها.
+   *
+   * ⚠️ الترتيب شرط: الكلمات تُوصَل بعضها ببعض لتُحاذى بالنص، فلو
+   * وصلت قطعةٌ قبل سابقتها لاختلّ الترتيب وصار الحكم على غير ما قُرئ.
+   * فنحفظ الوعود مرتَّبةً وننتظرها بترتيبها لا بترتيب وصولها.
+   */
+  const inFlight = useRef<Promise<ChunkOutcome>[]>([]);
+  /** ما أُرسل ولم يُسحب بعدُ من المسجّل — يمنع الإرسال المتكرر. */
+  const cutting = useRef(false);
   const helpUsed = useRef(false);
   const audio = useRef<HTMLAudioElement | null>(null);
   const startedAt = useRef(0);
@@ -150,17 +170,29 @@ export default function ReciteScreen({
     return () => document.removeEventListener('visibilitychange', onHide);
   }, []);
 
-  // ── نبض السكوت — في وضع التدريب وحده ─────────────────────
+  // ── نبض الجلسة: السكوت، والقطع، والإرسال المبكّر ─────────
+  //
+  // ⚠️ يُقطع **عند سكتة** ما أمكن. والسكتة بين الآيات حدٌّ طبيعي،
+  // أما القطع في وسط كلمة فيُفقد المزوّدَ سياقَها فيُخطئ فيها.
   useEffect(() => {
     if (phase !== 'reciting') return;
     const id = window.setInterval(() => {
       setElapsed(Math.round((Date.now() - startedAt.current) / 1000));
-      if (mode !== 'train') return;
       const r = recorder.current;
       if (!r?.isRecording) return;
-      setQuiet(r.liveRms(SESSION_TUNING.strugglingSec) < SESSION_TUNING.silenceRms);
+
+      const silent = r.liveRms(0.5) < SESSION_TUNING.silenceRms;
+      if (mode === 'train')
+        setQuiet(r.liveRms(SESSION_TUNING.strugglingSec) < SESSION_TUNING.silenceRms);
+
+      const held = r.heldSeconds();
+      // بلغ الحدّ التقني ⇒ يُقطع اضطرارًا ولو في وسط الكلام
+      if (held >= SESSION_TUNING.hardMaxSec - 1) void cutAndSend(true);
+      // أو سكت بعد ما تجمّع ما يكفي ⇒ حدٌّ طبيعي
+      else if (held >= SESSION_TUNING.targetSec * 0.6 && silent) void cutAndSend(false);
     }, 700);
     return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, mode]);
 
   useEffect(() => {
@@ -225,6 +257,72 @@ export default function ReciteScreen({
   // الميكروفون سيلتقط صوته وإلا فيُحسب على الطالبة. وiOS يحوّل الصوت
   // إلى السماعة الخارجية فور فتح الميكروفون، فالتداخل مؤكّد لا محتمل.
   /**
+   * إرسال قطعة إلى الخادم — تُنادى أثناء القراءة وعند نهايتها.
+   *
+   * ⚠️ لا تُوقف شيئًا ولا تُظهر شيئًا: القارئ يقرأ ولا يعلم أن ثمّة
+   * إرسالًا. وإن تعثّرت قطعة لم تُقطع الجلسة — يُحفظ خبرُها ويُقال
+   * في آخرها، لأن قطع القراءة لأجل خللٍ في الشبكة أشدّ من الخلل.
+   */
+  function sendChunk(samples: Float32Array, at: number): Promise<ChunkOutcome> {
+    const seconds = samples.length / TARGET_SAMPLE_RATE;
+    const wav = encodeWav(samples, TARGET_SAMPLE_RATE);
+    return fetch(
+      `/api/quran/recite?surah=${surah.number}&from=${from}&to=${to}&at=${at}`,
+      { method: 'POST', body: wav }
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          return {
+            tokens: [], status: 'HTTP_ERROR', snr: null, confidence: null,
+            seconds, artifactsRemoved: 0, failed: j.error ?? String(res.status),
+          };
+        }
+        const j = await res.json();
+        return {
+          tokens: (j.tokens ?? []).map((t: { text: string; confidence?: number }) => ({
+            text: t.text, confidence: t.confidence,
+          })),
+          status: j.status ?? '—',
+          snr: typeof j.meta?.snr === 'number' ? j.meta.snr : null,
+          confidence: j.meta?.confidence ?? null,
+          seconds, artifactsRemoved: j.artifactsRemoved ?? 0,
+        };
+      })
+      .catch(() => ({
+        tokens: [], status: 'NETWORK', snr: null, confidence: null,
+        seconds, artifactsRemoved: 0, failed: 'NETWORK',
+      }));
+  }
+
+  /**
+   * قطعُ ما تراكم وإرساله، والقراءة مستمرّة.
+   *
+   * ⚠️ يُقطع **عند سكتة** ما أمكن: القطع في وسط كلمة يُفقد المزوّدَ
+   * سياقَها فيُخطئ فيها، والسكتة بين الآيات حدٌّ طبيعي لا مصطنع.
+   * ولا يُقطع عند الحدّ التقني إلا اضطرارًا.
+   */
+  async function cutAndSend(force: boolean) {
+    const r = recorder.current;
+    if (!r || !r.isRecording || cutting.current) return;
+    cutting.current = true;
+    try {
+      const samples = r.drain();
+      if (samples.length < TARGET_SAMPLE_RATE) {
+        // أقل من ثانية: نعيدها إلى المخزَن بدل أن نُرسل هواءً
+        if (samples.length) parts.current.push(samples);
+        return;
+      }
+      parts.current.push(samples);
+      // موضعُ النافذة تقديرٌ من عدد ما أُرسل — تلميحٌ للمزوّد لا حكم
+      const at = Math.min(expected.length - 1, inFlight.current.length * 12);
+      inFlight.current.push(sendChunk(samples, at));
+    } finally {
+      cutting.current = false;
+    }
+  }
+
+  /**
    * طلبُ العون: نوقف التسجيل ونسألها أين وقفت.
    *
    * ── لماذا نسألها ──
@@ -273,7 +371,9 @@ export default function ReciteScreen({
     setHint(null);
     setQuiet(false);
 
-    const samples = joinParts(parts.current);
+    // ما تراكم ولم يُرسل بعد
+    const tail = recorder.current ? recorder.current.drain() : new Float32Array(0);
+    const samples = joinParts(parts.current.concat(tail.length ? [tail] : []));
     parts.current = [];
 
     if (samples.length < TARGET_SAMPLE_RATE * 1) {
@@ -283,55 +383,51 @@ export default function ReciteScreen({
     }
 
     try {
-      const chunks = splitIntoChunks(samples, TARGET_SAMPLE_RATE);
-      const tokens: { text: string; confidence?: number }[] = [];
       /**
-       * حال كل مقطع ونقاء صوته.
+       * ما بقي بعد ما أُرسل أثناء القراءة.
        *
-       * ⚠️ كانت تُهمَل: المزوّد يردّ «ضجّة» أو «ما سمعت» بحالة HTTP
-       * ناجحة وكلماتٍ فارغة، فنمضي صامتين وننتهي إلى «الصوت ما كان
-       * واضحًا» — رسالةٌ صادقة لكنها لا تقول لماذا ولا ماذا تفعل.
+       * ⚠️ ولا يُعاد إرسال ما أُرسل: `drain` أفرغ المخزَن في حينه،
+       * فما هنا إلا الذيل. وإعادةُ إرساله تعني حسابَ الآيات مرتين.
        */
+      if (tail.length >= TARGET_SAMPLE_RATE) {
+        const at = Math.min(expected.length - 1, inFlight.current.length * 12);
+        inFlight.current.push(sendChunk(tail, at));
+      }
+
+      // ⚠️ بترتيبها لا بترتيب وصولها: الكلمات تُحاذى بالنص متتابعةً
+      const outcomes = await Promise.all(inFlight.current);
+      inFlight.current = [];
+
+      const tokens: { text: string; confidence?: number }[] = [];
       const statuses: string[] = [];
       const collected: ChunkDiag[] = [];
       let worstSnr: number | null = null;
-      let at = 0;
+      let hardFail: string | null = null;
 
-      for (const chunk of chunks) {
-        const wav = encodeWav(chunk.samples, TARGET_SAMPLE_RATE);
-        const res = await fetch(
-          `/api/quran/recite?surah=${surah.number}&from=${from}&to=${to}&at=${at}`,
-          { method: 'POST', body: wav }
-        );
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          setResult(unusable(serverMessage(j.error)));
-          setPhase('result');
-          return;
-        }
-        const j = await res.json();
-        if (j.status) statuses.push(j.status);
-        const snr = j.meta?.snr;
-        if (typeof snr === 'number' && (worstSnr === null || snr < worstSnr)) worstSnr = snr;
-
+      outcomes.forEach((o, i) => {
+        if (o.failed && !hardFail) hardFail = o.failed;
+        statuses.push(o.status);
+        if (o.snr !== null && (worstSnr === null || o.snr < worstSnr)) worstSnr = o.snr;
+        for (const t of o.tokens) tokens.push(t);
         collected.push({
-          index: chunk.index,
-          seconds: Math.round((chunk.endSec - chunk.startSec) * 10) / 10,
-          status: j.status ?? '—',
-          snr: typeof snr === 'number' ? Math.round(snr * 10) / 10 : null,
-          confidence: j.meta?.confidence ?? null,
-          tokens: (j.tokens ?? []).length,
-          artifactsRemoved: j.artifactsRemoved ?? 0,
-          atSilence: chunk.cutAtSilence,
+          index: i,
+          seconds: Math.round(o.seconds * 10) / 10,
+          status: o.status,
+          snr: o.snr === null ? null : Math.round(o.snr * 10) / 10,
+          confidence: o.confidence,
+          tokens: o.tokens.length,
+          artifactsRemoved: o.artifactsRemoved,
+          atSilence: true,
         });
-
-        // ⚠️ لا نقطع الجلسة عند مقطع متعثّر: قد تكون بقيتها سليمة،
-        // وحُرّاس المحاذاة يتولّون الفجوة. نجمع الخبر ونشرحه في آخرها.
-        for (const t of j.tokens ?? []) tokens.push({ text: t.text, confidence: t.confidence });
-        at = Math.min(expected.length - 1, tokens.length);
-      }
+      });
 
       setDiag(collected);
+
+      if (!tokens.length && hardFail) {
+        setResult(unusable(serverMessage(hardFail)));
+        setPhase('result');
+        return;
+      }
 
       const done = await fetch('/api/quran/recite/finish', {
         method: 'POST',
@@ -342,7 +438,7 @@ export default function ReciteScreen({
           to,
           mode,
           helpUsed: helpUsed.current,
-          chunks: chunks.length,
+          chunks: outcomes.length,
           seconds: samples.length / TARGET_SAMPLE_RATE,
           tokens,
         }),
