@@ -139,7 +139,7 @@ export default function QuranCurriculumEditor({
         </Link>
         <h1 className="text-2xl font-extrabold text-ink">منهج القرآن</h1>
         <p className="mt-1 text-sm text-ink/60">
-          أدخلي دروس المقرر لكل صف وفصل. ما يظهر للطالبات هو الظاهر فقط.
+          أدخل دروس المقرر لكل صف وفصل. ما يظهر للطالبات هو الظاهر فقط.
         </p>
       </header>
 

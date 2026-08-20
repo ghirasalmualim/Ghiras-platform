@@ -234,7 +234,7 @@ export function buildDailyTask(
     const range = `${toArabicDigits(slice.from_ayah)}–${toArabicDigits(slice.to_ayah)}`;
     items.push({
       icon: '🎧',
-      label: `استمعي إلى ${surahName(slice.surah)} ${range}`,
+      label: `استمع إلى ${surahName(slice.surah)} ${range}`,
       href: `/quran/study/${slice.surah}/${slice.from_ayah}/${slice.to_ayah}`,
       minutes: MINUTES.listen,
     });
@@ -249,7 +249,7 @@ export function buildDailyTask(
   if (slice && slice.review_from && slice.review_to) {
     items.push({
       icon: '🔗',
-      label: `اربطي ما حفظتِ ${toArabicDigits(slice.review_from)}–${toArabicDigits(slice.review_to)}`,
+      label: `اربط ما حفظت ${toArabicDigits(slice.review_from)}–${toArabicDigits(slice.review_to)}`,
       href: `/quran/study/${slice.surah}/${slice.review_from}/${slice.review_to}`,
       minutes: MINUTES.review,
     });

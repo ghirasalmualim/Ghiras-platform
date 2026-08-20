@@ -162,7 +162,7 @@ export default function GoalPlanner({
             onClick={() => setPicking(true)}
             className="font-bold text-[var(--q-accent)] underline underline-offset-4"
           >
-            اجعلي هذا المقطع هدفك
+            اجعل هذا المقطع هدفك
           </button>
         </p>
       </section>
@@ -179,7 +179,7 @@ export default function GoalPlanner({
         >
           <span>
             <span className="block font-[family-name:var(--font-cairo)] text-[0.98rem] font-extrabold text-[var(--q-ink)]">
-              🎯 اجعلي هذا هدفك
+              🎯 اجعل هذا هدفك
             </span>
             <span className="mt-0.5 block text-[0.8rem] text-[var(--q-mute)]">
               حدّدي موعدًا ونقسّم لك {surahName} على الأيام

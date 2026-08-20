@@ -70,9 +70,9 @@ export default function RegisterPage() {
     if (error) {
       const m = (error.message || '').toLowerCase();
       if (m.includes('already') || m.includes('registered') || m.includes('exists')) {
-        setMessage('رقم الجوال مسجّل مسبقاً. سجّلي الدخول، أو استخدمي رقماً آخر.');
+        setMessage('رقم الجوال مسجّل مسبقاً. سجّل الدخول، أو استخدم رقماً آخر.');
       } else {
-        setMessage('تعذّر إنشاء الحساب — حاولي مرة أخرى.');
+        setMessage('تعذّر إنشاء الحساب — حاول مرة أخرى.');
       }
       setLoading(false);
       return;
@@ -102,7 +102,7 @@ export default function RegisterPage() {
           إنشاء حساب جديد
         </h1>
         <p className="mt-2 text-center text-ink/60 text-sm leading-relaxed">
-          سجّلي حسابك في غراس المعلم — الاشتراك يُفعَّل بعد الدفع
+          سجّل حسابك في غراس المعلم — الاشتراك يُفعَّل بعد الدفع
         </p>
 
         <div className="mt-7 space-y-4">

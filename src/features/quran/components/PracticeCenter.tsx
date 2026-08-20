@@ -184,7 +184,7 @@ export default function PracticeCenter({
           🌿
         </p>
         <p className="font-[family-name:var(--font-cairo)] text-lg font-extrabold text-[var(--q-ink)]">
-          أحسنت، أنهيتِ التدريب
+          أحسنت، أنهيت التدريب
         </p>
         <p className="mt-1 text-[0.85rem] text-[var(--q-mute)]">
           {results.current.every((r) => attemptQuality(r) === 3)
@@ -388,7 +388,7 @@ function QuestionPrompt({
         <span aria-hidden>▶</span>
       </button>
       <p className="mt-3 text-[0.82rem] text-[var(--q-mute)]">
-        استمعي ثم حدّدي الآية — بصوت {reciter.name_ar}
+        استمع ثم حدّدي الآية — بصوت {reciter.name_ar}
       </p>
     </div>
   );
@@ -420,7 +420,7 @@ function AfterAnswer({
         onClick={onPlay}
         className="tap mx-auto mt-3 block rounded-xl border border-[var(--q-line)] px-4 py-2 text-[0.82rem] font-bold text-[var(--q-ink)]"
       >
-        🎧 استمعي إليها
+        🎧 استمع إليها
       </button>
     </div>
   );

@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   const authorized = await verifyKey(req.headers.get("x-ghiras-key"));
   if (!authorized) {
     return new Response(
-      JSON.stringify({ error: { message: "تصريح غير صالح — افتحي الدفتر من منصّة غراس" } }),
+      JSON.stringify({ error: { message: "تصريح غير صالح — افتح الدفتر من منصّة غراس" } }),
       { status: 401, headers }
     );
   }

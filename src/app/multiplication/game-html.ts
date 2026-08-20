@@ -868,7 +868,7 @@ $('#dStart').onclick=duelStart;
 let armed=false;
 $('#resetBtn').onclick=e=>{
   if(!armed){                                   // تأكيد بضغطتين بدل نافذة منبثقة
-    armed=true; e.target.textContent='⚠️ متأكدة؟ اضغطي مرة أخرى';
+    armed=true; e.target.textContent='⚠️ متأكد؟ اضغط مرة أخرى';
     e.target.classList.add('on');
     setTimeout(()=>{armed=false;e.target.textContent='↺ بداية جديدة';e.target.classList.remove('on');},4000);
     return;

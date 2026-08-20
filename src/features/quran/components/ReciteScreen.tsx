@@ -553,7 +553,7 @@ function Reciting({
           <span aria-hidden>🎙️</span> {toArabic(elapsed)} ثانية
         </p>
 
-        {/* ⚠️ لا نقول «أخطأتِ» — نحن نسمع سكوتًا لا خطأً */}
+        {/* ⚠️ لا نقول «أخطأت» — نحن نسمع سكوتًا لا خطأً */}
         {mode === 'train' && quiet && (
           <p className="mt-5 rounded-2xl bg-[#f2f7f3] px-4 py-3 text-base font-bold text-[var(--q-accent)]">
             خذ وقتك 🌱

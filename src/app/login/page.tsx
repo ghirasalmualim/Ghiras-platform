@@ -193,7 +193,7 @@ function LoginForm() {
             </Link>
           </p>
           <p className="text-center text-xs text-ink/45">
-            نسيتِ كلمة السر؟ تواصلي مع إدارة غراس المعلم
+            نسيت كلمة السر؟ تواصلي مع إدارة غراس المعلم
           </p>
         </div>
       </div>

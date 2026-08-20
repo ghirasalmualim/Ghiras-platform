@@ -181,7 +181,7 @@ export function isMastered(state: ReviewState): boolean {
  */
 export const BOX_LABEL = [
   'جديد',
-  'بدأتِ',
+  'بدأت',
   'تتحسّن',
   'جيدة',
   'راسخة',

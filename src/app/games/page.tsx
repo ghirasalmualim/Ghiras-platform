@@ -24,7 +24,7 @@ const GAMES = [
     tag: 'مسابقات',
     emoji: '🏆',
     title: 'من سيربح المليون',
-    desc: 'صوّري درسك، والذكاء يبني لك مسابقة تصاعدية حتى المليون — ١٠ أسئلة جاهزة للصف.',
+    desc: 'صوّر درسك، والذكاء يبني لك مسابقة تصاعدية حتى المليون — ١٠ أسئلة جاهزة للصف.',
   },
   {
     href: '/snake',
@@ -85,7 +85,7 @@ export default async function GamesPage() {
           className="animate-float-in mt-4 max-w-md text-lg text-ink/70 leading-relaxed"
           style={{ animationDelay: '0.25s' }}
         >
-          اختاري اللعبة، صوّري درسك، والذكاء يبنيها لك
+          اختر اللعبة، صوّر درسك، والذكاء يبنيها لك
           <br />
           كل الألعاب تشترك في نفس رصيدك — والمعاينة مجانية
         </p>

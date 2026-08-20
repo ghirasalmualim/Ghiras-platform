@@ -164,7 +164,7 @@ export default function AdminPanel() {
   const grantSpecific = (id: string) => {
     const sv = sel[id];
     if (!sv || !sv.target) {
-      setMsg('اختاري المرحلة أو الصف أولاً');
+      setMsg('اختر المرحلة أو الصف أولاً');
       return;
     }
     const supabase = createClient();
@@ -186,7 +186,7 @@ export default function AdminPanel() {
   const revokeSpecific = (id: string) => {
     const sv = sel[id];
     if (!sv || !sv.target) {
-      setMsg('اختاري المرحلة أو الصف أولاً');
+      setMsg('اختر المرحلة أو الصف أولاً');
       return;
     }
     const supabase = createClient();
@@ -412,7 +412,7 @@ export default function AdminPanel() {
               كلمة مرور مؤقتة لحساب «{tempPw.name}»
             </h2>
             <p className="mt-1.5 text-sm text-ink/55">
-              أرسليها للمعلمة، واطلبي منها تغييرها بعد الدخول.
+              أرسليها للمعلمة، واطلب منها تغييرها بعد الدخول.
             </p>
 
             <div
@@ -595,7 +595,7 @@ export default function AdminPanel() {
                   value={sv.target || ''}
                   onChange={(e) => setSel({ ...sel, [r.id]: { target: e.target.value, subject: '' } })}
                 >
-                  <option value="">اختاري المرحلة / الصف…</option>
+                  <option value="">اختر المرحلة / الصف…</option>
                   {stages.map((st) => (
                     <optgroup key={st.id} label={st.name}>
                       <option value={`stage:${st.id}`}>كل {st.name}</option>
