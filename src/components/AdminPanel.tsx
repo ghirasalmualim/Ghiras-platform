@@ -255,6 +255,45 @@ export default function AdminPanel() {
   // تُعرض مرة واحدة هنا لتُرسل للمعلمة، ولا تُخزَّن في أي مكان.
   const [tempPw, setTempPw] = useState<{ name: string; password: string } | null>(null);
 
+  // ── إنشاء حساب من اللوحة ──
+  // كان التسجيل ذاتيًا وحده، ثم تُمنح الصلاحيات في خطوة ثانية —
+  // وبين الخطوتين فجوة تُنسى فتشتكي المشتركة أنها لا تصل إلى الأدوات.
+  // فيُنشأ الحساب وتُمنح الصلاحيات في طلبٍ واحد.
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newAccess, setNewAccess] = useState(true);
+
+  const createAccount = async () => {
+    if (busy === 'new') return;
+    setBusy('new');
+    setMsg(null);
+    try {
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: newName,
+          phone: newPhone,
+          months: newAccess ? 6 : 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) setMsg('تعذّر: ' + (data?.error || 'خطأ غير معروف'));
+      else {
+        setTempPw({ name: `${data.name} — ${data.phone}`, password: data.password });
+        if (data.note) setMsg(data.note);
+        setNewName('');
+        setNewPhone('');
+        setNewOpen(false);
+        void load();
+      }
+    } catch {
+      setMsg('تعذّر الاتصال بالخادم');
+    }
+    setBusy(null);
+  };
+
   const resetPassword = async (id: string, name: string) => {
     if (!confirm(`تعيين كلمة مرور مؤقتة لحساب «${name}»؟\nكلمة المرور الحالية لن تعمل بعدها.`))
       return;
@@ -444,6 +483,78 @@ export default function AdminPanel() {
 
   return (
     <main className="min-h-dvh px-4 sm:px-6 py-8 max-w-5xl mx-auto">
+      {/* ── إنشاء حساب ── */}
+      <div className="mb-5">
+        {!newOpen ? (
+          <button
+            type="button"
+            onClick={() => setNewOpen(true)}
+            className="rounded-xl bg-sage px-5 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-sage-dark"
+          >
+            ➕ إنشاء حساب مشترك
+          </button>
+        ) : (
+          <div className="card-3d bg-white p-5">
+            <h3 className="text-base font-extrabold text-ink">إنشاء حساب مشترك</h3>
+            <p className="mt-1 text-[0.8rem] text-ink/55">
+              تُولَّد كلمة مرور مؤقتة وتُعرض مرة واحدة — أرسلها له ليغيّرها من «حسابي».
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold text-ink/80">الاسم الكامل</span>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="أ. ..."
+                  className="w-full rounded-lg border border-ink/15 px-3 py-2 outline-none focus:border-sage"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold text-ink/80">رقم الجوال</span>
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  inputMode="tel"
+                  placeholder="٩٩٨٨٧٧٦٦"
+                  dir="ltr"
+                  className="w-full rounded-lg border border-ink/15 px-3 py-2 text-right outline-none focus:border-sage"
+                />
+              </label>
+            </div>
+
+            {/* ⚠️ مؤشَّر افتراضيًا: الحساب بلا صلاحية يعني شكوى بعد يوم */}
+            <label className="mt-3 flex items-center gap-2 text-sm font-bold text-ink/80">
+              <input
+                type="checkbox"
+                checked={newAccess}
+                onChange={(e) => setNewAccess(e.target.checked)}
+                className="h-4 w-4 accent-[#5b8c6e]"
+              />
+              امنحه وصولًا كاملًا ٦ أشهر من الآن
+            </label>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={createAccount}
+                disabled={busy === 'new' || !newName.trim() || !newPhone.trim()}
+                className="rounded-xl bg-sage px-5 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-sage-dark disabled:opacity-50"
+              >
+                {busy === 'new' ? 'جارٍ الإنشاء…' : 'أنشئ الحساب'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewOpen(false)}
+                className="rounded-xl border border-ink/15 px-4 py-2.5 text-sm font-bold text-ink/60"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* كلمة المرور المؤقتة — تظهر مرة واحدة ولا تُحفظ */}
       {tempPw && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
