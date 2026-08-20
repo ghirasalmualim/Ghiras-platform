@@ -68,7 +68,7 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
             href="/login"
             className="mt-2 inline-block px-1 py-2 font-bold text-[var(--q-accent)] underline underline-offset-4"
           >
-            سجّلي الدخول
+            سجّل الدخول
           </Link>
         </p>
       </div>
@@ -93,16 +93,16 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
           <p className="font-[family-name:var(--font-cairo)] text-lg font-extrabold text-[var(--q-ink)]">
             {segments.length
               ? 'ما عليك مراجعة اليوم'
-              : 'ابدئي بحفظ مقطع وستظهر مراجعته هنا'}
+              : 'ابدأ بحفظ مقطع وستظهر مراجعته هنا'}
           </p>
           <p className="mt-1 text-[0.85rem] text-[var(--q-mute)]">
-            {segments.length ? 'نراكِ غدًا بإذن الله 🌿' : ''}
+            {segments.length ? 'نراك غدًا بإذن الله 🌿' : ''}
           </p>
           <Link
             href="/quran/browse"
             className="tap mt-5 inline-block rounded-2xl bg-[var(--q-accent)] px-5 py-2.5 text-[0.9rem] font-extrabold text-white"
           >
-            {segments.length ? 'احفظي مقطعًا جديدًا' : 'اختاري سورة'}
+            {segments.length ? 'احفظ مقطعًا جديدًا' : 'اختر سورة'}
           </Link>
         </div>
       ) : (

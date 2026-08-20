@@ -128,7 +128,7 @@ export default function CurriculumBrowser({
               ما فيه دروس في هذا الفصل
             </p>
             <p className="text-[0.85rem] leading-relaxed text-[var(--q-mute)]">
-              جرّبي الفصل الآخر، أو اقرئي من{' '}
+              جرّب الفصل الآخر، أو اقرأ من{' '}
               <Link
                 href="/quran/browse"
                 className="font-bold text-[var(--q-accent)] underline underline-offset-4"

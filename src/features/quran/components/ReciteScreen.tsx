@@ -62,13 +62,13 @@ function mistakeLabel(kind: string): string {
     case 'OMISSION':
       return 'ما وصلتني هذي';
     case 'SKIP':
-      return 'هذا الموضع ما قرأتيه';
+      return 'هذا الموضع ما قرأته';
     case 'SUBSTITUTION':
       return 'هنا كلمة غير المتوقَّعة';
     case 'INSERTION':
       return 'كلمة زايدة على النص';
     case 'REPETITION':
-      return 'كرّرتِ هنا';
+      return 'كرّرت هنا';
     default:
       return 'نراجعه معًا';
   }
@@ -143,7 +143,7 @@ export default function ReciteScreen({
         recorder.current = null;
         parts.current = [];
         setPhase('setup');
-        setNote('توقّف التسميع لأن الشاشة أُغلقت أو خرجتِ من الصفحة. نبدأ من جديد؟');
+        setNote('توقّف التسميع لأن الشاشة أُغلقت أو خرجت من الصفحة. نبدأ من جديد؟');
       }
     };
     document.addEventListener('visibilitychange', onHide);
@@ -261,7 +261,7 @@ export default function ReciteScreen({
       const el = audio.current ?? new Audio();
       audio.current = el;
       el.src = ayahAudioUrl(reciter, h.surah, h.ayah);
-      void el.play().catch(() => setNote('تعذّر تشغيل التلاوة — تأكدي من الإنترنت.'));
+      void el.play().catch(() => setNote('تعذّر تشغيل التلاوة — تأكد من الإنترنت.'));
     }
   }
 
@@ -483,7 +483,7 @@ function Setup({
         onClick={onStart}
         className="tap rounded-3xl bg-[var(--q-accent)] px-6 py-6 text-xl font-extrabold text-white shadow-sm"
       >
-        🎙️ ابدئي التسميع
+        🎙️ ابدأ التسميع
       </button>
 
       {/* ⚠️ وعدٌ صريح للطالبة ولوليّها — ونحن ننفّذه في الكود لا في النية */}
@@ -556,7 +556,7 @@ function Reciting({
         {/* ⚠️ لا نقول «أخطأتِ» — نحن نسمع سكوتًا لا خطأً */}
         {mode === 'train' && quiet && (
           <p className="mt-5 rounded-2xl bg-[#f2f7f3] px-4 py-3 text-base font-bold text-[var(--q-accent)]">
-            خذي وقتك 🌱
+            خذ وقتك 🌱
           </p>
         )}
       </div>
@@ -628,10 +628,10 @@ function Paused({
     <div className="flex flex-col gap-5">
       <div className="rounded-3xl border border-[var(--q-line)] bg-[var(--q-card)] p-6">
         <p className="text-center text-lg font-bold text-[var(--q-ink)]">
-          {hint ? hint.text : 'شوفي وين وقفتِ 🌿'}
+          {hint ? hint.text : 'شوف وين وقفت 🌿'}
         </p>
         <p className="mt-1 text-center text-[0.82rem] text-[var(--q-mute)]">
-          {hint ? 'التسجيل موقوف حتى تكملي' : 'اضغطي الآية لتسمعيها'}
+          {hint ? 'التسجيل موقوف حتى تكمل' : 'اضغط الآية لتسمعها'}
         </p>
 
         <ul className="mt-4 flex flex-col gap-2">
@@ -671,7 +671,7 @@ function Paused({
 
         {chosen !== null && (
           <p className="mt-3 text-center text-[0.78rem] text-[var(--q-mute)]">
-            اضغطيها مرة ثانية لو تبين أوائل كلماتها
+            اضغطها مرة ثانية لو تبي أوائل كلماتها
           </p>
         )}
       </div>
@@ -685,7 +685,7 @@ function Paused({
         onClick={onResume}
         className="tap w-full rounded-2xl bg-[var(--q-accent)] px-4 py-5 text-lg font-bold text-white"
       >
-        🎙️ أكمل التسميع من وين وقفتِ
+        🎙️ أكمل التسميع من وين وقفت
       </button>
 
       <button
@@ -693,7 +693,7 @@ function Paused({
         onClick={onDone}
         className="tap mx-auto text-[0.82rem] font-bold text-[var(--q-mute)] underline underline-offset-4"
       >
-        أنهي التسميع واعرضي النتيجة
+        أنهِ التسميع واعرض النتيجة
       </button>
     </div>
   );
@@ -726,7 +726,7 @@ function Result({
           onClick={onAgain}
           className="tap rounded-2xl bg-[var(--q-accent)] px-6 py-5 text-lg font-extrabold text-white"
         >
-          🎙️ أعيدي التسميع
+          🎙️ أعد التسميع
         </button>
       </div>
     );
@@ -873,14 +873,14 @@ function Result({
           onClick={onAgain}
           className="tap flex-1 rounded-2xl bg-[var(--q-accent)] px-5 py-4 text-base font-extrabold text-white"
         >
-          🎙️ سمّعي مرة ثانية
+          🎙️ سمّع مرة ثانية
         </button>
         {result.weakSpots.length > 0 && (
           <Link
             href={`/quran/review`}
             className="tap flex-1 rounded-2xl border-2 border-[var(--q-line)] px-5 py-4 text-center text-base font-bold text-[var(--q-ink)]"
           >
-            🌱 راجعي المواضع
+            🌱 راجع المواضع
           </Link>
         )}
       </div>
@@ -926,13 +926,13 @@ function whyUnusable(statuses: string[], snr: number | null, reason?: string | n
 
   // ⚠️ سببٌ يخصّ المحتوى لا الصوت: يُقدَّم على كل تشخيصٍ صوتي
   if (reason === 'NOT_THIS_PASSAGE')
-    return 'ما وصلتني تلاوة لهذي الآيات. تأكدي إنك تسمّعين المقطع المطلوب 🌿';
+    return 'ما وصلتني تلاوة لهذي الآيات. تأكد إنك تسمّع المقطع المطلوب 🌿';
 
   if (has('NOISE') || (snr !== null && snr < QUIET_ENOUGH_SNR))
-    return 'يبدو فيه ضجّة حواليك. جرّبي في مكان أهدأ 🌿';
-  if (has('SILENCE')) return 'ما وصلني صوتك. قرّبي الميكروفون شوي وجرّبي.';
-  if (has('NO_SPEECH')) return 'ما قدرت أميّز التلاوة. اقرئي بصوت أوضح شوي.';
-  if (has('PROVIDER_ERROR')) return 'صار خلل مؤقت. جرّبي مرة ثانية بعد لحظة.';
+    return 'يبدو فيه ضجّة حواليك. جرّب في مكان أهدأ 🌿';
+  if (has('SILENCE')) return 'ما وصلني صوتك. قرّب الميكروفون شوي وجرّب.';
+  if (has('NO_SPEECH')) return 'ما قدرت أميّز التلاوة. اقرأ بصوت أوضح شوي.';
+  if (has('PROVIDER_ERROR')) return 'صار خلل مؤقت. جرّب مرة ثانية بعد لحظة.';
   return 'الصوت ما كان واضحًا كفاية عشان أحكم على التسميع.';
 }
 
@@ -959,12 +959,12 @@ function serverMessage(code?: string): string {
     case 'SIGN_IN_REQUIRED':
       return 'التسميع الذكي يحتاج تسجيل دخول. القراءة والاستماع تبقى مفتوحة للجميع.';
     case 'RATE_LIMITED':
-      return 'سمّعتِ كثيرًا في وقت قصير — استريحي دقيقة ونكمل.';
+      return 'سمّعت كثيرًا في وقت قصير — استرِح دقيقة ونكمل.';
     case 'PROVIDER_NOT_CONFIGURED':
-      return 'التسميع الذكي غير متاح الآن. جرّبي بعد قليل.';
+      return 'التسميع الذكي غير متاح الآن. جرّب بعد قليل.';
     case 'AUDIO_TOO_LONG':
     case 'TOO_LONG':
-      return 'التسجيل كان طويلًا. جرّبي مقطعًا أقصر.';
+      return 'التسجيل كان طويلًا. جرّب مقطعًا أقصر.';
     case 'TOO_SHORT':
       return 'التسجيل كان قصيرًا جدًا.';
     case 'NOT_WAV':
@@ -979,11 +979,11 @@ function captureMessage(e: unknown): string {
   if (e instanceof CaptureFailure) {
     switch (e.code) {
       case 'PERMISSION_DENIED':
-        return 'ما وصلني إذن الميكروفون. اسمحي به من إعدادات المتصفح ثم جرّبي.';
+        return 'ما وصلني إذن الميكروفون. اسمح به من إعدادات المتصفح ثم جرّب.';
       case 'NO_MICROPHONE':
         return 'ما لقيت ميكروفونًا على هذا الجهاز.';
       case 'NOT_SUPPORTED':
-        return 'هذا المتصفح ما يدعم التسجيل. جرّبي من متصفح آخر.';
+        return 'هذا المتصفح ما يدعم التسجيل. جرّب من متصفح آخر.';
       default:
         return 'انقطع التسجيل. نبدأ من جديد؟';
     }

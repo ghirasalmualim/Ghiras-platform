@@ -67,7 +67,7 @@ export function nextHint(
       kind: 'PLAY',
       surah: words[0].surah,
       ayah,
-      text: 'استمعي للآية ثم أكملي 🌿',
+      text: 'استمع للآية ثم أكمل 🌿',
     };
 
   return {

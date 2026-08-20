@@ -165,7 +165,7 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
         </ul>
 
         <p className="mt-3 text-center text-[0.72rem] text-[var(--q-mute)]">
-          التقدير تقريبي — خذي وقتك
+          التقدير تقريبي — خذ وقتك
         </p>
       </div>
     </section>

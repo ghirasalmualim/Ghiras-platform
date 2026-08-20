@@ -68,7 +68,7 @@ export default function QuranCurriculumEditor({
   }, [load]);
 
   async function add() {
-    if (!title.trim()) return setNote('اكتبي اسم الدرس');
+    if (!title.trim()) return setNote('اكتب اسم الدرس');
     if (toAyah < fromAyah) return setNote('آية النهاية قبل البداية');
     if (toAyah > maxAyah) return setNote(`السورة فيها ${maxAyah} آية فقط`);
     if (!grade) return;

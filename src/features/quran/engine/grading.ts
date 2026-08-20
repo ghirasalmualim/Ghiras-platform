@@ -68,16 +68,16 @@ export function gradeSession(result: AlignmentResult): Verdict {
   if (confirmedErrors === 0 && coverage >= 0.98)
     return {
       level: 'EXCELLENT',
-      headline: 'أحسنتِ 🌿',
-      detail: 'أتقنتِ المقطع كاملًا — ما فيه موضع واحد يحتاج مراجعة.',
+      headline: 'أحسنت 🌿',
+      detail: 'أتقنت المقطع كاملًا — ما فيه موضع واحد يحتاج مراجعة.',
       internalScore: score,
     };
 
   if (confirmedErrors <= 1 && coverage >= 0.9)
     return {
       level: 'VERY_GOOD',
-      headline: 'أحسنتِ 🌿',
-      detail: 'أتقنتِ معظم المقطع، وبقي موضع واحد نثبّته معًا.',
+      headline: 'أحسنت 🌿',
+      detail: 'أتقنت معظم المقطع، وبقي موضع واحد نثبّته معًا.',
       internalScore: score,
     };
 
@@ -92,7 +92,7 @@ export function gradeSession(result: AlignmentResult): Verdict {
   return {
     level: 'NEEDS_REVIEW',
     headline: 'بدايةٌ طيبة 🌱',
-    detail: 'نراجع بعض المواضع معًا وترجعين تسمّعين — والحفظ يثبت بالتكرار.',
+    detail: 'نراجع بعض المواضع معًا وترجعين تسمّعن — والحفظ يثبت بالتكرار.',
     internalScore: score,
   };
 }

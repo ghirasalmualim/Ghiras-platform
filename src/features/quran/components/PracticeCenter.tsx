@@ -184,7 +184,7 @@ export default function PracticeCenter({
           🌿
         </p>
         <p className="font-[family-name:var(--font-cairo)] text-lg font-extrabold text-[var(--q-ink)]">
-          أحسنتِ، أنهيتِ التدريب
+          أحسنت، أنهيتِ التدريب
         </p>
         <p className="mt-1 text-[0.85rem] text-[var(--q-mute)]">
           {results.current.every((r) => attemptQuality(r) === 3)
@@ -221,7 +221,7 @@ export default function PracticeCenter({
     return (
       <section className="practice-card mb-5 px-5 py-8 text-center">
         <p className="text-[var(--q-mute)]">
-          هذا المقطع قصير على التدريب — اختاري مدى أوسع قليلًا 🌱
+          هذا المقطع قصير على التدريب — اختر مدى أوسع قليلًا 🌱
         </p>
         <button
           type="button"
@@ -257,7 +257,7 @@ export default function PracticeCenter({
 
       {/* ── الخيارات — فاصل صريح ثم بطاقات بخط الواجهة ── */}
       <p className="mb-2 text-[0.76rem] font-bold text-[var(--q-mute)]">
-        {q.kind === 'missing_word' ? 'اختاري الكلمة' : 'اختاري الإجابة'}
+        {q.kind === 'missing_word' ? 'اختر الكلمة' : 'اختر الإجابة'}
       </p>
       <div className="grid gap-2">
         {q.choices.map((c) => {
@@ -285,7 +285,7 @@ export default function PracticeCenter({
       {!answered && wrongIds.length > 0 ? (
         <div className="mt-3 rounded-xl bg-white px-4 py-3">
           <p className="text-[0.85rem] font-bold text-[var(--q-ink)]">
-            قريب 🌱 حاولي مرة ثانية
+            قريب 🌱 حاول مرة ثانية
           </p>
           {hint >= 2 ? (
             <p className="mt-1.5 text-[0.8rem] leading-relaxed text-[var(--q-mute)]">
@@ -409,7 +409,7 @@ function AfterAnswer({
   return (
     <div className="rounded-[1rem] bg-white px-4 py-5">
       <p className="mb-2 text-center text-[0.8rem] font-bold text-[var(--q-accent)]">
-        {hint >= 3 ? 'هذه هي الآية 🌱' : 'أحسنتِ ✨'}
+        {hint >= 3 ? 'هذه هي الآية 🌱' : 'أحسنت ✨'}
       </p>
       {/* الآية كاملة من النص المرجعي بعد الإجابة */}
       <p className="ayat" dir="rtl" lang="ar">

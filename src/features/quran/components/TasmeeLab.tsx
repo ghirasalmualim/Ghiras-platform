@@ -82,7 +82,7 @@ export default function TasmeeLab({ ayahs, surahName }: { ayahs: Ayah[]; surahNa
         return;
       }
       if (cap.rms < LOW_RMS) {
-        setNote(`الصوت ضعيف جدًا (RMS ${cap.rms.toFixed(4)}) — قرّبي الميكروفون.`);
+        setNote(`الصوت ضعيف جدًا (RMS ${cap.rms.toFixed(4)}) — قرّب الميكروفون.`);
         return;
       }
 
@@ -148,7 +148,7 @@ export default function TasmeeLab({ ayahs, surahName }: { ayahs: Ayah[]; surahNa
             </button>
           </div>
           <p className="text-[0.78rem] text-[var(--q-mute)]">
-            احذفي كلمة أو بدّليها أو كرّريها أو امسحي آية كاملة — ثم شغّلي وشوفي حكم المحرّك.
+            احذف كلمة أو بدّلها أو كرّرها أو امسح آية كاملة — ثم شغّل وشوف حكم المحرّك.
           </p>
         </div>
       ) : (
@@ -161,13 +161,13 @@ export default function TasmeeLab({ ayahs, surahName }: { ayahs: Ayah[]; surahNa
               recording ? 'bg-red-600' : 'bg-[var(--q-accent)]'
             }`}
           >
-            {busy ? 'جارٍ التحليل…' : recording ? '⏹ أوقفي التسجيل' : '🎙️ ابدئي التسجيل'}
+            {busy ? 'جارٍ التحليل…' : recording ? '⏹ أوقف التسجيل' : '🎙️ ابدأ التسجيل'}
           </button>
           {capture && (
             <p className="text-[0.78rem] text-[var(--q-mute)]">
               {capture.durationSec.toFixed(1)} ثانية · RMS {capture.rms.toFixed(4)} · أعلى سعة{' '}
               {capture.peak.toFixed(3)}
-              {capture.peak >= CLIPPING_PEAK ? ' ⚠️ الصوت مقصوص — ابعدي الميكروفون' : ''} · معدّل
+              {capture.peak >= CLIPPING_PEAK ? ' ⚠️ الصوت مقصوص — ابعد الميكروفون' : ''} · معدّل
               الجهاز {capture.deviceSampleRate} هرتز
             </p>
           )}
@@ -280,7 +280,7 @@ function captureMessage(e: unknown): string {
   if (e instanceof CaptureFailure) {
     switch (e.code) {
       case 'PERMISSION_DENIED':
-        return 'إذن الميكروفون مرفوض — اسمحي به من إعدادات المتصفح.';
+        return 'إذن الميكروفون مرفوض — اسمح به من إعدادات المتصفح.';
       case 'NO_MICROPHONE':
         return 'ما لقينا ميكروفونًا على هذا الجهاز.';
       case 'NOT_SUPPORTED':
@@ -289,5 +289,5 @@ function captureMessage(e: unknown): string {
         return 'انقطع التسجيل.';
     }
   }
-  return 'صار خلل غير متوقع — جرّبي مرة ثانية.';
+  return 'صار خلل غير متوقع — جرّب مرة ثانية.';
 }

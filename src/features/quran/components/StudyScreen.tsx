@@ -358,7 +358,7 @@ export default function StudyScreen({
             href="/login"
             className="inline-block px-1 py-2 font-bold text-[var(--q-accent)] underline underline-offset-4"
           >
-            سجّلي الدخول
+            سجّل الدخول
           </Link>{' '}
           ليتبعك على كل أجهزتك.
         </p>

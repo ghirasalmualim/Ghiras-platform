@@ -109,12 +109,12 @@ export default function GoalPlanner({
             </p>
             <p className="mt-1 text-[0.92rem] font-bold text-[var(--q-ink)]">
               {slice.from_ayah
-                ? `احفظي الآيات ${toArabic(slice.from_ayah)}–${toArabic(slice.to_ayah!)}`
+                ? `احفظ الآيات ${toArabic(slice.from_ayah)}–${toArabic(slice.to_ayah!)}`
                 : 'مراجعة المقطع كاملًا'}
             </p>
             {slice.review_from ? (
               <p className="mt-0.5 text-[0.8rem] text-[var(--q-mute)]">
-                واربطي ما سبق {toArabic(slice.review_from)}–
+                واربط ما سبق {toArabic(slice.review_from)}–
                 {toArabic(slice.review_to!)}
               </p>
             ) : null}
@@ -154,7 +154,7 @@ export default function GoalPlanner({
             href={`/quran/study/${goal.surah}/${goal.from_ayah}/${goal.to_ayah}`}
             className="font-bold text-[var(--q-accent)] underline underline-offset-4"
           >
-            افتحيها
+            افتحها
           </Link>{' '}
           أو{' '}
           <button
@@ -216,7 +216,7 @@ export default function GoalPlanner({
           disabled={busy || date < today}
           className="tap flex-1 rounded-2xl bg-[var(--q-accent)] px-5 py-3 text-[0.95rem] font-extrabold text-white disabled:opacity-50"
         >
-          ابدئي الخطة
+          ابدأ الخطة
         </button>
         <button
           type="button"

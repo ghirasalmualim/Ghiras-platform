@@ -55,7 +55,7 @@ export default function RecitePage({
         ? { backHref: '/quran/curriculum', backLabel: 'منهجي الدراسي', lessonTitle: lesson }
         : {
             backHref: `/quran/study/${surahNo}/${from}/${to}`,
-            backLabel: 'ارجعي للمقطع',
+            backLabel: 'ارجع للمقطع',
           })}
     />
   );

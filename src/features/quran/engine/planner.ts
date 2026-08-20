@@ -223,8 +223,8 @@ export function buildDailyTask(
       icon: '🔄',
       label:
         due.length === 1
-          ? `راجعي ${surahName(due[0].surah)} ${toArabicDigits(due[0].from_ayah)}–${toArabicDigits(due[0].to_ayah)}`
-          : `راجعي ${toArabicDigits(due.length)} مقاطع مستحقة`,
+          ? `راجع ${surahName(due[0].surah)} ${toArabicDigits(due[0].from_ayah)}–${toArabicDigits(due[0].to_ayah)}`
+          : `راجع ${toArabicDigits(due.length)} مقاطع مستحقة`,
       href: '/quran/review',
       minutes: MINUTES.review * Math.min(due.length, 3),
     });
@@ -240,7 +240,7 @@ export function buildDailyTask(
     });
     items.push({
       icon: '🧠',
-      label: `احفظي ${range}`,
+      label: `احفظ ${range}`,
       href: `/quran/study/${slice.surah}/${slice.from_ayah}/${slice.to_ayah}`,
       minutes: MINUTES.memorize,
     });
@@ -259,7 +259,7 @@ export function buildDailyTask(
     const t = slice ?? null;
     items.push({
       icon: '✨',
-      label: 'أكملي تدريبًا قصيرًا',
+      label: 'أكمل تدريبًا قصيرًا',
       href: t?.from_ayah
         ? `/quran/study/${t.surah}/${t.from_ayah}/${t.to_ayah}`
         : due.length
