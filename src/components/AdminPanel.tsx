@@ -275,6 +275,47 @@ export default function AdminPanel() {
     setBusy(null);
   };
 
+  /**
+   * حذف حساب نهائيًا.
+   *
+   * ⚠️ **لا رجعة فيه.** كل جداول المنصة مرتبطة بالحساب بحذفٍ متسلسل،
+   * فيمضي معه: الفصول، وسجلّ الحضور، ودفتر الدرجات، وتقدّم القرآن،
+   * والصلاحيات. ولا نسخة تُستعاد منها.
+   *
+   * ⚠️ ولهذا يُطلب كتابةُ رقم الحساب لا مجرّد تأكيد: الضغطُ بالخطأ
+   * وارد، وكتابةُ رقمٍ بعينه لا تقع سهوًا. ويُقابَل المكتوب بالمخزَّن
+   * **على الخادم** لا هنا، فلا يُتحايل عليه من المتصفح.
+   */
+  const deleteAccount = async (id: string, name: string, phone: string | null) => {
+    const typed = prompt(
+      `⚠️ حذف نهائي لحساب «${name}».\n\n` +
+        'سيُحذف معه كل شيء: الفصول، وسجل الحضور، ودفتر الدرجات، وتقدّم القرآن.\n' +
+        'ولا يمكن التراجع.\n\n' +
+        'اكتب رقم جوال الحساب للتأكيد:'
+    );
+    if (typed === null) return;
+
+    setBusy(id);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, confirmPhone: typed.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) setMsg('تعذّر: ' + (data?.error || 'خطأ غير معروف'));
+      else {
+        setMsg(`تم حذف حساب ${data.deleted} نهائيًا`);
+        void load();
+      }
+    } catch {
+      setMsg('تعذّر الاتصال بالخادم');
+    }
+    setBusy(null);
+    void phone;
+  };
+
   const suspend = (id: string) => {
     if (!confirm('إيقاف هذا الحساب؟ لن يتمكن من الدخول للمحتوى.')) return;
     const supabase = createClient();
@@ -704,6 +745,13 @@ export default function AdminPanel() {
                 <button disabled={isBusy} onClick={() => resetPassword(r.id, r.full_name || 'هذا الحساب')}
                   className="rounded-lg border border-gray-200 bg-white hover:border-gold text-ink/70 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   🔑 كلمة مرور مؤقتة
+                </button>
+                {/* ⚠️ منفصلٌ عن إخوته بفاصل وبلونٍ مختلف: الحذف لا
+                    رجعة فيه، فلا يُصفّ مع ما يُتراجَع عنه. */}
+                <span className="mx-1 self-center text-gray-200">|</span>
+                <button disabled={isBusy} onClick={() => deleteAccount(r.id, r.full_name || 'هذا الحساب', r.phone)}
+                  className="rounded-lg border border-red-200 bg-white hover:border-red-400 hover:bg-red-50 text-red-700 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
+                  🗑️ حذف الحساب نهائيًا
                 </button>
                 {isBusy && <span className="text-sm text-ink/50 self-center">جارٍ…</span>}
               </div>

@@ -159,6 +159,12 @@ export default async function SubjectPage({
                 أهلاً، <b className="text-sage-deep">{profile.full_name}</b>
               </span>
             )}
+            <Link
+              href="/account"
+              className="rounded-xl border border-ink/15 px-4 py-2 text-sm font-bold text-ink/55 transition-colors hover:border-sage hover:text-sage-deep"
+            >
+              حسابي
+            </Link>
             <LogoutButton />
           </div>
         </div>
