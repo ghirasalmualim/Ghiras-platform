@@ -18,6 +18,8 @@ import {
   wavDurationSec,
 } from "../../.quran-test/speech/azure.js";
 import { encodeWav } from "../../.quran-test/capture/recorder.js";
+import { stripProviderArtifacts } from "../../.quran-test/engine/artifacts.js";
+import { buildExpected, tokensFromText, alignRecitation } from "../../.quran-test/engine/alignment.js";
 
 let passed = 0;
 let failed = 0;
@@ -288,6 +290,62 @@ console.log("\n  ── صيغة الصوت ──");
   ok(
     thirty.byteLength === 44 + 16000 * 2 * 30,
     `٣٠ ثانية = ${(thirty.byteLength / 1024).toFixed(0)} ك.ب — تحت سقف Vercel (٤٫٥ م.ب)`
+  );
+}
+
+// ── ١٢) الحروف المقطَّعة — من بلاغ حقيقي على آيباد ──────────
+//
+// ⚠️ «الٓمٓ» كلمةٌ في المصحف وثلاثُ كلمات في اللسان. سمعها المزوّد
+// كما تُقال وانتظرناها كما تُكتب، فاتُّهمت القارئة في أول البقرة.
+// والخلل عندنا لا عنده — هو سمع الصواب.
+console.log("\n  ── الحروف المقطَّعة ──");
+{
+  const ayahsOf = (s, f, t) => {
+    const o = [];
+    for (let n = f; n <= t; n++) o.push({ surah: s, ayah: n, text_uthmani: C.get(`${s}:${n}`) });
+    return o;
+  };
+  const exp = buildExpected(ayahsOf(2, 1, 5));
+
+  ok(
+    exp[0].uthmani.replace(/[^\u0621-\u064A]/g, "") === "الم",
+    `أول البقرة حروف مقطَّعة: «${exp[0].uthmani}»`
+  );
+
+  // ما يسمعه المزوّد فعلًا: أسماء الحروف مفرَّقة
+  const spoken = ["الف", "لام", "ميم"].concat(
+    exp.slice(1).map((w) => w.uthmani)
+  );
+  const raw = tokensFromText(spoken.join(" "));
+
+  const clean = stripProviderArtifacts(exp, raw);
+  ok(clean.merged === 1, `جُمعت أسماء الحروف في كلمة واحدة (وُجد ${clean.merged})`);
+  ok(
+    clean.tokens[0].norm === exp[0].norm,
+    `والكلمة المجموعة تطابق المكتوبة «${clean.tokens[0].text}»`
+  );
+
+  const r = alignRecitation(exp, clean.tokens);
+  ok(
+    r.summary.confirmedErrors === 0 && r.summary.uncertain === 0,
+    "فلا تُتَّهم القارئة في أول البقرة",
+    `أخطاء ${r.summary.confirmedErrors} · غير مؤكد ${r.summary.uncertain}`
+  );
+
+  // ⚠️ ومن نطقها ناقصةً لا يُجمع له: النقص يبقى ظاهرًا للمحرّك
+  const partial = tokensFromText(
+    ["الف", "لام"].concat(exp.slice(1).map((w) => w.uthmani)).join(" ")
+  );
+  ok(
+    stripProviderArtifacts(exp, partial).merged === 0,
+    "ومن قال «ألف لام» ولم يقل «ميم» لا يُجمع له — النقص يبقى ظاهرًا"
+  );
+
+  // ⚠️ ولا يُجمع في سورة لا مقطَّعات فيها
+  const ikhlas = buildExpected(ayahsOf(112, 1, 4));
+  ok(
+    stripProviderArtifacts(ikhlas, tokensFromText(ikhlas.map((w) => w.uthmani).join(" "))).merged === 0,
+    "ولا يُجمع شيء في سورة بلا حروف مقطَّعة"
   );
 }
 

@@ -40,6 +40,17 @@ export type ArtifactRule = {
 
 export const ARTIFACT_RULES: ArtifactRule[] = [
   {
+    id: 'MUQATTAAT_LETTERS',
+    description:
+      'الحروف المقطَّعة تُكتب كلمةً واحدة («الٓمٓ») وتُقرأ ثلاث كلمات ' +
+      '(«ألف لام ميم»). فيرجعها المزوّد مفرَّقة بأسماء حروفها، ولا تطابق ' +
+      'الكلمة المكتوبة. وترد في ٢٩ سورة، منها البقرة وآل عمران — وهي ' +
+      'أكثر ما يُحفَظ في المدارس، فالخلل يمسّ أول ما تفتحه الطالبة.',
+    evidence:
+      'تسميع حقيقي لأول البقرة على آيباد في ٢٠٢٦-٠٨-٢٠: «الٓمٓ» رجعت ' +
+      'من Azure أسماءَ حروفٍ مفرَّقة، فحكم المحرّك بأنها «كلمة غير المتوقَّعة».',
+  },
+  {
     id: 'SILAH_ECHO',
     description:
       'كلمة تنتهي بواو الصلة (ۥ) أو ياء الصلة (ۦ) تُتلى بمدٍّ في آخرها، ' +
@@ -69,6 +80,53 @@ function silahMarkerOf(uthmani: string): string | null {
   return null;
 }
 
+/**
+ * أسماء الحروف كما تُنطق في التلاوة، مطبَّعةً.
+ *
+ * ⚠️ هذه **أسماء حروف** لا نصٌّ قرآني، فكتابتها هنا لا تمسّ المرجع.
+ * والكلمة المكتوبة تبقى `text_uthmani` كما هي؛ إنما نجمع ما سُمع
+ * لنقابله بها.
+ *
+ * ولكل حرف صيغتان حيث يختلف النطق (بمدّ أو بغيره)، فيقبل المحرّك
+ * أيّهما سمع.
+ */
+const LETTER_NAMES: { [letter: string]: string[] } = {
+  ا: ['الف'],
+  ل: ['لام'],
+  م: ['ميم'],
+  ص: ['صاد'],
+  ر: ['را', 'راء'],
+  ك: ['كاف'],
+  ه: ['ها', 'هاء'],
+  ي: ['يا', 'ياء'],
+  ع: ['عين'],
+  ط: ['طا', 'طاء'],
+  س: ['سين'],
+  ح: ['حا', 'حاء'],
+  ق: ['قاف'],
+  ن: ['نون'],
+};
+
+/** الحركات القصيرة — غيابُها علامةُ الحروف المقطَّعة. */
+const SHORT_VOWELS = /[\u064B-\u0652]/;
+
+/**
+ * هل هذه الكلمة حروفًا مقطَّعة؟
+ *
+ * ⚠️ يُستنبَط من النص لا من قائمة سورٍ مكتوبة بيدنا: الحروف المقطَّعة
+ * لا تحمل حركة قصيرة (إنما سكونًا ومدّة)، وحروفها من أربعة عشر حرفًا
+ * معلومة. وهذا الشرطان معًا يعطيان ٢٩ سورة بالضبط — وهو العدد المعروف.
+ */
+function isMuqattaat(uthmani: string): boolean {
+  if (SHORT_VOWELS.test(uthmani)) return false;
+  const letters = uthmani.replace(/[^\u0621-\u064A]/g, '');
+  if (letters.length < 1 || letters.length > 5) return false;
+  for (const ch of letters.split('')) {
+    if (!LETTER_NAMES[ch]) return false;
+  }
+  return true;
+}
+
 export type ArtifactRemoval = {
   ruleId: string;
   /** الكلمة التي حُذفت من المسموع. */
@@ -80,6 +138,8 @@ export type ArtifactRemoval = {
 export type ArtifactResult = {
   tokens: HeardToken[];
   removed: ArtifactRemoval[];
+  /** كم موضعًا جُمعت فيه أسماء حروف إلى كلمتها المكتوبة. */
+  merged: number;
 };
 
 /**
@@ -95,7 +155,12 @@ export function stripProviderArtifacts(
   expected: ExpectedWord[],
   heard: HeardToken[]
 ): ArtifactResult {
-  if (!expected.length || !heard.length) return { tokens: heard, removed: [] };
+  if (!expected.length || !heard.length)
+    return { tokens: heard, removed: [], merged: 0 };
+
+  // الحروف المقطَّعة أولًا: تجمع كلماتٍ قبل أن يُنظر في الأصداء
+  const joined = joinMuqattaat(expected, heard);
+  heard = joined.tokens;
 
   /**
    * الكلمات المتوقَّعة التي تحمل صلة، بصيغتها المطبَّعة.
@@ -109,7 +174,8 @@ export function stripProviderArtifacts(
     const marker = silahMarkerOf(w.uthmani);
     if (marker) silahWords[w.norm] = marker;
   }
-  if (!Object.keys(silahWords).length) return { tokens: heard, removed: [] };
+  if (!Object.keys(silahWords).length)
+    return { tokens: heard, removed: [], merged: joined.merged };
 
   /** الكلمات المتوقَّعة كلها — لئلا نحذف كلمةً هي نفسها متوقَّعة هنا. */
   const expectedNorms: { [norm: string]: true } = Object.create(null);
@@ -142,7 +208,79 @@ export function stripProviderArtifacts(
     tokens.push(heard[i]);
   }
 
-  return { tokens, removed };
+  return { tokens, removed, merged: joined.merged };
+}
+
+/**
+ * جمع أسماء الحروف المسموعة في كلمتها المكتوبة.
+ *
+ * ── لماذا ──
+ * «الٓمٓ» كلمةٌ واحدة في المصحف، وثلاثُ كلمات في اللسان: «ألف لام ميم».
+ * فالمزوّد يسمعها كما تُقال ونحن ننتظرها كما تُكتب، فلا تتطابقان —
+ * ويصير أولُ ما تفتحه الطالبة في البقرة اتهامًا لها بخطأ لم ترتكبه.
+ *
+ * ⚠️ والخلل عندنا لا عند المزوّد: هو سمع الصواب. فالإصلاح أن نجمع ما
+ * سُمع لنقابله بالمكتوب، **لا أن نغيّر المكتوب**. و`text_uthmani`
+ * يبقى كما هو حرفًا بحرف.
+ *
+ * ⚠️ ولا يُجمع إلا إن طابقت الأسماءُ حروفَ الكلمة **بترتيبها**: فمن
+ * قال «ألف لام» ولم يقل «ميم» لم تُجمع له، ويبقى النقص ظاهرًا للمحرّك
+ * يحكم فيه بقواعده.
+ */
+function joinMuqattaat(
+  expected: ExpectedWord[],
+  heard: HeardToken[]
+): { tokens: HeardToken[]; merged: number } {
+  const targets = expected.filter((w) => isMuqattaat(w.uthmani));
+  if (!targets.length) return { tokens: heard, merged: 0 };
+
+  const out: HeardToken[] = [];
+  let merged = 0;
+  let i = 0;
+
+  while (i < heard.length) {
+    let joinedHere = false;
+
+    for (const target of targets) {
+      const letters = target.uthmani.replace(/[^\u0621-\u064A]/g, '').split('');
+      if (letters.length < 2 || i + letters.length > heard.length) continue;
+
+      let all = true;
+      for (let k = 0; k < letters.length; k++) {
+        const names = LETTER_NAMES[letters[k]] ?? [];
+        if (names.indexOf(heard[i + k].norm) === -1) {
+          all = false;
+          break;
+        }
+      }
+      if (!all) continue;
+
+      // كلمةٌ واحدة تحمل نصّ الكلمة المكتوبة ونطاق ما سُمع
+      const first = heard[i];
+      const last = heard[i + letters.length - 1];
+      const tok: HeardToken = { text: target.uthmani, norm: target.norm };
+      if (first.startSec !== undefined) tok.startSec = first.startSec;
+      if (last.endSec !== undefined) tok.endSec = last.endSec;
+
+      let conf: number | undefined;
+      for (let k = 0; k < letters.length; k++) {
+        const c = heard[i + k].confidence;
+        if (c === undefined) continue;
+        conf = conf === undefined ? c : Math.min(conf, c);
+      }
+      if (conf !== undefined) tok.confidence = conf;
+
+      out.push(tok);
+      i += letters.length;
+      merged++;
+      joinedHere = true;
+      break;
+    }
+
+    if (!joinedHere) out.push(heard[i++]);
+  }
+
+  return { tokens: out, merged };
 }
 
 /** هل تلي الكلمةُ `echo` الكلمةَ `word` في النص المتوقَّع فعلًا؟ */
