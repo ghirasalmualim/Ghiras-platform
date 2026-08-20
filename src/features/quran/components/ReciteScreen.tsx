@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Ayah, Reciter } from '../types';
 import { toArabic } from '../engine/numerals';
-import { buildExpected } from '../engine/alignment';
+import { buildExpected, type ExpectedWord } from '../engine/alignment';
 import { nextHint, type Hint, type HintLevel } from '../engine/hints';
 import type { MasteryLevel } from '../engine/grading';
 import { SESSION_TUNING, splitIntoChunks } from '../engine/session';
@@ -409,7 +409,7 @@ export default function ReciteScreen({
       {phase === 'paused' && (
         <Paused
           hint={hint}
-          ayahs={ayahs}
+          expected={expected}
           chosen={helpAyah}
           onChoose={helpWith}
           onResume={() => void begin(false)}
@@ -585,34 +585,47 @@ function Reciting({
 
 function Paused({
   hint,
-  ayahs,
+  expected,
   chosen,
   onChoose,
   onResume,
   onDone,
 }: {
   hint: Hint | null;
-  ayahs: Ayah[];
-  /** الآية التي اختارتها — لتُميَّز، ولتُعرف إعادةُ الطلب عليها. */
+  /** الكلمات المتوقَّعة — منها أوائلُ الآيات بلا بسملة. */
+  expected: ExpectedWord[];
   chosen: number | null;
   onChoose: (ayah: number) => void;
   onResume: () => void;
   onDone: () => void;
 }) {
+  /**
+   * أوائل كل آية.
+   *
+   * ⚠️ كانت تُعرض **أواخرُها** — كتبتُها كذلك تهرّبًا من أن نصّ الآية
+   * الأولى المخزَّن يبدأ بالبسملة. فكانت الطالبة تبحث عن بدايةٍ تعرفها
+   * فتُعرض عليها نهاياتٌ لا تدلّها، فتحتار. والصواب أن تُبنى من
+   * الكلمات المتوقَّعة، وهي مرفوعةُ البسملة أصلًا.
+   */
+  const heads: { ayah: number; head: string }[] = [];
+  for (const w of expected) {
+    const last = heads[heads.length - 1];
+    if (!last || last.ayah !== w.ayah) heads.push({ ayah: w.ayah, head: w.uthmani });
+    else if (last.head.split(/\s+/).length < 4) last.head += ' ' + w.uthmani;
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-3xl border border-[var(--q-line)] bg-[var(--q-card)] p-6">
         <p className="text-center text-lg font-bold text-[var(--q-ink)]">
-          {hint ? hint.text : 'وين وقفتِ؟'}
+          {hint ? hint.text : 'شوفي وين وقفتِ 🌿'}
         </p>
         <p className="mt-1 text-center text-[0.82rem] text-[var(--q-mute)]">
-          {hint ? 'التسجيل موقوف حتى تكملي' : 'اضغطي الآية اللي تعثّرتِ عندها'}
+          {hint ? 'التسجيل موقوف حتى تكملي' : 'اضغطي الآية لتسمعيها'}
         </p>
 
-        {/* أوائل كلمات كل آية — تكفي لتعرفها ولا تكشف المقطع كله */}
         <ul className="mt-4 flex flex-col gap-2">
-          {ayahs.map((a) => {
-            const head = a.text_uthmani.split(/\s+/).slice(-4).join(' ');
+          {heads.map((a) => {
             const on = chosen === a.ayah;
             return (
               <li key={a.ayah}>
@@ -629,14 +642,13 @@ function Paused({
                     {toArabic(a.ayah)}
                   </span>
                   <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
-                    {head}
+                    {a.head}…
                   </span>
                   <span aria-hidden className="shrink-0 text-[var(--q-accent)]">
                     {on ? '🔊' : '▶'}
                   </span>
                 </button>
 
-                {/* الكشف يظهر تحت آيته لا في مكان آخر */}
                 {on && hint?.kind === 'REVEAL' && (
                   <p className="mt-1 rounded-xl bg-[var(--q-accent-soft)] px-4 py-2 font-[family-name:var(--font-amiri)] text-xl text-[var(--q-accent)]">
                     {hint.words.join(' ')}
@@ -654,22 +666,25 @@ function Paused({
         )}
       </div>
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onResume}
-          className="tap flex-1 rounded-2xl bg-[var(--q-accent)] px-4 py-4 text-base font-bold text-white"
-        >
-          🎙️ أكمل التسميع
-        </button>
-        <button
-          type="button"
-          onClick={onDone}
-          className="tap rounded-2xl border-2 border-[var(--q-line)] px-5 py-4 text-base font-bold text-[var(--q-ink)]"
-        >
-          انتهيت
-        </button>
-      </div>
+      {/* ⚠️ زرٌّ واحد بارز: «أكمل». وكان بجانبه «انتهيت» بنفس الحجم
+          فقُرئت «خلصت من السماع» وهي تعني «أنهِ الجلسة» — فقطعت
+          التسميع مرتين على الطالبة. الآن نصٌّ صغير لا زرٌّ منافس،
+          وعبارتُه صريحة في أنها تُنهي التسميع كله. */}
+      <button
+        type="button"
+        onClick={onResume}
+        className="tap w-full rounded-2xl bg-[var(--q-accent)] px-4 py-5 text-lg font-bold text-white"
+      >
+        🎙️ أكمل التسميع من وين وقفتِ
+      </button>
+
+      <button
+        type="button"
+        onClick={onDone}
+        className="tap mx-auto text-[0.82rem] font-bold text-[var(--q-mute)] underline underline-offset-4"
+      >
+        أنهي التسميع واعرضي النتيجة
+      </button>
     </div>
   );
 }
