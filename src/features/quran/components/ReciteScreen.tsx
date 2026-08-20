@@ -110,8 +110,8 @@ export default function ReciteScreen({
   const [hint, setHint] = useState<Hint | null>(null);
   const [hintLevel, setHintLevel] = useState<HintLevel>(0);
   const [quiet, setQuiet] = useState(false);
-  /** ننصت لما قالته لنعرف موضعها قبل أن نلمّح — لحظةٌ تُعلَن ولا تُخفى. */
-  const [looking, setLooking] = useState(false);
+  /** الآية التي اختارتها للعون — تُسأل ولا تُخمَّن. */
+  const [helpAyah, setHelpAyah] = useState<number | null>(null);
   const [result, setResult] = useState<FinishResult | null>(null);
   const [elapsed, setElapsed] = useState(0);
   /**
@@ -223,65 +223,36 @@ export default function ReciteScreen({
   // الميكروفون سيلتقط صوته وإلا فيُحسب على الطالبة. وiOS يحوّل الصوت
   // إلى السماعة الخارجية فور فتح الميكروفون، فالتداخل مؤكّد لا محتمل.
   /**
-   * أين وقفت الطالبة الآن؟
+   * طلبُ العون: نوقف التسجيل ونسألها أين وقفت.
    *
-   * ── لماذا نسأل المزوّد ──
-   * كان الموضع مثبَّتًا على الصفر، فكان التلميح يعطيها **أول المقطع**
-   * مهما بلغت — وهو أسوأ من ألا نلمّح: تطلب عونًا في موضعٍ فيأتيها
-   * عونٌ في موضعٍ آخر، فتحتار مرتين.
+   * ── لماذا نسألها ──
+   * ⚠️ كنّا نستنبط موضعها بإرسال آخر ما سجّلت إلى المزوّد وعدّ كلماته،
+   * وكان خطأً مضاعفًا: عددُ كلماتِ آخرِ عشر ثوانٍ ليس موضعَها المطلق —
+   * فمن قرأت ثلاثين كلمة يُحسب موضعها ثمانيةً فيأتيها تلميحُ أول
+   * المقطع. ويكلّف فوق ذلك نداءً وأربعَ ثوانٍ تنتظرها وهي متعثّرة.
    *
-   * ولا سبيل إلى معرفة موضعها إلا بسماع ما قالته. فنُرسل ما سُجّل حتى
-   * الآن ونعدّ كلماته. وهذا يكلّف نداءً وأربعَ ثوانٍ — وهو مقبول لأنه
-   * **لا يقع إلا حين تطلب هي العون**، ونحن واقفون على كل حال لنشغّل
-   * صوت القارئ.
+   * والطالبة تعرف أين وقفت. فسؤالها فوريٌّ ومضبوطٌ دائمًا وبلا كلفة.
    *
-   * ⚠️ وإن تعذّر، نرجع إلى ما نعرفه يقينًا: أول ما لم يُلمَّح عليه بعد.
+   * ⚠️ والتسجيل يُوقَف أولًا: الميكروفون سيلتقط صوت القارئ وإلا فيُحسب
+   * عليها، وiOS يحوّل الصوت إلى السماعة فور فتح الميكروفون.
    */
-  async function whereSheStopped(samples: Float32Array): Promise<number> {
-    if (samples.length < TARGET_SAMPLE_RATE) return 0;
-    try {
-      /**
-       * آخر عشر ثوانٍ تكفي لمعرفة موضعها.
-       *
-       * ⚠️ وكان يُرسَل خمسٌ وعشرون، وهي ثمانمئة كيلوبايت تُرفع من
-       * جهاز الطالبة — قِيس رفعُ ستمئة منها بثانيةٍ وسبعٍ من عشر.
-       * فالتقصير هنا يقصّر انتظارها مباشرة، ولا يضرّ: موضعُها في آخر
-       * ما قالت لا في أوله.
-       */
-      const wav = encodeWav(samples.slice(-TARGET_SAMPLE_RATE * 10), TARGET_SAMPLE_RATE);
-      const res = await fetch(
-        `/api/quran/recite?surah=${surah.number}&from=${from}&to=${to}&at=0`,
-        { method: 'POST', body: wav }
-      );
-      if (!res.ok) return 0;
-      const j = await res.json();
-      const heard = (j.tokens ?? []).length;
-      return Math.max(0, Math.min(expected.length - 1, heard));
-    } catch {
-      return 0;
-    }
-  }
-
   async function askForHelp() {
     helpUsed.current = true;
-
-    // ⚠️ يُوقَف التسجيل أولًا: الميكروفون سيلتقط صوت القارئ وإلا
-    // فيُحسب على الطالبة، وiOS يحوّل الصوت إلى السماعة فور فتحه.
     await pauseCapture();
-    setPhase('paused');
     setHint(null);
-    setLooking(true);
+    setHelpAyah(null);
+    setHintLevel(0);
+    setPhase('paused');
+  }
 
-    const position = await whereSheStopped(joinParts(parts.current));
-    setLooking(false);
-    const h = nextHint(expected, position, hintLevel);
-    if (!h) {
-      setHint(null);
-      await begin(false);
-      return;
-    }
+  /** اختارت آيةً — يُشغَّل صوتها، وإعادةُ الطلب تكشف أوائل كلماتها. */
+  function helpWith(ayah: number) {
+    const level = helpAyah === ayah ? hintLevel : 0;
+    const h = nextHint(expected, ayah, level as HintLevel);
+    if (!h) return;
 
-    setHintLevel((l) => Math.min(3, l + 1) as HintLevel);
+    setHelpAyah(ayah);
+    setHintLevel(Math.min(2, level + 1) as HintLevel);
     setHint(h);
 
     if (h.kind === 'PLAY') {
@@ -429,7 +400,7 @@ export default function ReciteScreen({
           elapsed={elapsed}
           quiet={quiet}
           hint={hint}
-          canHint={mode === 'train' && hintLevel < 3}
+          canHint={mode === 'train'}
           onHelp={() => void askForHelp()}
           onDone={() => void finish()}
         />
@@ -438,7 +409,9 @@ export default function ReciteScreen({
       {phase === 'paused' && (
         <Paused
           hint={hint}
-          looking={looking}
+          ayahs={ayahs}
+          chosen={helpAyah}
+          onChoose={helpWith}
           onResume={() => void begin(false)}
           onDone={() => void finish()}
         />
@@ -586,9 +559,6 @@ function Reciting({
           </p>
         </div>
       )}
-      {hint && hint.kind === 'ENCOURAGE' && (
-        <p className="text-center text-base font-bold text-[var(--q-accent)]">{hint.text}</p>
-      )}
 
       <div className="flex gap-3">
         {mode === 'train' && (
@@ -615,42 +585,76 @@ function Reciting({
 
 function Paused({
   hint,
+  ayahs,
+  chosen,
+  onChoose,
   onResume,
   onDone,
-  looking,
 }: {
   hint: Hint | null;
+  ayahs: Ayah[];
+  /** الآية التي اختارتها — لتُميَّز، ولتُعرف إعادةُ الطلب عليها. */
+  chosen: number | null;
+  onChoose: (ayah: number) => void;
   onResume: () => void;
   onDone: () => void;
-  /** ننصت لما قالته لنعرف موضعها — لحظةٌ تُعلَن ولا تُخفى. */
-  looking: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-3xl border border-[var(--q-line)] bg-[var(--q-card)] p-8 text-center">
-        <p className="text-lg font-bold text-[var(--q-ink)]">
-          {looking
-            ? 'لحظة… أشوف وين وصلتِ 🌿'
-            : hint?.kind === 'PLAY'
-              ? hint.text
-              : hint?.kind === 'REVEAL'
-                ? hint.text
-                : 'استمعي ثم نكمل'}
+      <div className="rounded-3xl border border-[var(--q-line)] bg-[var(--q-card)] p-6">
+        <p className="text-center text-lg font-bold text-[var(--q-ink)]">
+          {hint ? hint.text : 'وين وقفتِ؟'}
         </p>
-        {/* التلميح المكشوف يُعرض هنا لا في شاشة التسميع: الطالبة واقفة
-            الآن، فتقرؤه على مهل ثم تكمل. */}
-        {!looking && hint?.kind === 'REVEAL' && (
-          <p className="mt-3 font-[family-name:var(--font-amiri)] text-2xl leading-loose text-[var(--q-accent)]">
-            {hint.words.join(' ')}
+        <p className="mt-1 text-center text-[0.82rem] text-[var(--q-mute)]">
+          {hint ? 'التسجيل موقوف حتى تكملي' : 'اضغطي الآية اللي تعثّرتِ عندها'}
+        </p>
+
+        {/* أوائل كلمات كل آية — تكفي لتعرفها ولا تكشف المقطع كله */}
+        <ul className="mt-4 flex flex-col gap-2">
+          {ayahs.map((a) => {
+            const head = a.text_uthmani.split(/\s+/).slice(-4).join(' ');
+            const on = chosen === a.ayah;
+            return (
+              <li key={a.ayah}>
+                <button
+                  type="button"
+                  onClick={() => onChoose(a.ayah)}
+                  className={`tap flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-right transition ${
+                    on
+                      ? 'border-[var(--q-accent)] bg-[var(--q-accent-soft)]'
+                      : 'border-[var(--q-line)] bg-white hover:border-[#cfe0d5]'
+                  }`}
+                >
+                  <span className="shrink-0 text-[0.74rem] font-bold text-[var(--q-mute)]">
+                    {toArabic(a.ayah)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
+                    {head}
+                  </span>
+                  <span aria-hidden className="shrink-0 text-[var(--q-accent)]">
+                    {on ? '🔊' : '▶'}
+                  </span>
+                </button>
+
+                {/* الكشف يظهر تحت آيته لا في مكان آخر */}
+                {on && hint?.kind === 'REVEAL' && (
+                  <p className="mt-1 rounded-xl bg-[var(--q-accent-soft)] px-4 py-2 font-[family-name:var(--font-amiri)] text-xl text-[var(--q-accent)]">
+                    {hint.words.join(' ')}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        {chosen !== null && (
+          <p className="mt-3 text-center text-[0.78rem] text-[var(--q-mute)]">
+            اضغطيها مرة ثانية لو تبين أوائل كلماتها
           </p>
         )}
-        {/* ⚠️ التسجيل موقوف الآن عن قصد: لو بقي شغّالًا لالتقط صوت
-            القارئ وحُسب على الطالبة كأنها هي التي قالته. */}
-        <p className="mt-2 text-[0.82rem] text-[var(--q-mute)]">
-          {looking ? 'ننصت لما قرأتِ لنكمل من موضعك' : 'التسجيل موقوف حتى ينتهي الصوت'}
-        </p>
       </div>
-      <div className={`flex gap-3 ${looking ? 'pointer-events-none opacity-40' : ''}`}>
+
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={onResume}

@@ -20,12 +20,13 @@
 
 import type { ExpectedWord } from './alignment';
 
-export type HintLevel = 0 | 1 | 2 | 3;
+export type HintLevel = 0 | 1 | 2;
 
 export type Hint =
-  | { level: 1; kind: 'ENCOURAGE'; text: string }
-  | { level: 2; kind: 'PLAY'; surah: number; ayah: number; text: string }
-  | { level: 3; kind: 'REVEAL'; words: string[]; text: string };
+  /** تُشغَّل الآية التي اختارتها بصوت القارئ. */
+  | { level: 1; kind: 'PLAY'; surah: number; ayah: number; text: string }
+  /** تُكشف أوائل كلماتها حين لا يكفي السماع. */
+  | { level: 2; kind: 'REVEAL'; words: string[]; text: string };
 
 /** كم كلمة تُكشف في الدرجة الأخيرة — أقلّ ما يُذكّر لا ما يُغني. */
 const REVEAL_WORDS = 2;
@@ -36,44 +37,45 @@ const REVEAL_WORDS = 2;
  * `position` موضع الطالبة المرجَّح في المقطع (رقم الكلمة المتوقَّعة).
  * ويأتي من آخر كلمة طابقت، لا من تخمين.
  */
+/**
+ * التلميح التالي لآيةٍ **اختارتها الطالبة**.
+ *
+ * ── لماذا تختار هي ──
+ * كنّا نستنبط موضعها بإرسال آخر ما سجّلت إلى المزوّد وعدّ كلماته.
+ * وكان خطأً مضاعفًا: عددُ كلماتِ آخرِ عشر ثوانٍ ليس موضعَها المطلق —
+ * فمن قرأت ثلاثين كلمة يُحسب موضعها ثمانيةً فيأتيها تلميحُ أول
+ * المقطع. ويكلّف فوق ذلك نداءً وأربعَ ثوانٍ تنتظرها وهي متعثّرة.
+ *
+ * والطالبة تعرف أين وقفت. فسؤالها **فوريٌّ ومضبوطٌ دائمًا وبلا كلفة**،
+ * وأصدقُ من تخمين الآلة.
+ *
+ * ── ولماذا لا نبدأ بـ«خذي وقتك» ──
+ * من ضغطت «ساعديني» طلبت عونًا لا مواساة. والمواساة تأتيها من السكوت
+ * نفسه: «خذي وقتك 🌱» تظهر حين تسكت، لا حين تطلب.
+ */
 export function nextHint(
   expected: ExpectedWord[],
-  position: number,
+  ayah: number,
   level: HintLevel
 ): Hint | null {
-  const at = Math.max(0, Math.min(position, expected.length - 1));
-  const word = expected[at];
-  if (!word) return null;
+  const words = expected.filter((w) => w.ayah === ayah);
+  if (!words.length) return null;
 
-  switch (level) {
-    case 0:
-      return { level: 1, kind: 'ENCOURAGE', text: 'خذي وقتك 🌱' };
+  if (level <= 0)
+    return {
+      level: 1,
+      kind: 'PLAY',
+      surah: words[0].surah,
+      ayah,
+      text: 'استمعي للآية ثم أكملي 🌿',
+    };
 
-    case 1:
-      return {
-        level: 2,
-        kind: 'PLAY',
-        surah: word.surah,
-        ayah: word.ayah,
-        text: 'نسمع الموضع من القارئ، ثم تكملين',
-      };
-
-    case 2: {
-      const words: string[] = [];
-      for (let i = at; i < expected.length && words.length < REVEAL_WORDS; i++)
-        words.push(expected[i].uthmani);
-      return {
-        level: 3,
-        kind: 'REVEAL',
-        words,
-        text: words.length === 1 ? 'الكلمة التالية:' : 'الكلمات التالية:',
-      };
-    }
-
-    default:
-      // لا درجة رابعة: بعدها تُعاد المحاولة، لا يُعرض المقطع كله
-      return null;
-  }
+  return {
+    level: 2,
+    kind: 'REVEAL',
+    words: words.slice(0, REVEAL_WORDS).map((w) => w.uthmani),
+    text: 'أوائل كلماتها',
+  };
 }
 
 /**
