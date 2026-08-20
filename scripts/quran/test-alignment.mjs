@@ -558,6 +558,93 @@ console.log("\n  ── ١٩ب) صدى المزوّد ──");
   ok(run(exp, words).summary.confirmedErrors === 0, "والقراءة الصحيحة تبقى نظيفة");
 }
 
+// ══════════════ ١٩ج) المتشابه القصير — من بلاغ حقيقي ══════════════
+//
+// ⚠️ مكتوب من تسميع فعلي للنبأ في ٢٠٢٦-٠٨-٢٠: قرأت القارئة صحيحًا،
+// فاتُّهمت بحذف «ثُمَّ». وهي الفرق **الوحيد** بين الآيتين ٤ و٥:
+//   ٤: كَلَّا سَيَعْلَمُونَ   ·   ٥: ثُمَّ كَلَّا سَيَعْلَمُونَ
+// فإسقاطها يجعل النصّين سواءً، ولا يُعلم أسقطتها هي أم دمج المزوّد
+// التكرارين. وقاعدة السياق الثلاثي لا تمسكها: «ثمّ» لا تتكرّر، وإنما
+// يتكرّر ما حولها.
+console.log("\n  ── ١٩ج) المتشابه القصير ──");
+{
+  const exp = buildExpected(ayahs(78, 1, 16));
+  const words = perfect(exp);
+
+  // الحالة قائمة فعلًا في المصحف لا في خيالنا
+  ok(
+    normalizeForComparison(CORPUS.get("78:5")).indexOf(
+      normalizeForComparison(CORPUS.get("78:4"))
+    ) !== -1,
+    "الآية ٥ تحوي الآية ٤ بنصّها وتزيد كلمة — الحالة قائمة"
+  );
+
+  const at = exp.findIndex((w) => w.ayah === 5);
+  const dropped = exp[at].uthmani;
+  const heard = words.slice(0, at).concat(words.slice(at + 1));
+  const r = run(exp, heard);
+
+  ok(
+    r.summary.confirmedErrors === 0,
+    `حذف «${dropped}» بين متشابهين لا يُتَّهم به أحد`,
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+  );
+  ok(
+    reasons(r).indexOf("REPEATED_NEIGHBOURHOOD") !== -1,
+    "والسبب المسجَّل: جوارٌ متكرّر"
+  );
+  ok(r.weakSpots.length === 0, "ولا يُرسَل للمراجعة");
+
+  // ⚠️ ولا يُشلّ الكشف: حذفٌ في نصٍّ فريد من السورة نفسها يبقى مؤكَّدًا
+  const uniqueAt = exp.findIndex((w) => w.ayah === 10);
+  const heard2 = words.slice(0, uniqueAt).concat(words.slice(uniqueAt + 1));
+  const r2 = run(exp, heard2);
+  ok(
+    r2.summary.confirmedErrors === 1,
+    `وحذفٌ في نصّ فريد («${exp[uniqueAt].uthmani}») يبقى خطأً مؤكَّدًا`,
+    `أخطاء ${r2.summary.confirmedErrors} · غير مؤكد ${r2.summary.uncertain}`
+  );
+}
+
+// ══════════════ ١٩د) كلمة يخترعها المزوّد في المستهلّ ══════════════
+//
+// ⚠️ من البلاغ نفسه: اتُّهمت القارئة بحذف «عَمَّ» أول كلمة في النبأ.
+// وحارس القطع كان يشترط ألا يسبق الحذفَ مسموعٌ في القائمة — فكلمة
+// واحدة يخترعها المزوّد في المستهلّ تُزيح الحذف عن رأس القائمة
+// فيتحوّل إلى اتهام مؤكَّد. والمناط أن يمسّ الحذفُ أول المقطع.
+console.log("\n  ── ١٩د) الحذف في المستهلّ ──");
+{
+  const exp = buildExpected(ayahs(78, 1, 16));
+  const words = perfect(exp);
+  const first = exp[0].uthmani;
+
+  // بلا صدى: يُكتشف قطعًا
+  const plain = run(exp, words.slice(1));
+  ok(
+    plain.summary.confirmedErrors === 0 &&
+      reasons(plain).indexOf("TRUNCATED_START") !== -1,
+    `سقوط «${first}» وحده ⇒ قطعُ تسجيلٍ لا نسيان`
+  );
+
+  // والحالة الأرجح فيما وقع: يسمعها المزوّد كلمةً تفارقها بحرف واحد
+  const misheard = words.slice();
+  misheard[0] = normalizeForComparison(first).slice(0, -1) + "ن";
+  const r = run(exp, misheard, { confidence: 0.88 });
+  ok(
+    r.summary.confirmedErrors === 0 && reasons(r).indexOf("NEAR_MISS") !== -1,
+    `«${first}» تُسمَع «${misheard[0]}» ⇒ حرفٌ واحد لا يُبنى عليه اتهام`,
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+  );
+
+  // ⚠️ ولا يُشلّ الكشف: كلمة بعيدة تبقى استبدالًا مؤكَّدًا
+  const alien = misheard.slice();
+  alien[0] = CORPUS.get("36:1").split(/\s+/)[0];
+  ok(
+    run(exp, alien, { confidence: 0.9 }).summary.confirmedErrors === 1,
+    "وكلمة بعيدة في الموضع نفسه تبقى استبدالًا مؤكَّدًا"
+  );
+}
+
 // ══════════════ ٢٠) الحتمية ══════════════
 console.log("\n  ── ٢٠) الحتمية ──");
 {

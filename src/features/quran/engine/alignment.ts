@@ -103,7 +103,9 @@ export type UncertainReason =
   /** سُمع أقل من نصف المتوقَّع — تسجيل ناقص لا حفظ ناقص. */
   | 'TRANSCRIPT_TOO_SHORT'
   /** كلمة زائدة موجودة في النص المتوقَّع — قد تكون صدى من المزوّد. */
-  | 'ECHO_OF_PASSAGE';
+  | 'ECHO_OF_PASSAGE'
+  /** حذفٌ يجاوره نصٌّ يتكرّر في المقطع — لا يُعرف أيّ نسخة سقطت. */
+  | 'REPEATED_NEIGHBOURHOOD';
 
 export type AlignmentEntry = {
   kind: AlignmentKind;
@@ -270,6 +272,25 @@ function levenshtein(a: string, b: string): number {
 }
 
 /**
+ * هل تفترق الكلمتان بحرف واحد فقط؟
+ *
+ * ⚠️ قياس التشابه النسبي منحازٌ ضد القصير انحيازًا فاحشًا: خطأُ حرفٍ
+ * واحد يعطي ٠٫٨٨ في «يتساءلون» و**٠٫٥٠** في «عمّ». فالأولى تُعامَل
+ * برفقٍ والثانية تُتَّهم — والقصيرة أحقّ بالرفق، لأنها أسرع نطقًا
+ * وأخفّ صوتًا وأكثر ما يبتلعه المزوّد أو يخلطه.
+ *
+ * وحرفٌ واحد في حدود خطأ الآلة دائمًا، فلا يُبنى عليه اتهامُ طفلة.
+ *
+ * ⚠️ ولا يخالف هذا قاعدة «لا حكم على النطق»: نحن لا نقول إنها أحسنت
+ * النطق ولا أساءته — نقول إننا لا نعلم، وهو الصدق.
+ */
+export function withinOneEdit(a: string, b: string): boolean {
+  if (a === b) return false;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  return levenshtein(a, b) <= 1;
+}
+
+/**
  * تشابه كلمتين، ٠..١.
  *
  * ⚠️ حرفيّ لا صوتيّ. والمقارنة الصوتية (أي أن «ذ» و«ز» متقاربتان في
@@ -430,6 +451,45 @@ function passageWords(expected: ExpectedWord[]): { [key: string]: true } {
   const set: { [key: string]: true } = Object.create(null);
   for (const w of expected) set[w.norm] = true;
   return set;
+}
+
+/**
+ * هل يجاور هذا الحذفَ نصٌّ يتكرّر في المقطع؟
+ *
+ * ── الحالة التي كشفتها ──
+ * النبأ ٤: «كَلَّا سَيَعْلَمُونَ» · النبأ ٥: «ثُمَّ كَلَّا سَيَعْلَمُونَ».
+ * والفرق بينهما **كلمة واحدة**. فحين يُسقط المزوّد «ثمّ» يصير النصّان
+ * سواءً، ولا يعلم أحدٌ أسقطتها القارئة أم دمج المزوّدُ التكرارين.
+ *
+ * وقاعدة السياق الثلاثي لا تمسك هذا: «ثمّ» نفسها لا تتكرّر، وإنما
+ * يتكرّر **ما حولها**. فننظر إلى الجوار لا إلى الكلمة.
+ *
+ * ⚠️ والمتشابهات من هذا الباب أكثر ما يكون في القرآن: آيتان لا يفرّق
+ * بينهما إلا حرف أو كلمة. فاتهام الطالبة بحذف الفارق ظلمٌ في الأغلب،
+ * لأن المزوّد أحرى أن يكون هو من دمجهما.
+ */
+function repeatedNeighbourhood(
+  expected: ExpectedWord[],
+  from: number,
+  to: number,
+  span: number
+): boolean {
+  const norms = expected.map((w) => w.norm);
+
+  const runOccurs = (run: string[]): boolean => {
+    if (run.length < span) return false;
+    const key = run.join(' ');
+    let seen = 0;
+    for (let i = 0; i + run.length <= norms.length; i++) {
+      if (norms.slice(i, i + run.length).join(' ') === key) seen++;
+      if (seen > 1) return true;
+    }
+    return false;
+  };
+
+  const after = norms.slice(to + 1, to + 1 + span);
+  const before = norms.slice(Math.max(0, from - span), from);
+  return runOccurs(after) || runOccurs(before);
 }
 
 function ambiguousPositions(expected: ExpectedWord[]): boolean[] {
@@ -762,12 +822,18 @@ function applyConservatism(
     }
 
     // ٤) استبدال بكلمة قريبة ⇒ الأرجح خطأ سماع لا خطأ حفظ
-    if (
-      e.kind === 'SUBSTITUTION' &&
-      e.similarity !== undefined &&
-      e.similarity >= t.nearMissSim
-    )
-      return uncertain('NEAR_MISS');
+    //
+    // ⚠️ وحرفٌ واحد قريبٌ مهما قصرت الكلمة: القياس النسبي وحده يظلم
+    // «عمّ» ويرفق بـ«يتساءلون» على نفس الخطأ.
+    if (e.kind === 'SUBSTITUTION') {
+      const heardNorm = e.heard[0]?.norm ?? '';
+      const wantNorm = e.expected[0]?.norm ?? '';
+      if (
+        (e.similarity !== undefined && e.similarity >= t.nearMissSim) ||
+        withinOneEdit(wantNorm, heardNorm)
+      )
+        return uncertain('NEAR_MISS');
+    }
 
     // ٥) كلمة زائدة موجودة في المقطع ⇒ قد تكون صدى المزوّد لا صوتها
     //
@@ -776,14 +842,29 @@ function applyConservatism(
     if (e.kind === 'INSERTION' && e.heard.length && e.heard.every((h) => inPassage[h.norm]))
       return uncertain('ECHO_OF_PASSAGE');
 
-    // ٦) حذفٌ في طرفي التسجيل ⇒ الأرجح أنه قُصّ لا أنها نسيت
+    // ٦) حذفٌ في طرفي المقطع ⇒ الأرجح أن التسجيل قُصّ لا أنها نسيت
+    //
+    // ⚠️ ولا نشترط أن يسبق الموضعَ سكوتٌ في القائمة: كلمةٌ واحدة
+    // يخترعها المزوّد في المستهلّ تُزيح الحذفَ عن رأس القائمة فيصير
+    // اتهامًا مؤكَّدًا — وقد وقع هذا فعلًا مع «عَمَّ» في أول النبأ.
+    // فالمناط أن يمسّ الحذفُ أولَ المقطع أو آخره، لا ترتيبه بيننا.
     if (e.kind === 'OMISSION' || e.kind === 'SKIP') {
-      const startsAtFirst = e.expected.length > 0 && e.expected[0].position === 0;
-      const endsAtLast =
-        e.expected.length > 0 && e.expected[e.expected.length - 1].position === lastPos;
-      if (startsAtFirst && (firstHeardIdx === -1 || i < firstHeardIdx))
-        return uncertain('TRUNCATED_START');
-      if (endsAtLast && i > lastHeardIdx) return uncertain('TRUNCATED_END');
+      const first = e.expected[0];
+      const last = e.expected[e.expected.length - 1];
+      if (first && first.position === 0) return uncertain('TRUNCATED_START');
+      if (last && last.position === lastPos) return uncertain('TRUNCATED_END');
+
+      /**
+       * ٧) حذفٌ قصير يجاوره نصٌّ متكرّر ⇒ لا يُعرف أيّ نسخة سقطت.
+       *
+       * ⚠️ والقِصَر شرطٌ: المزوّد يدمج تكرارًا قصيرًا فتسقط كلمةٌ بين
+       * نسختيه، ولا يبتلع آيةً كاملة لأن كلمتين قبلها تكرّرتا.
+       */
+      if (
+        e.expected.length <= t.repeatedMaxWords &&
+        repeatedNeighbourhood(expected, first.position, last.position, t.repeatedSpan)
+      )
+        return uncertain('REPEATED_NEIGHBOURHOOD');
     }
 
     return e;
