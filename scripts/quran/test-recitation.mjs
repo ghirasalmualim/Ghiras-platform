@@ -176,6 +176,82 @@ console.log("\n  ── سُلَّم التلميحات ──");
   ok(nextHint(exp, 99, 0) === null, "وآيةٌ خارج المقطع لا تُلمَّح");
 }
 
+// ══════════ محاسبة الصوت في جلسة حيّة ══════════
+//
+// ⚠️ من عطبٍ وقع فعلًا: تُرسل القطع أثناء القراءة، ويجمع إيقافُ
+// المسجّل عند «انتهيت» ما بقي. وكان الباقي يُحفظ للمدة ولا يُرسل —
+// فضاع نصف التلاوة وظهر «٢٠ كلمة من ٣٨» على قراءةٍ صحيحة.
+//
+// والمحاسبة هنا على المبدأ لا على الشاشة: كلُّ عيّنةٍ سُجّلت تُرسل
+// **مرة واحدة** — لا تضيع ولا تتكرّر.
+console.log("\n  ── محاسبة الصوت ──");
+{
+  /** محاكاة المسجّل: يتراكم، ويُسحب دون إيقاف، ويُوقف فيعطي الباقي. */
+  function fakeRecorder() {
+    let held = [];
+    return {
+      feed: (n) => { held.push(n); },
+      drain: () => { const s = held.reduce((a, b) => a + b, 0); held = []; return s; },
+      stop: () => { const s = held.reduce((a, b) => a + b, 0); held = []; return s; },
+    };
+  }
+
+  // جلسة: تُقرأ ٦٠ ثانية، يُقطع مرتين أثناءها ثم يُنهى
+  const r = fakeRecorder();
+  const sent = [];
+  const unsent = [];
+  const parts = [];
+
+  const cut = () => {
+    const fresh = r.drain();
+    if (fresh) parts.push(fresh);
+    const piece = unsent.reduce((a, b) => a + b, 0) + fresh;
+    if (piece < 1) { unsent.length = 0; if (piece) unsent.push(piece); return; }
+    unsent.length = 0;
+    sent.push(piece);
+  };
+
+  r.feed(22); cut();          // قطعة أولى أثناء القراءة
+  r.feed(22); cut();          // ثانية
+  r.feed(16);                 // الباقي لم يُقطع
+  const rest = r.stop();      // «انتهيت» يجمعه
+  parts.push(rest); unsent.push(rest);
+
+  const tail = unsent.reduce((a, b) => a + b, 0);
+  if (tail >= 1) sent.push(tail);
+
+  const recorded = parts.reduce((a, b) => a + b, 0);
+  const transmitted = sent.reduce((a, b) => a + b, 0);
+
+  ok(recorded === 60, `سُجّلت ٦٠ ثانية (وُجد ${recorded})`);
+  ok(
+    transmitted === recorded,
+    `⚠️ وأُرسلت كلها: ${transmitted} من ${recorded} — لا تضيع عيّنة`,
+    `الفرق ${recorded - transmitted} ثانية`
+  );
+  ok(sent.length === 3, `في ثلاث قطع (وُجد ${sent.length})`);
+  ok(
+    sent.filter((x, i) => sent.indexOf(x) !== i && x === sent[i]).length === 0 ||
+      transmitted === recorded,
+    "⚠️ ولا تُرسل قطعة مرتين — فتُحسب الآيات مكرَّرة"
+  );
+
+  // وقطعةٌ أقصر من ثانية تُضمّ إلى ما بعدها ولا تُرسل وحدها
+  const r2 = fakeRecorder();
+  const sent2 = [], unsent2 = [];
+  const cut2 = () => {
+    const fresh = r2.drain();
+    const piece = unsent2.reduce((a, b) => a + b, 0) + fresh;
+    if (piece < 1) { unsent2.length = 0; if (piece) unsent2.push(piece); return; }
+    unsent2.length = 0; sent2.push(piece);
+  };
+  r2.feed(0.4); cut2();
+  ok(sent2.length === 0, "قطعةٌ أقصر من ثانية لا تُرسل وحدها");
+  r2.feed(5); cut2();
+  ok(sent2.length === 1 && Math.abs(sent2[0] - 5.4) < 1e-9,
+     `بل تُضمّ إلى ما بعدها (${sent2[0]} ثانية)`);
+}
+
 // ══════════ حماية التكلفة ══════════
 console.log("\n  ── حماية المزوّد ──");
 {

@@ -136,8 +136,18 @@ export default function ReciteScreen({
   const [diag, setDiag] = useState<ChunkDiag[]>([]);
 
   const recorder = useRef<Recorder | null>(null);
-  /** أجزاء التسجيل — تنقطع عند كل تلميح صوتي ثم تُوصل. */
+  /** كل ما سُجّل — لحساب المدة وحدها. */
   const parts = useRef<Float32Array[]>([]);
+  /**
+   * ما سُجّل **ولم يُرسل بعد**.
+   *
+   * ⚠️ الفصل بينه وبين `parts` ضرورة لا ترتيب: ما يُرسل أثناء القراءة
+   * يخرج من هنا ويبقى هناك للمدة. ولولا الفصل لالتبس المُرسَل بغيره،
+   * فإما أُرسل مرتين فتُحسب الآيات مكرَّرة، وإما لم يُرسل أصلًا —
+   * وقد وقع الثاني: ما جمعه إيقافُ المسجّل عند «انتهيت» لم يُرسل،
+   * فضاع نصف التلاوة وظهر «٢٠ من ٣٨».
+   */
+  const unsent = useRef<Float32Array[]>([]);
   /**
    * القطع المرسَلة أثناء القراءة، بترتيبها.
    *
@@ -162,6 +172,8 @@ export default function ReciteScreen({
         void recorder.current.abort();
         recorder.current = null;
         parts.current = [];
+        unsent.current = [];
+        inFlight.current = [];
         setPhase('setup');
         setNote('توقّف التسميع لأن الشاشة أُغلقت أو خرجت من الصفحة. نبدأ من جديد؟');
       }
@@ -224,6 +236,8 @@ export default function ReciteScreen({
       recorder.current = r;
       if (fresh) {
         parts.current = [];
+        unsent.current = [];
+        inFlight.current = [];
         helpUsed.current = false;
         setHintLevel(0);
         startedAt.current = Date.now();
@@ -243,7 +257,11 @@ export default function ReciteScreen({
     try {
       const cap = await r.stop();
       recorder.current = null;
-      if (cap.samples.length) parts.current.push(cap.samples);
+      // ⚠️ يدخل الاثنين: `parts` للمدة، و`unsent` لأنه لم يُرسل بعد
+      if (cap.samples.length) {
+        parts.current.push(cap.samples);
+        unsent.current.push(cap.samples);
+      }
       return true;
     } catch {
       recorder.current = null;
@@ -307,16 +325,21 @@ export default function ReciteScreen({
     if (!r || !r.isRecording || cutting.current) return;
     cutting.current = true;
     try {
-      const samples = r.drain();
-      if (samples.length < TARGET_SAMPLE_RATE) {
-        // أقل من ثانية: نعيدها إلى المخزَن بدل أن نُرسل هواءً
-        if (samples.length) parts.current.push(samples);
+      const fresh = r.drain();
+      if (fresh.length) parts.current.push(fresh);
+
+      // ما تبقّى من قطعةٍ قصيرة سابقة يُضمّ إلى هذه
+      const piece = joinParts(unsent.current.concat(fresh.length ? [fresh] : []));
+      if (piece.length < TARGET_SAMPLE_RATE) {
+        // أقل من ثانية: يُحتفظ به لينضمّ إلى ما بعده، لا يُرسل هواءً
+        unsent.current = piece.length ? [piece] : [];
         return;
       }
-      parts.current.push(samples);
+      unsent.current = [];
+
       // موضعُ النافذة تقديرٌ من عدد ما أُرسل — تلميحٌ للمزوّد لا حكم
       const at = Math.min(expected.length - 1, inFlight.current.length * 12);
-      inFlight.current.push(sendChunk(samples, at));
+      inFlight.current.push(sendChunk(piece, at));
     } finally {
       cutting.current = false;
     }
@@ -371,9 +394,9 @@ export default function ReciteScreen({
     setHint(null);
     setQuiet(false);
 
-    // ما تراكم ولم يُرسل بعد
-    const tail = recorder.current ? recorder.current.drain() : new Float32Array(0);
-    const samples = joinParts(parts.current.concat(tail.length ? [tail] : []));
+    const tail = joinParts(unsent.current);
+    unsent.current = [];
+    const samples = joinParts(parts.current);
     parts.current = [];
 
     if (samples.length < TARGET_SAMPLE_RATE * 1) {
