@@ -110,6 +110,8 @@ export default function ReciteScreen({
   const [hint, setHint] = useState<Hint | null>(null);
   const [hintLevel, setHintLevel] = useState<HintLevel>(0);
   const [quiet, setQuiet] = useState(false);
+  /** ننصت لما قالته لنعرف موضعها قبل أن نلمّح — لحظةٌ تُعلَن ولا تُخفى. */
+  const [looking, setLooking] = useState(false);
   const [result, setResult] = useState<FinishResult | null>(null);
   const [elapsed, setElapsed] = useState(0);
   /**
@@ -209,26 +211,66 @@ export default function ReciteScreen({
   // ⚠️ الدرجة الثانية تُشغّل صوت القارئ، فيجب إيقاف التسجيل أولًا:
   // الميكروفون سيلتقط صوته وإلا فيُحسب على الطالبة. وiOS يحوّل الصوت
   // إلى السماعة الخارجية فور فتح الميكروفون، فالتداخل مؤكّد لا محتمل.
-  async function askForHelp() {
-    const position = 0; // موضعها المرجَّح — يُحسَب من المطابقة بعد الجلسة
-    const h = nextHint(expected, position, hintLevel);
-    if (!h) return;
+  /**
+   * أين وقفت الطالبة الآن؟
+   *
+   * ── لماذا نسأل المزوّد ──
+   * كان الموضع مثبَّتًا على الصفر، فكان التلميح يعطيها **أول المقطع**
+   * مهما بلغت — وهو أسوأ من ألا نلمّح: تطلب عونًا في موضعٍ فيأتيها
+   * عونٌ في موضعٍ آخر، فتحتار مرتين.
+   *
+   * ولا سبيل إلى معرفة موضعها إلا بسماع ما قالته. فنُرسل ما سُجّل حتى
+   * الآن ونعدّ كلماته. وهذا يكلّف نداءً وأربعَ ثوانٍ — وهو مقبول لأنه
+   * **لا يقع إلا حين تطلب هي العون**، ونحن واقفون على كل حال لنشغّل
+   * صوت القارئ.
+   *
+   * ⚠️ وإن تعذّر، نرجع إلى ما نعرفه يقينًا: أول ما لم يُلمَّح عليه بعد.
+   */
+  async function whereSheStopped(samples: Float32Array): Promise<number> {
+    if (samples.length < TARGET_SAMPLE_RATE) return 0;
+    try {
+      const wav = encodeWav(samples.slice(-TARGET_SAMPLE_RATE * 25), TARGET_SAMPLE_RATE);
+      const res = await fetch(
+        `/api/quran/recite?surah=${surah.number}&from=${from}&to=${to}&at=0`,
+        { method: 'POST', body: wav }
+      );
+      if (!res.ok) return 0;
+      const j = await res.json();
+      const heard = (j.tokens ?? []).length;
+      return Math.max(0, Math.min(expected.length - 1, heard));
+    } catch {
+      return 0;
+    }
+  }
 
+  async function askForHelp() {
     helpUsed.current = true;
+
+    // ⚠️ يُوقَف التسجيل أولًا: الميكروفون سيلتقط صوت القارئ وإلا
+    // فيُحسب على الطالبة، وiOS يحوّل الصوت إلى السماعة فور فتحه.
+    await pauseCapture();
+    setPhase('paused');
+    setHint(null);
+    setLooking(true);
+
+    const position = await whereSheStopped(joinParts(parts.current));
+    setLooking(false);
+    const h = nextHint(expected, position, hintLevel);
+    if (!h) {
+      setHint(null);
+      await begin(false);
+      return;
+    }
+
     setHintLevel((l) => Math.min(3, l + 1) as HintLevel);
+    setHint(h);
 
     if (h.kind === 'PLAY') {
-      await pauseCapture();
-      setPhase('paused');
-      setHint(h);
       const el = audio.current ?? new Audio();
       audio.current = el;
       el.src = ayahAudioUrl(reciter, h.surah, h.ayah);
       void el.play().catch(() => setNote('تعذّر تشغيل التلاوة — تأكدي من الإنترنت.'));
-      return;
     }
-
-    setHint(h);
   }
 
   // ── إنهاء الجلسة ─────────────────────────────────────────
@@ -375,7 +417,12 @@ export default function ReciteScreen({
       )}
 
       {phase === 'paused' && (
-        <Paused hint={hint} onResume={() => void begin(false)} onDone={() => void finish()} />
+        <Paused
+          hint={hint}
+          looking={looking}
+          onResume={() => void begin(false)}
+          onDone={() => void finish()}
+        />
       )}
 
       {phase === 'processing' && (
@@ -551,24 +598,40 @@ function Paused({
   hint,
   onResume,
   onDone,
+  looking,
 }: {
   hint: Hint | null;
   onResume: () => void;
   onDone: () => void;
+  /** ننصت لما قالته لنعرف موضعها — لحظةٌ تُعلَن ولا تُخفى. */
+  looking: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-3xl border border-[var(--q-line)] bg-[var(--q-card)] p-8 text-center">
         <p className="text-lg font-bold text-[var(--q-ink)]">
-          {hint?.kind === 'PLAY' ? hint.text : 'استمعي ثم نكمل'}
+          {looking
+            ? 'لحظة… أشوف وين وصلتِ 🌿'
+            : hint?.kind === 'PLAY'
+              ? hint.text
+              : hint?.kind === 'REVEAL'
+                ? hint.text
+                : 'استمعي ثم نكمل'}
         </p>
+        {/* التلميح المكشوف يُعرض هنا لا في شاشة التسميع: الطالبة واقفة
+            الآن، فتقرؤه على مهل ثم تكمل. */}
+        {!looking && hint?.kind === 'REVEAL' && (
+          <p className="mt-3 font-[family-name:var(--font-amiri)] text-2xl leading-loose text-[var(--q-accent)]">
+            {hint.words.join(' ')}
+          </p>
+        )}
         {/* ⚠️ التسجيل موقوف الآن عن قصد: لو بقي شغّالًا لالتقط صوت
             القارئ وحُسب على الطالبة كأنها هي التي قالته. */}
         <p className="mt-2 text-[0.82rem] text-[var(--q-mute)]">
-          التسجيل موقوف حتى ينتهي الصوت
+          {looking ? 'ننصت لما قرأتِ لنكمل من موضعك' : 'التسجيل موقوف حتى ينتهي الصوت'}
         </p>
       </div>
-      <div className="flex gap-3">
+      <div className={`flex gap-3 ${looking ? 'pointer-events-none opacity-40' : ''}`}>
         <button
           type="button"
           onClick={onResume}
@@ -735,6 +798,17 @@ function Result({
                 {(m.words.length > 0 || (m.heard?.length ?? 0) > 0) && (
                   <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
                     {m.words.length > 0 ? m.words.join(' ') : (m.heard ?? []).join(' ')}
+                  </p>
+                )}
+                {/* في الاستبدال نُظهر ما سُمع أيضًا: بلا هذا تقرأ الطالبة
+                    «هنا كلمة غير المتوقَّعة» ولا تعرف ما الذي سُمع مكانها،
+                    فلا تدري أخطأت هي أم أخطأ السمع. */}
+                {m.kind === 'SUBSTITUTION' && (m.heard?.length ?? 0) > 0 && (
+                  <p className="mt-0.5 text-[0.8rem] text-[var(--q-mute)]">
+                    وصلني:{' '}
+                    <span className="font-[family-name:var(--font-amiri)] text-[1rem]">
+                      {(m.heard ?? []).join(' ')}
+                    </span>
                   </p>
                 )}
               </li>
