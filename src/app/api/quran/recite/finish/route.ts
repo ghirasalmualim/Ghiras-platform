@@ -9,6 +9,8 @@ import {
 import { normalizeForComparison } from '@/features/quran/engine/normalize.mjs';
 import { eventsFor, gradeSession } from '@/features/quran/engine/grading';
 import { MAX_CHUNKS_PER_SESSION } from '@/features/quran/speech/limits';
+import { grantDrops } from '@/features/quran/garden/grant';
+import { awardsForRecitation } from '@/features/quran/garden/growth';
 
 /**
  * نهاية جلسة التسميع — هنا يقع الحكم.
@@ -137,6 +139,60 @@ export async function POST(req: NextRequest) {
   } catch {
     /* السجل لا يستحق تعطيل نتيجةٍ استحقّتها الطالبة */
   }
+
+  /**
+   * ── الحديقة ────────────────────────────────────────────────
+   *
+   * ⚠️ **هنا وحده يُخلق التقدّم**، وبعد أن حكم الخادمُ بنفسه. والمتصفح
+   * لم يخبرنا بشيء عن نجاحها: هو أرسل صوتًا، ونحن حكمنا.
+   *
+   * ⚠️ و«تحسّن موضع» يُقاس بالتاريخ لا بالدعوى: نقارن مواضعها الضعيفة
+   * في آخر جلسةٍ لهذا المقطع بما بقي ضعيفًا الآن. فمن ثبّتت موضعًا
+   * تعثّرت فيه أمس تُكافأ، ومن لم تسمّعه قبلُ لا تُكافأ على تحسّنٍ لم
+   * يقع — لأن أول جلسةٍ لا سابقَ لها تُقارَن به.
+   *
+   * ⚠️ ولا شيء هنا يُعطَّل نتيجةَ التسميع. `grantDrops` لا ترمي أبدًا.
+   */
+  let improvedWeakSpots = 0;
+  try {
+    const { data: previous } = await supabase
+      .from('quran_recitation_session')
+      .select('weak_spots')
+      .eq('user_id', user.id)
+      .eq('surah', surahNo)
+      .eq('from_ayah', from)
+      .eq('to_ayah', to)
+      .order('created_at', { ascending: false })
+      .range(1, 1)
+      .maybeSingle();
+
+    const before = (((previous?.weak_spots ?? []) as { ayah?: number }[]) || [])
+      .map((w) => w.ayah)
+      .filter((a): a is number => typeof a === 'number');
+    const stillWeak = weakSpots.map((w) => w.ayah);
+    const seen: number[] = [];
+    for (const ayah of before) {
+      if (seen.indexOf(ayah) !== -1) continue;
+      seen.push(ayah);
+      if (stillWeak.indexOf(ayah) === -1) improvedWeakSpots++;
+    }
+  } catch {
+    /* بلا تاريخ لا تحسّن — ولا نخترع واحدًا */
+  }
+
+  const reasons = awardsForRecitation({
+    usable: result.usable,
+    level: verdict.level,
+    helpUsed,
+    improvedWeakSpots,
+  });
+
+  await grantDrops({
+    userId: user.id,
+    reasons,
+    segmentKey: `${surahNo}:${from}-${to}`,
+    sourceKind: 'recitation',
+  });
 
   return NextResponse.json(
     {

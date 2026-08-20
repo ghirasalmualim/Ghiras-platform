@@ -79,6 +79,26 @@ export default function QuranGate() {
         </span>
       </Link>
 
+      {/* حديقتي — أثر الرحلة لا بابٌ إلى عمل.
+          ⚠️ وموضعها بعد المراجعة عمدًا: الحديقة نتيجةُ ما يُعمل هناك،
+          فلو تصدّرت الصفحة لصارت هي المقصد وصار الحفظ وسيلةً إليها. */}
+      <Link
+        href="/quran/garden"
+        className="tap mt-3 flex items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--q-line)] bg-white px-5 py-4 transition hover:border-[#cfe0d5]"
+      >
+        <span>
+          <span className="block font-[family-name:var(--font-cairo)] text-[1rem] font-extrabold text-[var(--q-ink)]">
+            🌿 حديقتي
+          </span>
+          <span className="mt-0.5 block text-[0.8rem] text-[var(--q-mute)]">
+            رحلتي مع القرآن — تنمو مع كل حفظٍ ومراجعة
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-xl text-[var(--q-accent)]">
+          ←
+        </span>
+      </Link>
+
       {/* الإسناد — واجب ترخيصي، وموضعه هنا هادئ وقابل للوصول */}
       <footer className="mt-12 text-center">
         <Link

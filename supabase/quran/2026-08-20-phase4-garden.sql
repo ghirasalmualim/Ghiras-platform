@@ -98,28 +98,150 @@ create unique index if not exists quran_garden_drop_once
 create index if not exists quran_garden_drop_held
   on public.quran_garden_drop (user_id, used_at) where used_at is null;
 
--- ── 4. Cosmetic rewards ────────────────────────────────────
--- Unlocked by fixed, known thresholds. Never random, never bought.
-create table if not exists public.quran_garden_reward (
-  user_id      uuid        not null references auth.users(id) on delete cascade,
-  reward_key   text        not null,
-  unlocked_at  timestamptz not null default now(),
-  primary key (user_id, reward_key)
-);
+-- ── 4. Cosmetic rewards: deliberately NOT a table ──────────
+--   Rewards are a pure function of two facts we already store: how many
+--   plants were completed, and how many distinct days were watered. So they
+--   are computed at read time, never written.
+--
+--   That is not a shortcut, it is the safer design. A rewards table is a row
+--   someone would want to forge -- "unlock the fountain" -- and the safest
+--   row is the one that does not exist. Thresholds live in one place,
+--   garden/tuning.ts, and cannot drift between code and database.
 
 -- ── 5. Row level security ──────────────────────────────────
 -- SELECT only, own rows. No write policy exists on purpose: see the header.
 alter table public.quran_garden        enable row level security;
 alter table public.quran_garden_plant  enable row level security;
 alter table public.quran_garden_drop   enable row level security;
-alter table public.quran_garden_reward enable row level security;
 
 drop policy if exists "garden read own"        on public.quran_garden;
 drop policy if exists "garden plant read own"  on public.quran_garden_plant;
 drop policy if exists "garden drop read own"   on public.quran_garden_drop;
-drop policy if exists "garden reward read own" on public.quran_garden_reward;
 
 create policy "garden read own"        on public.quran_garden        for select using (auth.uid() = user_id);
 create policy "garden plant read own"  on public.quran_garden_plant  for select using (auth.uid() = user_id);
 create policy "garden drop read own"   on public.quran_garden_drop   for select using (auth.uid() = user_id);
-create policy "garden reward read own" on public.quran_garden_reward for select using (auth.uid() = user_id);
+
+-- ── 6. Write paths ─────────────────────────────────────────
+-- The tables above grant SELECT only, so nothing can be written directly.
+-- These two functions are the only doors, and they are security definer.
+--
+-- WHY THESE TWO ARE SAFE TO EXPOSE TO THE LEARNER
+--   Neither creates progress out of nothing.
+--   * garden_plant only places a seed. Planting earns nothing.
+--   * garden_water only SPENDS a drop that already exists. If the server
+--     never granted a drop, watering does nothing at all.
+--   So the worst a forged call can do is plant a seed the learner is
+--   entitled to plant, or spend water she already earned.
+--
+--   Granting drops is the one act that creates progress, and it is
+--   deliberately NOT here. It happens only in the server route that judged
+--   the recitation, using a key the browser does not have.
+
+create or replace function public.garden_plant(p_type text, p_slot smallint)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_id   bigint;
+begin
+  if v_user is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  insert into public.quran_garden (user_id)
+  values (v_user)
+  on conflict (user_id) do nothing;
+
+  -- Enforced by quran_garden_one_growing: finish what you started.
+  if exists (
+    select 1 from public.quran_garden_plant
+    where user_id = v_user and completed_at is null
+  ) then
+    raise exception 'ALREADY_GROWING';
+  end if;
+
+  if exists (
+    select 1 from public.quran_garden_plant
+    where user_id = v_user and slot = p_slot
+  ) then
+    raise exception 'SLOT_TAKEN';
+  end if;
+
+  insert into public.quran_garden_plant (user_id, plant_type, slot)
+  values (v_user, p_type, p_slot)
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.garden_water()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- Kept in step with DROPS_TO_COMPLETE in garden/tuning.ts.
+  -- A test reads this file and fails if the two ever drift apart.
+  c_complete constant smallint := 18;
+
+  v_user     uuid := auth.uid();
+  v_plant    public.quran_garden_plant%rowtype;
+  v_drop_id  bigint;
+  v_used     smallint;
+  v_done     boolean := false;
+begin
+  if v_user is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select * into v_plant
+  from public.quran_garden_plant
+  where user_id = v_user and completed_at is null
+  limit 1;
+
+  if not found then
+    raise exception 'NO_PLANT';
+  end if;
+
+  -- Oldest drop first, so the reason shown is the one earned longest ago.
+  select id into v_drop_id
+  from public.quran_garden_drop
+  where user_id = v_user and used_at is null
+  order by earned_at asc
+  limit 1
+  for update;
+
+  if v_drop_id is null then
+    raise exception 'NO_WATER';
+  end if;
+
+  update public.quran_garden_drop
+  set used_at = now(), plant_id = v_plant.id
+  where id = v_drop_id;
+
+  update public.quran_garden_plant
+  set drops_used = drops_used + 1
+  where id = v_plant.id
+  returning drops_used into v_used;
+
+  if v_used >= c_complete then
+    update public.quran_garden_plant
+    set completed_at = now()
+    where id = v_plant.id and completed_at is null;
+    v_done := true;
+  end if;
+
+  return jsonb_build_object('plantId', v_plant.id, 'dropsUsed', v_used, 'completed', v_done);
+end;
+$$;
+
+revoke execute on function public.garden_plant(text, smallint) from public, anon;
+revoke execute on function public.garden_water()               from public, anon;
+grant  execute on function public.garden_plant(text, smallint) to authenticated;
+grant  execute on function public.garden_water()               to authenticated;

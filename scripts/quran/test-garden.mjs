@@ -8,6 +8,7 @@
  * — كلها شروطٌ صريحة من صاحبة المنصة، فتُحرَس باختبار لا بنيّة حسنة.
  */
 
+import { readFileSync } from "node:fs";
 import {
   stageForDrops,
   isComplete,
@@ -180,6 +181,35 @@ ok(
     .length === 0,
   "بلا إنجاز جديد لا إعلان"
 );
+
+// ── الرقم نفسه في مكانين ────────────────────────────────────
+// ⚠️ أخطر خلل في هذا التصميم ليس خطأً في منطق، بل رقمٌ يفترق بصمت:
+// دالة `garden_water` في القاعدة تحتاج أن تعرف متى تكتمل النبتة،
+// والمعايرة في TypeScript تحدّده. فلو عُدّل أحدهما وحده لاكتملت
+// النبتة في مكانٍ ولم تكتمل في الآخر — ولا شيء يصرخ.
+const sql = readFileSync("supabase/quran/2026-08-20-phase4-garden.sql", "utf8");
+
+const completeInSql = Number(
+  (sql.match(/c_complete\s+constant\s+smallint\s*:=\s*(\d+)/) || [])[1]
+);
+ok(
+  completeInSql === DROPS_TO_COMPLETE,
+  "⚠️ عتبة الاكتمال واحدة في القاعدة وفي المعايرة",
+  `SQL=${completeInSql} · TS=${DROPS_TO_COMPLETE}`
+);
+
+const slotsInSql = Number((sql.match(/slot\s*>=\s*0\s+and\s+slot\s*<\s*(\d+)/) || [])[1]);
+ok(
+  slotsInSql === GARDEN_TUNING.slots,
+  "⚠️ عدد المساحات واحد في القاعدة وفي المعايرة",
+  `SQL=${slotsInSql} · TS=${GARDEN_TUNING.slots}`
+);
+
+// ⚠️ ولا سياسة كتابة للعميل على جداول الحديقة — يُفحص نصًّا لا ثقةً
+for (const t of ["quran_garden", "quran_garden_plant", "quran_garden_drop"]) {
+  const writePolicy = new RegExp(`create policy[^;]*on public\\.${t}\\s+for\\s+(all|insert|update|delete)`, "i");
+  ok(!writePolicy.test(sql), `⚠️ ${t}: لا سياسة كتابة للعميل`);
+}
 
 console.log(`\n  ${passed} نجحت · ${failed} فشلت\n`);
 process.exit(failed ? 1 : 0);
