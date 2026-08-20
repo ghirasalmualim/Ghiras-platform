@@ -170,6 +170,17 @@ export default function ReciteScreen({
 
   // ── بدء التسجيل — داخل لمسة المستخدم، شرط iOS ────────────
   const begin = useCallback(async (fresh: boolean) => {
+    /**
+     * ⚠️ يُقطع صوت القارئ أولًا.
+     *
+     * كان يُترك يكمل الآية بعد أن تضغط «أكمل التسميع»، فيقع أمران:
+     * تسمعه وهي تريد أن تقرأ بنفسها، **والميكروفون يلتقطه فيُحسب
+     * عليها كأنها هي التي قالته**. والثاني أخطر: ما جاء عونًا يصير
+     * تهمة.
+     */
+    audio.current?.pause();
+    if (audio.current) audio.current.currentTime = 0;
+
     setNote(null);
     setHint(null);
     setQuiet(false);
@@ -229,7 +240,15 @@ export default function ReciteScreen({
   async function whereSheStopped(samples: Float32Array): Promise<number> {
     if (samples.length < TARGET_SAMPLE_RATE) return 0;
     try {
-      const wav = encodeWav(samples.slice(-TARGET_SAMPLE_RATE * 25), TARGET_SAMPLE_RATE);
+      /**
+       * آخر عشر ثوانٍ تكفي لمعرفة موضعها.
+       *
+       * ⚠️ وكان يُرسَل خمسٌ وعشرون، وهي ثمانمئة كيلوبايت تُرفع من
+       * جهاز الطالبة — قِيس رفعُ ستمئة منها بثانيةٍ وسبعٍ من عشر.
+       * فالتقصير هنا يقصّر انتظارها مباشرة، ولا يضرّ: موضعُها في آخر
+       * ما قالت لا في أوله.
+       */
+      const wav = encodeWav(samples.slice(-TARGET_SAMPLE_RATE * 10), TARGET_SAMPLE_RATE);
       const res = await fetch(
         `/api/quran/recite?surah=${surah.number}&from=${from}&to=${to}&at=0`,
         { method: 'POST', body: wav }
