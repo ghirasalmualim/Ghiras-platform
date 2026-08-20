@@ -201,7 +201,7 @@ export default function ReciteScreen({
       // بلغ الحدّ التقني ⇒ يُقطع اضطرارًا ولو في وسط الكلام
       if (held >= SESSION_TUNING.hardMaxSec - 1) void cutAndSend(true);
       // أو سكت بعد ما تجمّع ما يكفي ⇒ حدٌّ طبيعي
-      else if (held >= SESSION_TUNING.targetSec * 0.6 && silent) void cutAndSend(false);
+      else if (held >= SESSION_TUNING.liveCutSec && silent) void cutAndSend(false);
     }, 700);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
