@@ -164,15 +164,39 @@ export async function POST(req: NextRequest) {
               words: e.expected.map((w) => w.uthmani),
             }))
         : [],
+      /**
+       * المواضع المؤكَّدة.
+       *
+       * ⚠️ ولا يكفي نقل المتوقَّع: الزيادة والتكرار **لا كلمة متوقَّعة
+       * لهما** — الخبر فيهما ما سُمع لا ما كان يُنتظر. ولو اكتفينا
+       * بالمتوقَّع لظهرت بطاقة فارغة مكتوب فيها «الآية —» وحدها،
+       * فتقلق الطالبة بموضعٍ لا تعرف ما هو ولا أين.
+       *
+       * وموضعها يُؤخذ من آخر كلمة متوقَّعة سبقتها، فتُنسب إلى آية
+       * بدل أن تُنسب إلى لا شيء.
+       */
       mistakes: result.usable
         ? result.entries
-            .filter((e) => e.kind !== 'MATCH' && e.kind !== 'UNCERTAIN' && e.kind !== 'LONG_PAUSE')
-            .map((e) => ({
-              kind: e.kind,
-              surah: e.expected[0]?.surah ?? surahNo,
-              ayah: e.expected[0]?.ayah ?? null,
-              words: e.expected.map((w) => w.uthmani),
-            }))
+            .map((e, i) => {
+              if (e.kind === 'MATCH' || e.kind === 'UNCERTAIN' || e.kind === 'LONG_PAUSE')
+                return null;
+
+              let anchor = e.expected[0];
+              for (let k = i - 1; k >= 0 && !anchor; k--) {
+                const prev = result.entries[k].expected;
+                if (prev.length) anchor = prev[prev.length - 1];
+              }
+
+              return {
+                kind: e.kind,
+                surah: anchor?.surah ?? surahNo,
+                ayah: anchor?.ayah ?? null,
+                words: e.expected.map((w) => w.uthmani),
+                /** ما سُمع فعلًا — هو الخبر في الزيادة والتكرار. */
+                heard: e.heard.map((h) => h.text),
+              };
+            })
+            .filter((m): m is NonNullable<typeof m> => m !== null)
         : [],
     },
     { headers: { 'Cache-Control': 'no-store' } }

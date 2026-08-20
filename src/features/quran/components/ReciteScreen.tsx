@@ -48,7 +48,31 @@ type ChunkDiag = {
   atSilence: boolean;
 };
 
-type Mistake = { kind: string; surah: number; ayah: number | null; words: string[] };
+type Mistake = {
+  kind: string;
+  surah: number;
+  ayah: number | null;
+  words: string[];
+  heard?: string[];
+};
+
+/** وصفٌ لطيف لكل نوع — «نراجعها معًا» لا «أخطأتِ». */
+function mistakeLabel(kind: string): string {
+  switch (kind) {
+    case 'OMISSION':
+      return 'ما وصلتني هذي';
+    case 'SKIP':
+      return 'هذا الموضع ما قرأتيه';
+    case 'SUBSTITUTION':
+      return 'هنا كلمة غير المتوقَّعة';
+    case 'INSERTION':
+      return 'كلمة زايدة على النص';
+    case 'REPETITION':
+      return 'كرّرتِ هنا';
+    default:
+      return 'نراجعه معًا';
+  }
+}
 type Verdict = { level: MasteryLevel; headline: string; detail: string };
 type FinishResult = {
   usable: boolean;
@@ -703,11 +727,14 @@ function Result({
             {result.mistakes.map((m, i) => (
               <li key={i} className="rounded-xl bg-[#faf8f3] px-3 py-2">
                 <p className="text-[0.78rem] text-[var(--q-mute)]">
-                  الآية {m.ayah !== null ? toArabic(m.ayah) : '—'}
+                  {mistakeLabel(m.kind)}
+                  {m.ayah !== null ? ` · الآية ${toArabic(m.ayah)}` : ''}
                 </p>
-                {m.words.length > 0 && (
+                {/* الكلمة المتوقَّعة إن وُجدت، وإلا فما سُمع — ولا تبقى
+                    البطاقة فارغة في الزيادة والتكرار. */}
+                {(m.words.length > 0 || (m.heard?.length ?? 0) > 0) && (
                   <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
-                    {m.words.join(' ')}
+                    {m.words.length > 0 ? m.words.join(' ') : (m.heard ?? []).join(' ')}
                   </p>
                 )}
               </li>
