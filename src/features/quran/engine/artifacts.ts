@@ -24,6 +24,7 @@
  */
 
 import type { ExpectedWord, HeardToken } from './alignment';
+import { isMuqattaat } from './muqattaat';
 
 /** واو الصلة — تُتلى مدًّا فيسمعها المزوّد كلمةً. */
 const SILAH_WAW = 'ۥ';
@@ -106,26 +107,6 @@ const LETTER_NAMES: { [letter: string]: string[] } = {
   ق: ['قاف'],
   ن: ['نون'],
 };
-
-/** الحركات القصيرة — غيابُها علامةُ الحروف المقطَّعة. */
-const SHORT_VOWELS = /[\u064B-\u0652]/;
-
-/**
- * هل هذه الكلمة حروفًا مقطَّعة؟
- *
- * ⚠️ يُستنبَط من النص لا من قائمة سورٍ مكتوبة بيدنا: الحروف المقطَّعة
- * لا تحمل حركة قصيرة (إنما سكونًا ومدّة)، وحروفها من أربعة عشر حرفًا
- * معلومة. وهذا الشرطان معًا يعطيان ٢٩ سورة بالضبط — وهو العدد المعروف.
- */
-function isMuqattaat(uthmani: string): boolean {
-  if (SHORT_VOWELS.test(uthmani)) return false;
-  const letters = uthmani.replace(/[^\u0621-\u064A]/g, '');
-  if (letters.length < 1 || letters.length > 5) return false;
-  for (const ch of letters.split('')) {
-    if (!LETTER_NAMES[ch]) return false;
-  }
-  return true;
-}
 
 export type ArtifactRemoval = {
   ruleId: string;

@@ -630,10 +630,13 @@ console.log("\n  ── ١٩د) الحذف في المستهلّ ──");
   const misheard = words.slice();
   misheard[0] = normalizeForComparison(first).slice(0, -1) + "ن";
   const r = run(exp, misheard, { confidence: 0.88 });
+  // ⚠️ يكفي ألا تُتَّهم. والسبب المسجَّل قد يكون «حرفٌ واحد» أو «صدى
+  // المقطع» — فـ«عن» نفسها في «عَنِ ٱلنَّبَإِ» — وكلاهما صحيح، وأيّهما
+  // سبق لا يغيّر شيئًا عند الطالبة. فنفحص الحكم لا طريق الوصول إليه.
   ok(
-    r.summary.confirmedErrors === 0 && reasons(r).indexOf("NEAR_MISS") !== -1,
+    r.summary.confirmedErrors === 0 && r.summary.uncertain >= 1,
     `«${first}» تُسمَع «${misheard[0]}» ⇒ حرفٌ واحد لا يُبنى عليه اتهام`,
-    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))} · الأسباب: ${JSON.stringify(reasons(r))}`
   );
 
   // ⚠️ ولا يُشلّ الكشف: كلمة بعيدة تبقى استبدالًا مؤكَّدًا
@@ -642,6 +645,76 @@ console.log("\n  ── ١٩د) الحذف في المستهلّ ──");
   ok(
     run(exp, alien, { confidence: 0.9 }).summary.confirmedErrors === 1,
     "وكلمة بعيدة في الموضع نفسه تبقى استبدالًا مؤكَّدًا"
+  );
+}
+
+// ══════════════ ١٩هـ) الحروف المقطَّعة — من قياس على آيباد ══════════════
+//
+// ⚠️ «الٓمٓ» في أول البقرة رجعت من المزوّد **«اليك»** — لا أسماءَ حروف
+// ولا شيئًا قريبًا. فهو لا يعرف الحروف المتتابعة: ليست في لغته، فيلفّق
+// أقرب كلمة عربية مهما أحسنت القارئة. وعجزُ الآلة ليس خطأ الطالبة.
+console.log("\n  ── ١٩هـ) الحروف المقطَّعة ──");
+{
+  const exp = buildExpected(ayahs(2, 1, 5));
+  const words = perfect(exp);
+
+  ok(
+    exp[0].norm === "الم" && exp[0].ayah === 1,
+    `أول البقرة «${exp[0].uthmani}» — حروف مقطَّعة`
+  );
+
+  // ما وقع فعلًا: كلمة ملفَّقة مكان الحروف
+  const heard = words.slice();
+  heard[0] = "اليك";
+  const r = run(exp, heard, { confidence: 0.9 });
+  ok(
+    r.summary.confirmedErrors === 0,
+    "لا تُتَّهم القارئة بما تعجز الآلةُ عن تفريغه",
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+  );
+  ok(reasons(r).indexOf("MUQATTAAT") !== -1, "والسبب المسجَّل: حروف مقطَّعة");
+  ok(r.weakSpots.length === 0, "ولا تُرسَل إلى المراجعة");
+
+  // ولا يُشلّ الحكم على بقية السورة
+  const alien = CORPUS.get("36:2").split(/\s+/)[0];
+  const both = heard.slice();
+  both[6] = alien;
+  ok(
+    run(exp, both, { confidence: 0.9 }).summary.confirmedErrors === 1,
+    "وخطأٌ حقيقي في بقية المقطع يبقى مكشوفًا"
+  );
+}
+
+// ══════════════ ١٩و) استبدالٌ بكلمة من المقطع ══════════════
+//
+// ⚠️ «يُنفِقُونَ» (٢:٣) رجعت «يوقنون» — وهي آخر كلمة في الآية ٤
+// مباشرة. فالمزوّد خلط بين متقاربَين وسحب الثانية من النص الذي
+// زوّدناه به. وهي علّة صدى الزيادة نفسها، تقع في الاستبدال.
+console.log("\n  ── ١٩و) استبدالٌ بكلمة من المقطع ──");
+{
+  const exp = buildExpected(ayahs(2, 1, 5));
+  const words = perfect(exp);
+
+  const at = exp.findIndex((w) => w.norm === "ينفقون");
+  const other = exp.find((w) => w.norm === "يوقنون");
+  ok(at !== -1 && Boolean(other), "«ينفقون» و«يوقنون» كلتاهما في المقطع — الحالة قائمة");
+
+  const heard = words.slice();
+  heard[at] = other.uthmani;
+  const r = run(exp, heard, { confidence: 0.89 });
+  ok(
+    r.summary.confirmedErrors === 0,
+    "استبدالٌ بكلمةٍ من المقطع نفسه لا يُتَّهم به",
+    `التصنيفات: ${JSON.stringify(kinds(r).filter((k) => k !== "MATCH"))}`
+  );
+  ok(reasons(r).indexOf("ECHO_OF_PASSAGE") !== -1, "والسبب: صدى المقطع");
+
+  // ⚠️ وكلمةٌ من خارج المقطع تبقى استبدالًا مؤكَّدًا
+  const outside = words.slice();
+  outside[at] = CORPUS.get("36:2").split(/\s+/)[0];
+  ok(
+    run(exp, outside, { confidence: 0.9 }).summary.confirmedErrors === 1,
+    "وكلمةٌ من خارج المقطع تبقى استبدالًا مؤكَّدًا — الحارس ليس تعطيلًا"
   );
 }
 
