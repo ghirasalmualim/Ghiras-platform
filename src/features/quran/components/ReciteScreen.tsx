@@ -578,7 +578,7 @@ function Reciting({
             disabled={!canHint}
             className="tap flex-1 rounded-2xl border-2 border-[var(--q-line)] px-4 py-4 text-base font-bold text-[var(--q-ink)] disabled:opacity-40"
           >
-            💡 ساعديني
+            💡 ساعدني
           </button>
         )}
         <button
