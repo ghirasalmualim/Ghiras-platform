@@ -930,25 +930,12 @@ function Result({
             {unsure.length === 1 ? 'فيه موضع' : `فيه ${toArabic(unsure.length)} مواضع`} ما
             وصلني واضحًا — يمكن الصوت أو الميكروفون.{' '}
             <strong className="text-[var(--q-ink)]">وما حسبته عليك.</strong>
+            {/* ⚠️ العدد وحده، ولا تُذكر الكلمات.
+                جُرّب ذكرُها فقُرئت قائمةَ اتهامٍ ناعمة: «هذي ما تأكّد
+                منها» تصير عند القارئ «يمكن أخطأتُ فيها» — وهي مواضع
+                لم يُتَّهم فيها أصلًا. فالإخبار بلا تسمية أرفق: يعرف
+                أن ثمّة ما لم يصل، ولا يُوسوَس في حفظٍ صحيح. */}
           </p>
-          {/* ⚠️ تُعرض كلها لا ما له كلمةٌ متوقَّعة فقط: من قرأت تريد أن
-              تعرف **أين** لم يصلنا صوتها لتنتبه له في المرة القادمة.
-              وعددٌ بلا مواضع يقلق ولا يفيد. */}
-          <ul className="mt-3 flex flex-col gap-2">
-            {unsure.map((u, i) => (
-              <li key={i} className="rounded-xl bg-white/70 px-3 py-2">
-                <p className="text-[0.75rem] text-[var(--q-mute)]">
-                  {u.ayah !== null ? `الآية ${toArabic(u.ayah)}` : 'موضع'}
-                  {u.words.length === 0 ? ' · وصلني كلام زايد' : ''}
-                </p>
-                <p className="font-[family-name:var(--font-amiri)] text-lg text-[var(--q-ink)]">
-                  {u.words.length > 0
-                    ? u.words.join(' ')
-                    : (u.heard ?? []).join(' ') || '—'}
-                </p>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
