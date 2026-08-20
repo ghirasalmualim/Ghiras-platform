@@ -37,6 +37,17 @@ import { ayahAudioUrl } from '../engine/audio';
 type Mode = 'train' | 'test';
 type Phase = 'setup' | 'reciting' | 'paused' | 'processing' | 'result';
 
+type ChunkDiag = {
+  index: number;
+  seconds: number;
+  status: string;
+  snr: number | null;
+  confidence: number | null;
+  tokens: number;
+  artifactsRemoved: number;
+  atSilence: boolean;
+};
+
 type Mistake = { kind: string; surah: number; ayah: number | null; words: string[] };
 type Verdict = { level: MasteryLevel; headline: string; detail: string };
 type FinishResult = {
@@ -77,6 +88,14 @@ export default function ReciteScreen({
   const [quiet, setQuiet] = useState(false);
   const [result, setResult] = useState<FinishResult | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  /**
+   * تشخيص كل قطعة — لا يُعرض للطالبة إطلاقًا.
+   *
+   * ⚠️ يظهر فقط بإضافة `?diag=1` إلى الرابط، وهو للقياس أثناء البناء.
+   * والطالبة لا يعنيها كم قطعةً أُرسلت ولا كم كان نقاء الصوت؛ يعنيها
+   * أن تعرف ما تفعل. فالتشخيص لنا وحدنا.
+   */
+  const [diag, setDiag] = useState<ChunkDiag[]>([]);
 
   const recorder = useRef<Recorder | null>(null);
   /** أجزاء التسجيل — تنقطع عند كل تلميح صوتي ثم تُوصل. */
@@ -216,6 +235,7 @@ export default function ReciteScreen({
        * واضحًا» — رسالةٌ صادقة لكنها لا تقول لماذا ولا ماذا تفعل.
        */
       const statuses: string[] = [];
+      const collected: ChunkDiag[] = [];
       let worstSnr: number | null = null;
       let at = 0;
 
@@ -236,11 +256,24 @@ export default function ReciteScreen({
         const snr = j.meta?.snr;
         if (typeof snr === 'number' && (worstSnr === null || snr < worstSnr)) worstSnr = snr;
 
+        collected.push({
+          index: chunk.index,
+          seconds: Math.round((chunk.endSec - chunk.startSec) * 10) / 10,
+          status: j.status ?? '—',
+          snr: typeof snr === 'number' ? Math.round(snr * 10) / 10 : null,
+          confidence: j.meta?.confidence ?? null,
+          tokens: (j.tokens ?? []).length,
+          artifactsRemoved: j.artifactsRemoved ?? 0,
+          atSilence: chunk.cutAtSilence,
+        });
+
         // ⚠️ لا نقطع الجلسة عند مقطع متعثّر: قد تكون بقيتها سليمة،
         // وحُرّاس المحاذاة يتولّون الفجوة. نجمع الخبر ونشرحه في آخرها.
         for (const t of j.tokens ?? []) tokens.push({ text: t.text, confidence: t.confidence });
         at = Math.min(expected.length - 1, tokens.length);
       }
+
+      setDiag(collected);
 
       const done = await fetch('/api/quran/recite/finish', {
         method: 'POST',
@@ -330,6 +363,7 @@ export default function ReciteScreen({
 
       {phase === 'result' && result && (
         <Result
+          diag={diag}
           result={result}
           onAgain={() => {
             setResult(null);
@@ -532,7 +566,16 @@ function Paused({
 
 // ── النتيجة ────────────────────────────────────────────────
 
-function Result({ result, onAgain }: { result: FinishResult; onAgain: () => void }) {
+function Result({
+  result,
+  onAgain,
+  diag,
+}: {
+  result: FinishResult;
+  onAgain: () => void;
+  /** تشخيص القطع — للقياس أثناء البناء، لا تراه الطالبة. */
+  diag: ChunkDiag[];
+}) {
   const v = result.verdict;
 
   if (!result.usable)
@@ -556,6 +599,10 @@ function Result({ result, onAgain }: { result: FinishResult; onAgain: () => void
   const mastered = result.summary.matched;
   const total = result.summary.expectedWords;
   const unsure = result.unsure ?? [];
+  /** ⚠️ لا يظهر إلا لمن أضاف `?diag=1` عمدًا — الطالبة لا تراه أبدًا. */
+  const showDiag =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('diag') === '1';
 
   return (
     <div className="flex flex-col gap-5">
@@ -563,6 +610,52 @@ function Result({ result, onAgain }: { result: FinishResult; onAgain: () => void
         <p className="text-2xl font-extrabold text-[var(--q-ink)]">{v.headline}</p>
         <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--q-mute)]">{v.detail}</p>
       </div>
+
+      {showDiag && diag.length > 0 && (
+        <details
+          open
+          className="rounded-2xl border border-dashed border-[var(--q-line)] bg-[#fbfbf9] p-3 text-[0.75rem]"
+        >
+          <summary className="cursor-pointer font-bold text-[var(--q-mute)]">
+            تشخيص تقني ({diag.length} {diag.length === 1 ? 'قطعة' : 'قطع'})
+          </summary>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-right" dir="rtl">
+              <thead className="text-[var(--q-mute)]">
+                <tr>
+                  <th className="p-1">#</th>
+                  <th className="p-1">ثوانٍ</th>
+                  <th className="p-1">قُطعت عند</th>
+                  <th className="p-1">الحال</th>
+                  <th className="p-1">نقاء</th>
+                  <th className="p-1">ثقة</th>
+                  <th className="p-1">كلمات</th>
+                  <th className="p-1">عوارض</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {diag.map((d) => (
+                  <tr key={d.index} className="border-t border-[var(--q-line)]">
+                    <td className="p-1">{d.index + 1}</td>
+                    <td className="p-1">{d.seconds}</td>
+                    <td className="p-1">{d.atSilence ? 'سكتة' : '⚠️ حدّ تقني'}</td>
+                    <td className="p-1">{d.status}</td>
+                    <td className="p-1">{d.snr ?? '—'}</td>
+                    <td className="p-1">{d.confidence?.toFixed(2) ?? '—'}</td>
+                    <td className="p-1">{d.tokens}</td>
+                    <td className="p-1">{d.artifactsRemoved}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[var(--q-mute)]">
+              متوقَّع {result.summary.expectedWords} · مسموع{' '}
+              {diag.reduce((n, d) => n + d.tokens, 0)} · مطابق {result.summary.matched} · مؤكَّد{' '}
+              {result.summary.confirmedErrors} · غير مؤكَّد {result.summary.uncertain}
+            </p>
+          </div>
+        </details>
+      )}
 
       <div className="rounded-2xl border border-[var(--q-line)] bg-[#f5faf6] p-4">
         <p className="text-[0.9rem] font-bold text-[var(--q-accent)]">✅ مواضع متقنة</p>
