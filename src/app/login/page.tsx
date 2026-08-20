@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
-import { createClient, usernameToEmail } from '@/lib/supabase/client';
+import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
  * بوابة تسجيل الدخول — الدخول برقم الجوال (يُستخدم كاسم مستخدم).
@@ -14,13 +14,16 @@ import { createClient, usernameToEmail } from '@/lib/supabase/client';
  * 4) التوجيه للصفحة المطلوبة
  */
 function phoneToUsername(phone: string) {
-  let d = (phone || '').replace(/\D/g, '');
+  // ⚠️ الأرقام العربية أولًا: `\D` تحذفها كأنها حروف فيخرج الرقم فارغًا
+  let d = toEnglishDigits(phone).replace(/\D/g, '');
   if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
   return d;
 }
 /** الأدمِن يدخل باسم مستخدم نصي (ghiras)، والمعلمات برقم الجوال. */
 function toUsername(input: string) {
-  const raw = input.trim();
+  // ⚠️ تُوحَّد الأرقام قبل الفحص: بدونها يفشل الاختبار نفسه مع
+  // «٩٩٨٨٧٧٦٦» فيُعامَل الرقمُ اسمَ مستخدم ولا يُطبَّع أصلًا.
+  const raw = toEnglishDigits(input).trim();
   return /^[\d+\s()\-]+$/.test(raw) ? phoneToUsername(raw) : raw;
 }
 

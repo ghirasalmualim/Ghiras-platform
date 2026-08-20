@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
-import { createClient, usernameToEmail } from '@/lib/supabase/client';
+import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
  * صفحة إنشاء حساب المعلمة (تسجيل ذاتي).
@@ -13,7 +13,8 @@ import { createClient, usernameToEmail } from '@/lib/supabase/client';
  * • الحساب يُنشأ فوراً (بلا صلاحيات) وينتظر الدفع للتفعيل.
  */
 function phoneToUsername(phone: string) {
-  let d = (phone || '').replace(/\D/g, '');
+  // ⚠️ الأرقام العربية أولًا: `\D` تحذفها كأنها حروف فيخرج الرقم فارغًا
+  let d = toEnglishDigits(phone).replace(/\D/g, '');
   if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
   return d;
 }
