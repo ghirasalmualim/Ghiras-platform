@@ -161,7 +161,12 @@ export type AlignmentResult = {
    */
   usable: boolean;
   /** سبب عدم الصلاحية، حين لا تصلح. */
-  unusableReason?: 'EMPTY_TRANSCRIPT' | 'TRANSCRIPT_TOO_SHORT' | 'INPUT_TOO_LARGE';
+  unusableReason?:
+    | 'EMPTY_TRANSCRIPT'
+    | 'TRANSCRIPT_TOO_SHORT'
+    | 'INPUT_TOO_LARGE'
+    /** ما سُمع ليس تلاوةً لهذا المقطع — لا تلاوةٌ ناقصة. */
+    | 'NOT_THIS_PASSAGE';
 };
 
 // ═══════════════════════ بناء المُدخلات ═══════════════════════
@@ -557,12 +562,28 @@ export function alignRecitation(
 
   const summary = summarize(entries, expected.length, trimmed.length);
 
+  /**
+   * هل هذه تلاوةٌ لهذا المقطع أصلًا؟
+   *
+   * ⚠️ حارس العدد وحده لا يكفي: الحديثُ العادي يُنتج كلمات كثيرة
+   * فيمرّ، ثم تصادف كلماتٌ شائعة مواضعَها فتُحسب إتقانًا. وقد وقع
+   * فعلًا: «أتقنتِ ستة مواضع» ولم يُقرأ حرف.
+   *
+   * فنقيس **ما طابق** لا ما سُمع. وتلاوةٌ فيها أخطاء تُطابق أكثرها،
+   * أما ما ليس تلاوةً فلا يطابق إلا مصادفةً.
+   */
+  const notThisPassage =
+    !tooShort && summary.matched < expected.length * t.minMatchRatio;
+
+  const bad = tooShort || notThisPassage;
+  const reason = tooShort ? 'TRANSCRIPT_TOO_SHORT' : 'NOT_THIS_PASSAGE';
+
   return {
-    entries,
-    summary,
-    weakSpots: collectWeakSpots(entries),
-    usable: !tooShort,
-    ...(tooShort ? { unusableReason: 'TRANSCRIPT_TOO_SHORT' as const } : {}),
+    entries: bad ? hushAll(entries) : entries,
+    summary: bad ? { ...summary, matched: 0, confirmedErrors: 0, coverage: 0 } : summary,
+    weakSpots: bad ? [] : collectWeakSpots(entries),
+    usable: !bad,
+    ...(bad ? { unusableReason: reason as AlignmentResult['unusableReason'] } : {}),
   };
 }
 
@@ -904,6 +925,17 @@ function applyConservatism(
 
     return e;
   });
+}
+
+/**
+ * إسكاتُ كل حكمٍ حين لا تصلح الجلسة.
+ *
+ * ⚠️ ولا يكفي أن نرفع `usable`: المطابقاتُ نفسها تُعرض «مواضع متقنة»،
+ * فلو تركناها لقيل للطالبة إنها أتقنت ما لم تقرأه. فيُمحى كلُّ ما
+ * يُبنى عليه ثناءٌ أو لوم، ولا يبقى إلا طلبُ الإعادة.
+ */
+function hushAll(entries: AlignmentEntry[]): AlignmentEntry[] {
+  return [];
 }
 
 function summarize(

@@ -76,6 +76,8 @@ function mistakeLabel(kind: string): string {
 type Verdict = { level: MasteryLevel; headline: string; detail: string };
 type FinishResult = {
   usable: boolean;
+  /** سبب عدم الصلاحية — يُصاغ منه ما يُقال للطالبة. */
+  unusableReason?: string | null;
   verdict: Verdict;
   summary: { expectedWords: number; matched: number; confirmedErrors: number; uncertain: number };
   mistakes: Mistake[];
@@ -352,7 +354,15 @@ export default function ReciteScreen({
         const r = (await done.json()) as FinishResult;
         // النتيجة غير صالحة ⇒ نقول لماذا بما قِسناه، لا بعبارة عامة
         setResult(
-          r.usable ? r : { ...r, verdict: { ...r.verdict, detail: whyUnusable(statuses, worstSnr) } }
+          r.usable
+            ? r
+            : {
+                ...r,
+                verdict: {
+                  ...r.verdict,
+                  detail: whyUnusable(statuses, worstSnr, r.unusableReason),
+                },
+              }
         );
       }
     } catch {
@@ -909,8 +919,12 @@ function unusable(detail: string): FinishResult {
  * ٢١ ومرّ سليمًا تمامًا، فلو جعلناه سببًا للرفض لمنعنا تسميعًا صحيحًا.
  * فلا يُذكر إلا بعد أن يفشل الحكم لسببٍ آخر.
  */
-function whyUnusable(statuses: string[], snr: number | null): string {
+function whyUnusable(statuses: string[], snr: number | null, reason?: string | null): string {
   const has = (s: string) => statuses.indexOf(s) !== -1;
+
+  // ⚠️ سببٌ يخصّ المحتوى لا الصوت: يُقدَّم على كل تشخيصٍ صوتي
+  if (reason === 'NOT_THIS_PASSAGE')
+    return 'ما وصلتني تلاوة لهذي الآيات. تأكدي إنك تسمّعين المقطع المطلوب 🌿';
 
   if (has('NOISE') || (snr !== null && snr < QUIET_ENOUGH_SNR))
     return 'يبدو فيه ضجّة حواليك. جرّبي في مكان أهدأ 🌿';
