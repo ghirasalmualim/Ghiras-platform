@@ -44,6 +44,7 @@ run("npx", [
   "src/features/quran/engine/session.ts",
   "src/features/quran/engine/grading.ts",
   "src/features/quran/engine/hints.ts",
+  "src/features/quran/engine/daytime.ts",
   "src/features/quran/speech/types.ts",
   "src/features/quran/capture/recorder.ts",
   "src/features/quran/garden/types.ts",
@@ -107,6 +108,7 @@ run("node", ["scripts/quran/test-alignment.mjs"]);
 run("node", ["scripts/quran/test-azure-adapter.mjs"]);
 run("node", ["scripts/quran/test-recitation.mjs"]);
 run("node", ["scripts/quran/test-garden.mjs"]);
+run("node", ["scripts/quran/test-daytime.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");

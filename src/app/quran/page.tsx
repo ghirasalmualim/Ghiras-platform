@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getManifest, getSurahs } from '@/features/quran/data/corpus';
 import ResumeCard from '@/features/quran/components/ResumeCard';
 import DailyTaskCard from '@/features/quran/components/DailyTaskCard';
-import KahfFriday from '@/features/quran/components/KahfFriday';
+import { KahfFriday, MulkNight } from '@/features/quran/components/QuranCalls';
 
 /**
  * بوابة قسم القرآن — أول شاشة.
@@ -42,11 +42,13 @@ export default function QuranGate() {
         </p>
       </header>
 
-      {/* الجمعة وحدها — ولا يظهر في بقية الأسبوع بحرف.
-          ⚠️ وموضعه قبل كل شيء عن قصد: في يومه هو المقصد، وفي غيره
-          غيرُ موجود أصلًا. ولا يزاحم «عنصرين فقط» لأنه ضيفُ يومٍ
-          واحد لا ساكنٌ دائم. */}
+      {/* دعوتا الوقت — الكهف يوم الجمعة إلى مغربها، والملك كل ليلة.
+          ⚠️ وموضعهما قبل كل شيء عن قصد: في وقتهما هما المقصد، وفي
+          غيره غيرُ موجودتين أصلًا. ولا تزاحمان «عنصرين فقط» لأنهما
+          ضيفُ وقتٍ لا ساكنٌ دائم.
+          ⚠️ ولا تجتمعان: الكهف ينطفئ بالمغرب، والملك يبدأ الثامنة. */}
       <KahfFriday />
+      <MulkNight />
 
       {/* مهمة اليوم — للمسجَّلة فقط، وتختفي تمامًا إن لم يكن عليها شيء */}
       <DailyTaskCard surahNames={surahNames} />
