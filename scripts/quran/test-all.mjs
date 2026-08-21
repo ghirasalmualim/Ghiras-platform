@@ -52,6 +52,7 @@ run("npx", [
   "src/features/quran/garden/growth.ts",
   "src/features/quran/tajweed/types.ts",
   "src/features/quran/tajweed/engine.ts",
+  "src/features/quran/tajweed/review.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",

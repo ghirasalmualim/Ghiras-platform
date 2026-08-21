@@ -1,0 +1,18 @@
+{
+  "_": "سجلّ مراجعة المختصّ. يُستبدل هذا الملف وحده عند إدخال النتيجة — ولا يُمسّ نصّ المصحف ولا منطق المحرّك. وما لم تُعتمد قاعدةٌ هنا فهي لا تصل إلى شاشة.",
+  "engineVersion": "ea68e3a",
+  "decisions": [
+    { "ruleId": "idhhar",            "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "ikhfa",             "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "iqlab",             "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "idgham_ghunnah",    "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "idgham_no_ghunnah", "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "ikhfa_shafawi",     "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "idgham_shafawi",    "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "idhhar_shafawi",    "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "ghunnah",           "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "qalqalah",          "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "lam_shamsiyyah",    "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" },
+    { "ruleId": "hamzat_wasl",       "reviewStatus": "pending", "reviewerNote": "", "reviewedAt": null, "engineVersion": "ea68e3a" }
+  ]
+}

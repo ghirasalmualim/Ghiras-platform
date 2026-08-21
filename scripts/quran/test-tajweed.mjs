@@ -177,5 +177,32 @@ console.log(`  الآيات: ${ayahs} · الكلمات: ${words} · الموا�
 for (const [r, n] of [...perRule].sort((a, b) => b[1] - a[1]))
   console.log(`    ${r.padEnd(20)} ${String(n).padStart(6)}`);
 
+// ── بوّابة العرض: لا حكم يصل شاشةً قبل المراجعة ────────────
+const { isUserFacing, ENGINE_VERSION, RULE_CATALOGUE } = await import(
+  "../../.quran-test/tajweed/review.js"
+);
+const ledger = JSON.parse(
+  readFileSync("src/features/quran/tajweed/tajweed-review.json", "utf8")
+);
+
+ok(ledger.engineVersion === ENGINE_VERSION, "سجلّ المراجعة يشير إلى نسخة المحرّك", ledger.engineVersion);
+ok(ledger.decisions.length === RULE_CATALOGUE.length, "لكل قاعدةٍ سطرٌ في السجلّ");
+
+/**
+ * ⚠️ **الفحص الحاكم**: ما دامت المراجعة معلّقة فلا قاعدة تُعرض.
+ * ولو غُيّرت البوّابة يومًا فسقط هذا الفحص، فذاك هو المقصود منه.
+ */
+const facing = RULE_CATALOGUE.filter((r) => isUserFacing(r.ruleId, ledger));
+ok(facing.length === 0, "⚠️ ولا قاعدة تُعرض لمتعلّم قبل اعتماد المختصّ", facing.map((r) => r.nameAr).join("، "));
+
+// ⚠️ ولا تُعتمد قاعدةٌ رُوجعت على نسخةٍ أخرى من المحرّك
+const stale = { ...ledger, engineVersion: "0000000",
+  decisions: ledger.decisions.map((d) => ({ ...d, reviewStatus: "approved" })) };
+ok(
+  RULE_CATALOGUE.every((r) => !isUserFacing(r.ruleId, stale)),
+  "⚠️ واعتمادٌ على نسخةٍ قديمة لا يُعتدّ به — القواعد تغيّرت تحته"
+);
+ok(!isUserFacing("ikhfa", null), "وبلا سجلٍّ أصلًا لا عرض");
+
 console.log(`\n  ${passed} نجحت · ${failed} فشلت\n`);
 process.exit(failed ? 1 : 0);
