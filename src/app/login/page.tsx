@@ -136,14 +136,30 @@ function LoginForm() {
       return;
     }
 
-    // 3) تسجيل الدخول الناجح وتحديث آخر نشاط (دون تعطيل المستخدم)
-    void supabase.from('login_logs').insert({
-      user_id: auth.user.id,
-      username: uname,
-      success: true,
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    });
-    void supabase.rpc('touch_last_active');
+    /**
+     * 3) تسجيل الدخول الناجح وتحديث آخر نشاط.
+     *
+     * ⚠️ **يُنتظَران قبل الانتقال.** كانا يُرسَلان بلا انتظار ثم يُنقَل
+     * المستخدم فورًا — والانتقال يُجهض الطلبَ قبل أن يصل. فبقي جدول
+     * `login_logs` **فارغًا تمامًا**، وظلّت لوحة التحكم تقول «لم تدخل
+     * بعد» عن مشتركاتٍ دخلن فعلًا.
+     *
+     * ⚠️ ولا يُعطَّل الدخول لأجل السجلّ: إن تعثّر مضينا. فالسجلّ خبرٌ
+     * عن الدخول لا شرطٌ له، ومن دخل بحقٍّ لا يُمنع لأن سطرًا لم يُكتب.
+     */
+    try {
+      await Promise.all([
+        supabase.from('login_logs').insert({
+          user_id: auth.user.id,
+          username: uname,
+          success: true,
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }),
+        supabase.rpc('touch_last_active'),
+      ]);
+    } catch {
+      /* السجلّ لا يستحقّ منعَ دخولٍ صحيح */
+    }
 
     // 4) التوجيه
     router.push(next);
