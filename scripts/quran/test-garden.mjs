@@ -41,12 +41,15 @@ console.log("\n  🌱 اختبارات الحديقة\n");
 
 // ── المراحل ────────────────────────────────────────────────
 ok(stageForDrops(0) === 0, "صفر قطرات ⇒ بذرة");
-ok(stageForDrops(1) === 0, "قطرة واحدة لا تكفي المرحلة الأولى");
+// ⚠️ أول قطرة تنقل مرحلةً كاملة — عن قصد.
+// المبتدئ يرى أثر سقيته الأولى فورًا فلا يظنّ أن شيئًا لم يقع.
+ok(stageForDrops(1) === 1, "أول قطرة تُظهر أثرها فورًا");
 ok(stageForDrops(2) === 1, "قطرتان ⇒ بداية الإنبات");
 ok(stageForDrops(4) === 2, "أربع ⇒ برعم");
 ok(stageForDrops(DROPS_TO_COMPLETE) === 6, "المجموع كاملًا ⇒ المرحلة الأخيرة");
 ok(stageForDrops(DROPS_TO_COMPLETE + 50) === 6, "الزيادة لا تتجاوز الأخيرة");
-ok(DROPS_TO_COMPLETE === 18, "ثماني عشرة قطرة للنبتة", String(DROPS_TO_COMPLETE));
+// ⚠️ كان ١٨ فجُرّب فوُجد طويلًا، فصار ١٢ — والمعايرة تُعدَّل بالتجربة.
+ok(DROPS_TO_COMPLETE === 12, "اثنتا عشرة قطرة للنبتة", String(DROPS_TO_COMPLETE));
 
 ok(!isComplete(DROPS_TO_COMPLETE - 1), "قبل الأخيرة بقطرة ليست مكتملة");
 ok(isComplete(DROPS_TO_COMPLETE), "بالمجموع تكتمل");

@@ -188,7 +188,7 @@ as $$
 declare
   -- Kept in step with DROPS_TO_COMPLETE in garden/tuning.ts.
   -- A test reads this file and fails if the two ever drift apart.
-  c_complete constant smallint := 18;
+  c_complete constant smallint := 12;
 
   v_user     uuid := auth.uid();
   v_plant    public.quran_garden_plant%rowtype;

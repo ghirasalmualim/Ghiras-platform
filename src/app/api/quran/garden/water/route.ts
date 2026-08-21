@@ -10,8 +10,10 @@ import { newlyUnlocked } from '@/features/quran/garden/growth';
  * وضعها هناك الخادمُ بعد أن حكم بنفسه على التلاوة. فلو نادى المتصفح
  * هذا المسار ألف مرة بلا قطرة، ردّت القاعدة `NO_WATER` ولم يتحرّك شيء.
  *
- * ⚠️ ولا يُقال «فتحت زينة جديدة» إلا إذا فُتحت فعلًا: نقيس ما كان قبل
- * السقي وما صار بعده، فالبشرى تأتي مرّة واحدة في وقتها.
+ * ⚠️ ولا يُقال «فتحت زينة جديدة» إلا إذا فُتحت فعلًا. وحالة «قبل»
+ * تُشتقّ من ردّ الدالة ولا تُقرأ برحلةٍ ثانية إلى القاعدة: كانت كل
+ * سقية ثلاث رحلات، فشكت صاحبة المنصة من بطءٍ بين السقية والأخرى —
+ * وكانت أولاها زائدةً كلها، لأن ما تغيّر معلومٌ من الردّ نفسه.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,8 +24,6 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
-
-  const before = await readGardenState(supabase, user.id);
 
   const { data, error } = await supabase.rpc('garden_water');
   if (error) {
@@ -38,14 +38,23 @@ export async function POST() {
   const after = await readGardenState(supabase, user.id);
   const completed = Boolean((data as { completed?: boolean } | null)?.completed);
 
+  /**
+   * ⚠️ السقية الواحدة لا تغيّر إلا شيئين: غرسةً قد تكتمل، ويومَ
+   * عنايةٍ قد يُضاف. فما عداهما فحالُه قبلَها كحالِه بعدَها.
+   */
+  const beforeStats = {
+    completedPlants: after.completed.length - (completed ? 1 : 0),
+    careDays: Math.max(0, after.careDays - 1),
+  };
+
   return NextResponse.json({
     state: after,
     completed,
     /** أول غرسة اكتملت — لحظةٌ لها شاشتها. */
-    firstEver: completed && before.completed.length === 0,
-    unlocked: newlyUnlocked(
-      { completedPlants: before.completed.length, careDays: before.careDays },
-      { completedPlants: after.completed.length, careDays: after.careDays }
-    ),
+    firstEver: completed && beforeStats.completedPlants === 0,
+    unlocked: newlyUnlocked(beforeStats, {
+      completedPlants: after.completed.length,
+      careDays: after.careDays,
+    }),
   });
 }

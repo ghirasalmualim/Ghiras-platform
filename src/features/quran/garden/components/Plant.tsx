@@ -22,19 +22,23 @@ import type { GrowthStage, PlantTypeKey } from '../types';
 
 const GROUND = 104;
 
-export default function Plant({
+/**
+ * جسم النبتة وحده، مبدؤه عند قاعدتها — بلا تربة ولا إطار.
+ *
+ * ⚠️ فُصل عن `Plant` ليُزرع داخل مشهد الحديقة نفسه. ولولا الفصل
+ * لاحتجنا رسمًا ثانيًا للنبتة في المشهد، ولافترق الرسمان بعد شهر
+ * فصارت نبتةُ الاختيار غير نبتةِ الحديقة — وهو ما شكت منه صاحبة
+ * المنصة حين رأت ورقةً عامة مكان وردتها.
+ */
+export function PlantBody({
   type,
   stage,
   progress,
-  className = '',
 }: {
   type: PlantTypeKey;
   stage: GrowthStage;
-  /** ٠..١ داخل المرحلة. */
   progress: number;
-  className?: string;
 }) {
-  // مقياسٌ متّصل ٠..٦ — هو ما يقود كل شيء في هذا الرسم
   const t = Math.max(0, Math.min(6, stage + (stage >= 6 ? 0 : progress)));
 
   const isTree = type === 'tree';
@@ -42,29 +46,15 @@ export default function Plant({
   const top = GROUND - stemH;
   const stemW = isTree ? 2 + t * 0.9 : 1.4 + t * 0.35;
 
-  /** أزواج الأوراق تظهر واحدًا بعد واحد مع النمو. */
   const leaves = [0, 1, 2].filter((i) => t > 1.4 + i * 0.95);
   const bloom = Math.max(0, Math.min(1, (t - 4.6) / 1.4));
 
   return (
-    <svg
-      viewBox="0 0 100 120"
-      className={`plant ${className}`}
-      role="img"
-      aria-label={`نبتة في مرحلة النمو ${stage}`}
-    >
-      {/* التربة */}
-      <ellipse cx="50" cy={GROUND + 4} rx="34" ry="8" fill="#8d6e4e" opacity="0.28" />
-      <ellipse cx="50" cy={GROUND + 1} rx="28" ry="6" fill="#7a5c3e" opacity="0.55" />
-
-      {/* البذرة قبل أن تشقّ التربة */}
-      {t < 0.6 && (
-        <ellipse cx="50" cy={GROUND - 2} rx="4.6" ry="3.4" fill="#8a6b45" />
-      )}
+    <g transform={`translate(-50 ${-GROUND})`}>
+      {t < 0.6 && <ellipse cx="50" cy={GROUND - 2} rx="4.6" ry="3.4" fill="#8a6b45" />}
 
       {stemH > 0 && (
         <>
-          {/* الساق */}
           <path
             d={`M50 ${GROUND} Q ${50 - 3 - t} ${GROUND - stemH / 2} 50 ${top}`}
             stroke="var(--q-accent)"
@@ -72,8 +62,6 @@ export default function Plant({
             strokeLinecap="round"
             fill="none"
           />
-
-          {/* الأوراق — يمينًا ويسارًا بالتناوب */}
           {leaves.map((i) => {
             const y = GROUND - stemH * (0.32 + i * 0.22);
             const size = 7 + t * 1.5 - i * 1.2;
@@ -87,18 +75,41 @@ export default function Plant({
               />
             );
           })}
-
-          {/* التاج أو الزهرة */}
           {bloom > 0 && (
-            <g
-              transform={`translate(50 ${top}) scale(${bloom})`}
-              style={{ transformOrigin: 'center' }}
-            >
+            <g transform={`translate(50 ${top}) scale(${bloom})`}>
               <Bloom type={type} />
             </g>
           )}
         </>
       )}
+    </g>
+  );
+}
+
+export default function Plant({
+  type,
+  stage,
+  progress,
+  className = '',
+}: {
+  type: PlantTypeKey;
+  stage: GrowthStage;
+  /** ٠..١ داخل المرحلة. */
+  progress: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 100 120"
+      className={`plant ${className}`}
+      role="img"
+      aria-label="نبتة"
+    >
+      <ellipse cx="50" cy={GROUND + 4} rx="34" ry="8" fill="#8d6e4e" opacity="0.28" />
+      <ellipse cx="50" cy={GROUND + 1} rx="28" ry="6" fill="#7a5c3e" opacity="0.55" />
+      <g transform={`translate(50 ${GROUND})`}>
+        <PlantBody type={type} stage={stage} progress={progress} />
+      </g>
     </svg>
   );
 }
