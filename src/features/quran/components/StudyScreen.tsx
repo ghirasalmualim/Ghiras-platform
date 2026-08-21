@@ -79,6 +79,13 @@ export default function StudyScreen({
   const [mode, setMode] = useState<StudyMode>('read');
   const [hideLevel, setHideLevel] = useState<HideLevel>(0);
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
+  /**
+   * الآية التي لمسها القارئ — تُعرض عليها خياراتُها.
+   *
+   * ⚠️ ولا يبدأ الصوت باللمسة وحدها. لمسةٌ عابرة على النصّ لا ينبغي
+   * أن تُطلق تلاوةً في صفٍّ أو مجلس — فنسأل قبل أن نصوّت.
+   */
+  const [pickedAyah, setPickedAyah] = useState<number | null>(null);
   const [guest, setGuest] = useState(false);
 
   /**
@@ -98,6 +105,15 @@ export default function StudyScreen({
    * لا مشغّل ثانٍ لهذا النشاط، ولا احتمال لتداخل صوتين.
    */
   const playAyah = useRef<((ayah: number) => void) | null>(null);
+
+  /**
+   * مقبض «ابدأ من هذه الآية وأكمل» — لمن لمس آيةً في المصحف.
+   *
+   * ⚠️ منفصلٌ عن `playAyah` عمدًا: ذاك يُسمع آيةً مفردة ثم يقف، وهو
+   * ما يحتاجه نشاط «اسمع وحدّد». ولو وحّدناهما لانقلب سؤال التدريب
+   * إلى جوابٍ يُتلى كاملًا.
+   */
+  const playFrom = useRef<((ayah: number) => void) | null>(null);
 
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
   /**
@@ -282,8 +298,60 @@ export default function StudyScreen({
           ayahs={ayahs}
           hideLevel={mode === 'memorize' ? hideLevel : 0}
           activeAyah={activeAyah}
+          onAyahClick={setPickedAyah}
         />
+
+        {/* ⚠️ يُقال إن الآيات تُلمس — وإلا بقيت الميزة سرًّا بين
+            من كتبها ومن يقرأ الكود */}
+        <p className="mt-5 text-center text-[0.78rem] text-[var(--q-mute)]">
+          اضغط على أي آية لتسمعها 🔊
+        </p>
       </section>
+
+      {/* ── خيارات الآية الملموسة ── */}
+      {pickedAyah !== null && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--q-line)] bg-white px-5 pb-6 pt-4 shadow-[0_-6px_24px_rgba(0,0,0,0.08)]"
+          role="dialog"
+          aria-label={`خيارات الآية ${toArabic(pickedAyah)}`}
+        >
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+            <span className="text-[0.9rem] font-extrabold text-[var(--q-ink)]">
+              الآية {toArabic(pickedAyah)}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const a = pickedAyah;
+                  setPickedAyah(null);
+                  /**
+                   * ⚠️ التشغيل داخل معالج اللمسة مباشرة — شرطُ Safari
+                   * على iPhone وiPad: الصوت لا يبدأ إلا استجابةً للمسة،
+                   * ولو أجّلناه بمؤقّتٍ سقط الإذن ولم يعمل على الآيباد.
+                   */
+                  if (a !== null) playFrom.current?.(a);
+                }}
+                className="tap rounded-2xl bg-[var(--q-accent)] px-6 py-3 text-[0.92rem] font-extrabold text-white"
+              >
+                🔊 استمع من هنا
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedAyah(null)}
+                aria-label="إغلاق"
+                className="tap rounded-2xl border border-[var(--q-line)] px-4 py-3 text-[0.9rem] font-bold text-[var(--q-mute)]"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          {/* ⚠️ يُقال ما سيحدث قبل أن يحدث — لا يفاجئه أنها تكمل وحدها */}
+          <p className="mx-auto mt-2 w-full max-w-2xl text-center text-[0.76rem] text-[var(--q-mute)]">
+            تبدأ من هذه الآية وتكمل آيةً بعد آية
+          </p>
+        </div>
+      )}
 
       {/* ── مستوى الإخفاء ── */}
       {mode === 'memorize' && (
@@ -349,11 +417,15 @@ export default function StudyScreen({
             reciters={reciters}
             onReciterChange={changeReciter}
             playAyahRef={playAyah}
+            playFromRef={playFrom}
             compact={false}
           />
         </section>
       )}
 
+      {/* ⚠️ ومقبضُ التشغيل هنا أيضًا. كان ناقصًا في وضع القراءة وحده،
+          فظهر خيار «استمع من هنا» ولا يفعل شيئًا — ولمسُ الآية في
+          القراءة أكثر ما يقع، فحرمانُه يجعل الميزة زرًّا يكذب. */}
       {mode === 'read' && (
         <section className="mb-5">
           <AudioBar
@@ -361,6 +433,8 @@ export default function StudyScreen({
             segment={segments}
             onAyahChange={setActiveAyah}
             withBasmala={basmalaFlags}
+            playAyahRef={playAyah}
+            playFromRef={playFrom}
             compact
           />
         </section>

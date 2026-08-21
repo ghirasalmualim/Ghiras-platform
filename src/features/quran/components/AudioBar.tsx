@@ -36,6 +36,7 @@ export default function AudioBar({
   reciters = [],
   onReciterChange,
   playAyahRef,
+  playFromRef,
 }: {
   reciter: Reciter;
   /**
@@ -65,6 +66,17 @@ export default function AudioBar({
    * صوتين، وهو أيضًا شرط Safari لاستمرار التشغيل.
    */
   playAyahRef?: React.MutableRefObject<((ayah: number) => void) | null>;
+  /**
+   * مقبضُ «ابدأ من هذه الآية **وأكمل**».
+   *
+   * ⚠️ منفصلٌ عن `playAyahRef` عمدًا ولا يحلّ محلّه: ذاك يشغّل آيةً
+   * مفردة ثم يقف — وهو ما يحتاجه نشاط «اسمع وحدّد»، إذ يُسمع الطالبَ
+   * آيةً ليتعرّفها. ولو وسّعناه ليكمل لانقلب السؤال إلى جواب.
+   *
+   * وهذا يمضي من الآية إلى آخر ما هو معروض — وهو ما يريده من لمس
+   * آيةً في المصحف ليستمع منها.
+   */
+  playFromRef?: React.MutableRefObject<((ayah: number) => void) | null>;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playlistRef = useRef<PlaylistItem[]>([]);
@@ -185,6 +197,62 @@ export default function AudioBar({
         stopAll();
       });
   }
+
+  /**
+   * التشغيل من آيةٍ إلى آخر ما هو معروض.
+   *
+   * ⚠️ ويشمل ما بعدها من المقاطع لا مقطعَها وحده: صفحة المصحف قد
+   * تعبر سورتين، فمن لمس آيةً في أولاهما يتوقّع أن يستمرّ إلى
+   * الثانية كما يقرأ.
+   */
+  function startFrom(fromAyah: number) {
+    const el = audioRef.current;
+    if (!el) return;
+    setError(null);
+
+    const idx = segments.findIndex(
+      (sg) => fromAyah >= sg.from_ayah && fromAyah <= sg.to_ayah
+    );
+    if (idx < 0) return;
+
+    const rest = [
+      { ...segments[idx], from_ayah: fromAyah },
+      ...segments.slice(idx + 1),
+    ];
+    /**
+     * ⚠️ لا بسملة للمقطع الأول: القارئ داخل السورة لا في أولها.
+     * وما بعده يحتفظ ببسملته، لأن السورة التالية تبدأ من أولها فعلًا.
+     */
+    const flags = Array.isArray(withBasmala)
+      ? [false, ...withBasmala.slice(idx + 1)]
+      : [false, ...segments.slice(idx + 1).map(() => false)];
+
+    const list = buildPlaylist(reciter, rest, repeat, scope, flags);
+    if (!list.length) return;
+
+    playlistRef.current = list;
+    indexRef.current = 0;
+    setCurrent(list[0]);
+    onAyahChange?.(list[0].isBasmala ? null : list[0].ayah);
+    el.src = list[0].url;
+
+    // ‏.play() داخل معالج اللمسة مباشرة — شرط Safari على الآيباد
+    void el
+      .play()
+      .then(() => setPlaying(true))
+      .catch(() => {
+        setError('المتصفح منع التشغيل — اضغط زر التشغيل مرة أخرى');
+        stopAll();
+      });
+  }
+
+  useEffect(() => {
+    if (!playFromRef) return;
+    playFromRef.current = (ayah: number) => startFrom(ayah);
+    return () => {
+      playFromRef.current = null;
+    };
+  });
 
   // نُسلّم دالة التشغيل للأعلى بعد تعريفها
   useEffect(() => {
