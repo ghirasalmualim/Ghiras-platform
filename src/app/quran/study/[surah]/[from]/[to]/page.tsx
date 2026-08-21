@@ -43,9 +43,26 @@ export default function StudyPage({
   const ayahs = getAyahs(surahNo, from, to);
   if (!ayahs.length) notFound();
 
+  /**
+   * السورتان الجارتان — لتستمرّ القراءة عبر حدود السورة.
+   *
+   * ⚠️ يُمرَّر عدد آياتهما لا رقمهما وحده: الشاشة تحتاج أن تحسب مدًى
+   * صالحًا في السورة التالية، ومقطعُ عشر آيات لا يصلح في الكوثر. ولو
+   * بنت الرابط بلا هذا العدد لأنتجت مدًى خارج الحدود، ولردّت الصفحةُ
+   * التالية «غير موجودة» — وهو أسوأ من زرٍّ غائب.
+   */
+  const nextSurah = surahNo < 114 ? getSurah(surahNo + 1) : null;
+  const prevSurah = surahNo > 1 ? getSurah(surahNo - 1) : null;
+
   return (
     <StudyScreen
       surah={surah}
+      {...(nextSurah
+        ? { nextSurah: { number: nextSurah.number, name_ar: nextSurah.name_ar, ayah_count: nextSurah.ayah_count } }
+        : {})}
+      {...(prevSurah
+        ? { prevSurah: { number: prevSurah.number, name_ar: prevSurah.name_ar, ayah_count: prevSurah.ayah_count } }
+        : {})}
       ayahs={ayahs}
       from={from}
       to={to}

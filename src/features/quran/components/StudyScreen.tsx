@@ -46,6 +46,8 @@ export default function StudyScreen({
   subheading,
   prevHref,
   nextHref,
+  nextSurah,
+  prevSurah,
 }: {
   surah: Surah;
   ayahs: Ayah[];
@@ -70,6 +72,9 @@ export default function StudyScreen({
   subheading?: string;
   prevHref?: string;
   nextHref?: string;
+  /** السورة التالية — لتستمرّ القراءة بعد آخر آية. */
+  nextSurah?: { number: number; name_ar: string; ayah_count: number };
+  prevSurah?: { number: number; name_ar: string; ayah_count: number };
 }) {
   const [mode, setMode] = useState<StudyMode>('read');
   const [hideLevel, setHideLevel] = useState<HideLevel>(0);
@@ -154,11 +159,41 @@ export default function StudyScreen({
     });
   }
 
-  const prevStart = Math.max(1, from - (to - from + 1));
-  const nextStart = to + 1;
-  const hasPrev = from > 1;
-  const hasNext = to < surah.ayah_count;
   const span = to - from + 1;
+  const prevStart = Math.max(1, from - span);
+  const nextStart = to + 1;
+
+  /**
+   * التنقّل يعبر حدود السورة.
+   *
+   * ⚠️ كان يقف عند آخر آية فيختفي الزرّ — وهو ما شكت منه صاحبة
+   * المنصة: «إذا خلصت السورة ما يطلع لي التالي، خلّه يطلع حتى لو
+   * سورة جديدة». والمصحف يُقرأ متّصلًا، ووقوفُ التنقّل عند حدٍّ لا
+   * يقف عنده القارئ يجعله يرجع إلى القائمة في كل سورة.
+   *
+   * ⚠️ والمدى في السورة الجارة **يُقصَّ على حدودها**: مقطع عشر آيات
+   * لا يصلح في الكوثر، ولو بنيناه بلا قصٍّ لردّت الصفحةُ «غير
+   * موجودة» — وزرٌّ يكسر أسوأ من زرٍّ غائب.
+   */
+  const nextInSurah = to < surah.ayah_count;
+  const nextIsNewSurah = !nextInSurah && Boolean(nextSurah);
+  const hasNext = nextInSurah || nextIsNewSurah;
+
+  const prevInSurah = from > 1;
+  const prevIsNewSurah = !prevInSurah && Boolean(prevSurah);
+  const hasPrev = prevInSurah || prevIsNewSurah;
+
+  const nextPath = nextInSurah
+    ? `/quran/study/${surah.number}/${nextStart}/${Math.min(surah.ayah_count, nextStart + span - 1)}`
+    : nextSurah
+      ? `/quran/study/${nextSurah.number}/1/${Math.min(nextSurah.ayah_count, span)}`
+      : '';
+
+  const prevPath = prevInSurah
+    ? `/quran/study/${surah.number}/${prevStart}/${from - 1}`
+    : prevSurah
+      ? `/quran/study/${prevSurah.number}/${Math.max(1, prevSurah.ayah_count - span + 1)}/${prevSurah.ayah_count}`
+      : '';
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6 sm:px-5">
@@ -367,28 +402,32 @@ export default function StudyScreen({
       {/* ── السابق / التالي ── */}
       {(prevHref || nextHref || hasPrev || hasNext) && (
         <nav className="flex items-center justify-between gap-3">
-          {prevHref ?? hasPrev ? (
+          {prevHref || hasPrev ? (
             <Link
-              href={prevHref ?? `/quran/study/${surah.number}/${prevStart}/${from - 1}`}
+              href={prevHref ?? prevPath}
               className="tap rounded-2xl border border-[var(--q-line)] bg-white px-5 py-3 text-[0.88rem] font-bold text-[var(--q-ink)] transition hover:border-[#cfe0d5]"
             >
-              {prevHref ? 'الصفحة السابقة' : 'الآيات السابقة'}
+              {prevHref
+                ? 'الصفحة السابقة'
+                : prevIsNewSurah && prevSurah
+                  ? `سورة ${prevSurah.name_ar}`
+                  : 'الآيات السابقة'}
             </Link>
           ) : (
             <span />
           )}
-          {nextHref ?? hasNext ? (
+          {nextHref || hasNext ? (
             <Link
-              href={
-                nextHref ??
-                `/quran/study/${surah.number}/${nextStart}/${Math.min(
-                  surah.ayah_count,
-                  nextStart + span - 1
-                )}`
-              }
+              href={nextHref ?? nextPath}
               className="tap rounded-2xl border border-[var(--q-line)] bg-white px-5 py-3 text-[0.88rem] font-bold text-[var(--q-ink)] transition hover:border-[#cfe0d5]"
             >
-              {nextHref ? 'الصفحة التالية' : 'الآيات التالية'}
+              {/* ⚠️ يُسمّى ما ينتقل إليه: الانتقال إلى سورة أخرى حدثٌ
+                  يستحقّ أن يُعرف قبل وقوعه لا بعده */}
+              {nextHref
+                ? 'الصفحة التالية'
+                : nextIsNewSurah && nextSurah
+                  ? `سورة ${nextSurah.name_ar} ←`
+                  : 'الآيات التالية'}
             </Link>
           ) : (
             <span />
