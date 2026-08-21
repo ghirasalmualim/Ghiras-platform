@@ -88,15 +88,33 @@ function LoginForm() {
     }
 
     // 2) قراءة الملف الشخصي والتحقق من الحالة والاشتراك
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name, role, status, sub_end')
       .eq('id', auth.user.id)
       .single();
 
+    /**
+     * ⚠️ **خطأُ قراءة الملف كان مُهمَلًا تمامًا.**
+     *
+     * كُتب `const { data: profile } = ...` بلا التقاط الخطأ، فصار كلُّ
+     * سببٍ يُترجَم «الحساب غير مُهيأ بعد»: رفضُ حماية، أو انقطاعُ
+     * شبكة، أو جلسةٌ لم تصل مع الطلب.
+     *
+     * ووقع بمشتركةٍ ملفُّها سليمٌ تمامًا — اسمٌ ودورٌ واشتراكٌ فعّال
+     * إلى ٢٠٢٧ — فقيل لها إن حسابها «غير مُهيأ»، وبقيت يومين تُعطى
+     * كلماتِ مرورٍ جديدة والعلّةُ في مكانٍ آخر.
+     *
+     * ⚠️ والرمز يُعرض لأن جملةً واحدة لكل الأسباب هي ما أعمانا.
+     */
     if (!profile) {
+      const code = profileError?.code ?? '';
       await supabase.auth.signOut();
-      setMessage('الحساب غير مُهيأ بعد — يرجى التواصل مع إدارة المنصة');
+      setMessage(
+        code === 'PGRST116'
+          ? 'الحساب غير مُهيأ بعد — يرجى التواصل مع إدارة المنصة'
+          : `تعذّر قراءة بيانات حسابك — تواصلي مع إدارة المنصة${code ? ` (رمز: ${code})` : ''}`
+      );
       setLoading(false);
       return;
     }
