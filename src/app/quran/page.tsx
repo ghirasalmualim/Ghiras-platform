@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getManifest, getSurahs } from '@/features/quran/data/corpus';
 import ResumeCard from '@/features/quran/components/ResumeCard';
 import DailyTaskCard from '@/features/quran/components/DailyTaskCard';
+import KahfFriday from '@/features/quran/components/KahfFriday';
 
 /**
  * بوابة قسم القرآن — أول شاشة.
@@ -40,6 +41,12 @@ export default function QuranGate() {
           اقرأ واستمع واحفظ، على مهلك
         </p>
       </header>
+
+      {/* الجمعة وحدها — ولا يظهر في بقية الأسبوع بحرف.
+          ⚠️ وموضعه قبل كل شيء عن قصد: في يومه هو المقصد، وفي غيره
+          غيرُ موجود أصلًا. ولا يزاحم «عنصرين فقط» لأنه ضيفُ يومٍ
+          واحد لا ساكنٌ دائم. */}
+      <KahfFriday />
 
       {/* مهمة اليوم — للمسجَّلة فقط، وتختفي تمامًا إن لم يكن عليها شيء */}
       <DailyTaskCard surahNames={surahNames} />
