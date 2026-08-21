@@ -986,9 +986,27 @@ function Result({
             href={`/quran/review`}
             className="tap flex-1 rounded-2xl border-2 border-[var(--q-line)] px-5 py-4 text-center text-base font-bold text-[var(--q-ink)]"
           >
-            🌱 راجع المواضع
+            🔄 راجع المواضع
           </Link>
         )}
+      </div>
+
+      {/*
+        باب الحديقة من آخر التسميع.
+        ⚠️ وموضعه في الذيل مقصود: التسميع هو العمل، والحديقة أثره.
+        ولو وُضع في الأعلى لسابق النتيجةَ نفسها على عين القارئ.
+        وهنا يأتي في حينه: قرأتْ نتيجتها، فتُدعى لترى ما صنعتْه.
+      */}
+      <div className="mt-1 border-t border-[var(--q-line)] pt-4">
+        <Link
+          href="/quran/garden"
+          className="tap flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--q-accent)] px-5 py-4 text-center text-base font-extrabold text-white"
+        >
+          🌱 ازرع حديقتك
+        </Link>
+        <p className="mt-2 text-center text-[0.78rem] text-[var(--q-mute)]">
+          تسميعك اليوم صار قطرة ماء 💧
+        </p>
       </div>
     </div>
   );
