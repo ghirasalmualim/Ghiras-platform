@@ -46,6 +46,9 @@ run("npx", [
   "src/features/quran/engine/hints.ts",
   "src/features/quran/speech/types.ts",
   "src/features/quran/capture/recorder.ts",
+  "src/features/quran/garden/types.ts",
+  "src/features/quran/garden/tuning.ts",
+  "src/features/quran/garden/growth.ts",
   "--outDir", OUT,
   // الجذر يشمل types.ts لأن المحركات تستورد أنواعها منه
   "--rootDir", "src/features/quran",
@@ -72,7 +75,7 @@ for (const f of ["normalize.mjs", "random.mjs"])
  * نشغّل مخرجات tsc خامًا هنا لا محزَّمة، نصلح الفرق في هذه الخطوة
  * وحدها — ولا نغيّر المصدر لأجل بيئة الاختبار.
  */
-for (const dir of ["engine", "speech", "capture"])
+for (const dir of ["engine", "speech", "capture", "garden"])
 for (const f of readdirSync(`${OUT}/${dir}`)) {
   if (!f.endsWith(".js")) continue;
   const p = `${OUT}/${dir}/${f}`;
@@ -103,6 +106,7 @@ run("node", ["scripts/quran/test-pages.mjs"]);
 run("node", ["scripts/quran/test-alignment.mjs"]);
 run("node", ["scripts/quran/test-azure-adapter.mjs"]);
 run("node", ["scripts/quran/test-recitation.mjs"]);
+run("node", ["scripts/quran/test-garden.mjs"]);
 
 rmSync(OUT, { recursive: true, force: true });
 console.log("  ✅ كل اختبارات قسم القرآن نجحت.\n");
