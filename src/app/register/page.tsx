@@ -27,6 +27,20 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /**
+   * تمّ الإنشاء — يُعرض تأكيدٌ صريح ولا يُنقل المستخدم بلا خبر.
+   *
+   * ⚠️ كان النجاح يرمي المستخدمة إلى الصفحة الرئيسية مباشرةً بلا كلمة.
+   * وليس لها اشتراكٌ بعدُ فلا ينفتح لها شيء، فترى شاشةً عادية وتظنّ أن
+   * التسجيل أخفق، فتعيده — فيُقال لها «رقم الجوال مسجّل مسبقًا».
+   *
+   * وقع هذا مع مشتركةٍ حقيقية: أنشأت حسابها الساعة ٢٠:٣٨ ودخلت في
+   * اللحظة نفسها، ثم أعادت المحاولة لأن أحدًا لم يخبرها أنها نجحت.
+   *
+   * ⚠️ **ونجاحٌ يبدو فشلًا أسوأ من فشلٍ معلن**: الفشلُ المعلن يُعالَج،
+   * وهذا يدفع صاحبه إلى تكرارٍ يوقعه في رسالةِ خطأٍ لا ذنب له فيها.
+   */
+  const [createdFor, setCreatedFor] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (loading) return;
@@ -80,7 +94,9 @@ export default function RegisterPage() {
     }
 
     // نجح الإنشاء (تُنشأ الجلسة مباشرة عند تعطيل تأكيد الإيميل)
-    router.push('/');
+    // ⚠️ ولا نُبدّل الصفحة بلا كلمة: يُقال لها إنها نجحت، وتنتقل بيدها
+    setCreatedFor(name);
+    setLoading(false);
     router.refresh();
   }
 
@@ -93,6 +109,48 @@ export default function RegisterPage() {
         <Logo size={84} />
       </Link>
 
+      {/*
+        ⚠️ شاشة التأكيد تحلّ محلّ النموذج ولا تُضاف تحته: من نجح لا
+        يُترك أمام حقولٍ فارغة يظنّ أنها تنتظره، فيملؤها من جديد —
+        وهو عين ما وقع.
+      */}
+      {createdFor ? (
+        <div
+          className="card-3d w-full max-w-md p-8 mt-6 animate-float-in text-center"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <div className="gold-thread w-24 mx-auto mb-6" aria-hidden="true" />
+          <p className="text-4xl" aria-hidden>🌿</p>
+          <h1 className="mt-3 text-2xl font-black text-sage-deep">
+            تمّ إنشاء حسابك
+          </h1>
+          <p className="mt-2 text-ink/70 leading-relaxed">
+            أهلًا <b className="text-ink">{createdFor}</b> — حسابك جاهز ودخلتِ فعلًا.
+          </p>
+
+          {/* ⚠️ ويُقال ما ينقص: بلا هذا تظنّ أن المنصة معطّلة */}
+          <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] leading-relaxed text-sage-deep">
+            الاشتراك <b>يُفعَّل بعد الدفع</b>. وحتى يُفعَّل، ما راح تنفتح لك
+            الأدوات المدفوعة — وهذا طبيعي ولا يعني أن حسابك فيه خلل.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              router.push('/');
+              router.refresh();
+            }}
+            className="mt-6 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark"
+          >
+            ابدأ من الصفحة الرئيسية
+          </button>
+
+          <p className="mt-4 text-[0.78rem] text-ink/45">
+            ⚠️ لا تُعيدي التسجيل — حسابك موجود. وإن خرجتِ، ادخلي من
+            «تسجيل الدخول» بنفس الرقم وكلمة المرور.
+          </p>
+        </div>
+      ) : (
       <div
         className="card-3d w-full max-w-md p-8 mt-6 animate-float-in"
         style={{ animationDelay: '0.1s' }}
@@ -200,6 +258,7 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
+      )}
 
       <Link
         href="/"
