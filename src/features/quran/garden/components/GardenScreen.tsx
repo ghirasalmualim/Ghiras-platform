@@ -203,7 +203,10 @@ export default function GardenScreen() {
       )}
 
       {phase === 'welcome' && (
-        <Welcome onStart={() => setPhase('seed')} started={state?.started} signedOut={signedOut} />
+        <>
+          <Welcome onStart={() => setPhase('seed')} started={state?.started} signedOut={signedOut} />
+          {!signedOut && <HowItGrows />}
+        </>
       )}
 
       {phase === 'seed' && (
@@ -386,6 +389,9 @@ function SlotChoice({
         <h2 className="font-[family-name:var(--font-cairo)] text-xl font-extrabold text-[var(--q-ink)]">
           وين تحب تزرع بذرتك؟
         </h2>
+        <p className="mt-1 text-[0.82rem] text-[var(--q-mute)]">
+          اضغط على أي بقعة فاضية في الحديقة
+        </p>
         <button
           type="button"
           onClick={onBack}
@@ -516,6 +522,8 @@ function Garden({
         )}
       </div>
 
+      <HowItGrows />
+
       {state.rewards.length > 0 && (
         <p className="text-center text-[0.78rem] text-[var(--q-mute)]">
           {/* ⚠️ تُسمّى ليعرف أين يبحث عنها في حديقته — لا لتقوم مقامها */}
@@ -523,6 +531,53 @@ function Garden({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * «كيف تكبر حديقتي؟» — الشرح داخل الشاشة لا خارجها.
+ *
+ * ⚠️ طلبته صاحبة المنصة بنفسها بعد أن رأت الحديقة: «علّمني شلون
+ * أسقيها وأختار لها نبتة». وهي التي شهدت بناءها — فمن تفتحها أول
+ * مرة ولا أحد معها أولى بأن يُشرح لها.
+ *
+ * ⚠️ وهو مطويٌّ لا مفروض: من فهم لا يُعاد عليه في كل زيارة، ومن لم
+ * يفهم يجده حيث يتوقّعه. والشرح الذي يُفرض كل مرة يصير ضجيجًا يُتخطّى
+ * حتى حين يُحتاج.
+ */
+function HowItGrows() {
+  return (
+    <details className="g-card px-5 py-3 text-right">
+      <summary className="tap cursor-pointer list-none text-[0.88rem] font-extrabold text-[var(--q-ink)]">
+        كيف تكبر حديقتي؟ 🌿
+      </summary>
+      <ol className="mt-3 flex flex-col gap-2 text-[0.85rem] leading-relaxed text-[var(--q-mute)]">
+        <li>
+          <b className="text-[var(--q-ink)]">١. اختر بذرتك</b> — وردة أو شجرة أو غيرها.
+          كلها تنمو بنفس الطريقة، والاختيار ذوقك.
+        </li>
+        <li>
+          <b className="text-[var(--q-ink)]">٢. اختر مكانها</b> — اضغط على أي بقعة فاضية
+          في الحديقة، بتتحدّد باللون الذهبي، ثم «ازرع بذرتي».
+        </li>
+        <li>
+          <b className="text-[var(--q-ink)]">٣. سمّع أو راجع</b> — كل جلسة تسميع صالحة
+          أو مراجعة تجيب لك <b>قطرة ماء 💧</b>
+        </li>
+        <li>
+          <b className="text-[var(--q-ink)]">٤. اسقِ نبتتك</b> — اضغط «اسقِ نبتتي»
+          وشوفها تكبر. تكتمل بعد ١٢ سقية تقريبًا.
+        </li>
+        <li>
+          <b className="text-[var(--q-ink)]">٥. اختر بذرة جديدة</b> — المكتملة تبقى في
+          حديقتك للأبد، وتنضاف لها زينة كل ما تقدّمت.
+        </li>
+      </ol>
+      {/* ⚠️ يُقال صراحةً أن الغياب لا يُعاقَب، فلا يخاف من الانقطاع */}
+      <p className="mt-3 text-[0.8rem] leading-relaxed text-[var(--q-accent)]">
+        🌿 ولا تخاف من الانقطاع — نبتتك ما تذبل ولا تموت، وتلقاها كما تركتها.
+      </p>
+    </details>
   );
 }
 
