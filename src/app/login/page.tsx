@@ -37,7 +37,9 @@ function LoginForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   /** ترحيبٌ بعد نجاح الدخول — تأكيدٌ كان غائبًا فكلّفنا يومين. */
-  const [welcome, setWelcome] = useState<{ name: string; subEnd: string | null } | null>(null);
+  const [welcome, setWelcome] = useState<
+    { name: string; subEnd: string | null; isAdmin: boolean } | null
+  >(null);
 
   async function handleSubmit() {
     if (loading) return;
@@ -131,7 +133,18 @@ function LoginForm() {
       return;
     }
 
-    if (profile.status === 'expired' || expired) {
+    /**
+     * ⚠️ **الأدمِن معفًى من انتهاء الاشتراك — لغمٌ موقوت أُبطل.**
+     *
+     * حساب صاحبة المنصة يحمل `sub_end` بتاريخٍ محدَّد. ولولا هذا
+     * الاستثناء لأُخرجت يوم انقضائه من منصّتها ومن لوحة تحكّمها،
+     * **ولا أحد يستطيع إعادتها لأن الإعادة نفسها تحتاج أدمِن** —
+     * فيُقفَل الباب والمفتاح في الداخل.
+     *
+     * ⚠️ ويبقى «الموقوف» على حاله للجميع: ذاك إيقافٌ مقصودٌ بقرار،
+     * وهذا انقضاءٌ يقع بمرور الوقت وحده.
+     */
+    if (profile.role !== 'admin' && (profile.status === 'expired' || expired)) {
       await supabase.auth.signOut();
       setMessage('انتهى الاشتراك — يرجى التجديد للاستمرار في استخدام المنصة');
       setLoading(false);
@@ -174,7 +187,9 @@ function LoginForm() {
      */
     setWelcome({
       name: profile.full_name || 'بك',
-      subEnd: profile.sub_end ?? null,
+      // ⚠️ لا يُقال للأدمِن «اشتراكك ينتهي»: وصولُه لا ينقضي بتاريخ
+      subEnd: profile.role === 'admin' ? null : (profile.sub_end ?? null),
+      isAdmin: profile.role === 'admin',
     });
     setLoading(false);
   }
@@ -197,7 +212,13 @@ function LoginForm() {
           </h1>
           <p className="mt-2 text-ink/70">دخلتِ بنجاح إلى غراس المعلم.</p>
 
-          {/* ⚠️ يُقال متى ينتهي الاشتراك: خبرٌ يخصّها ولا تجده في مكان آخر */}
+          {/* ⚠️ يُقال متى ينتهي الاشتراك: خبرٌ يخصّها ولا تجده في مكان آخر.
+              وللأدمِن لا يُقال — وصولُه لا ينقضي بتاريخ. */}
+          {welcome.isAdmin && (
+            <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
+              وصولك كإدارة للمنصة — بلا تاريخ انتهاء
+            </p>
+          )}
           {welcome.subEnd && (
             <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
               اشتراكك سارٍ حتى{' '}
