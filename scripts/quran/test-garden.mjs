@@ -131,8 +131,19 @@ ok(
   applyCaps({ grantedToday: 0, held: 0, earned: 3 }).granted === 3,
   "دون السقف يُمنح كل المستحقّ"
 );
-const day = applyCaps({ grantedToday: 3, held: 0, earned: 3 });
+const day = applyCaps({ grantedToday: 7, held: 0, earned: 3 });
 ok(day.granted === 1 && day.cappedByDay === 2, "سقف اليوم يقصّ الزائد", JSON.stringify(day));
+
+/**
+ * ⚠️ ويومٌ فيه سورتان جديدتان لا يُقصّ.
+ *
+ * كشفه الاستعمال: كان السقف أربعًا، فأخذت الفاتحةُ ثلاثًا والناسُ
+ * واحدة، ثم رُفضت المرسلات كاملةً. والسقف حارسُ طحنٍ لا حارسُ اجتهاد،
+ * والطحنَ يمنعه الفهرس الفريد وحده.
+ */
+const twoSurahs = applyCaps({ grantedToday: 3, held: 0, earned: 3 });
+ok(twoSurahs.granted === 3 && twoSurahs.cappedByDay === 0, "سورتان جديدتان في يوم ⇒ تُكافآن كاملتين");
+ok(GARDEN_TUNING.maxDropsPerDay === 8, "سقف اليوم ثماني قطرات", String(GARDEN_TUNING.maxDropsPerDay));
 ok(
   applyCaps({ grantedToday: GARDEN_TUNING.maxDropsPerDay, held: 0, earned: 4 }).granted === 0,
   "بلغت سقف اليوم ⇒ لا شيء"
