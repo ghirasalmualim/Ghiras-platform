@@ -36,6 +36,8 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** ترحيبٌ بعد نجاح الدخول — تأكيدٌ كان غائبًا فكلّفنا يومين. */
+  const [welcome, setWelcome] = useState<{ name: string; subEnd: string | null } | null>(null);
 
   async function handleSubmit() {
     if (loading) return;
@@ -161,9 +163,20 @@ function LoginForm() {
       /* السجلّ لا يستحقّ منعَ دخولٍ صحيح */
     }
 
-    // 4) التوجيه
-    router.push(next);
-    router.refresh();
+    /**
+     * 4) ترحيبٌ ثم انتقال.
+     *
+     * ⚠️ **لا يُنقَل الداخلُ بلا كلمة.** كان الدخول الناجح يرميه إلى
+     * الصفحة الرئيسية صامتًا، فلا يدري أدخل أم رُدَّ — وهذا ما عاشته
+     * مشتركةٌ يومين: تُدخل بياناتها الصحيحة ولا ترى ما يؤكّد شيئًا.
+     *
+     * فيُقال له باسمه إنه دخل، ومتى ينتهي اشتراكه، ثم ينتقل بيده.
+     */
+    setWelcome({
+      name: profile.full_name || 'بك',
+      subEnd: profile.sub_end ?? null,
+    });
+    setLoading(false);
   }
 
   return (
@@ -172,6 +185,42 @@ function LoginForm() {
         <Logo size={84} />
       </Link>
 
+      {welcome ? (
+        <div
+          className="card-3d w-full max-w-md p-8 mt-6 animate-float-in text-center"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <div className="gold-thread w-24 mx-auto mb-6" aria-hidden="true" />
+          <p className="text-4xl" aria-hidden>🌿</p>
+          <h1 className="mt-3 text-2xl font-black text-sage-deep">
+            أهلًا {welcome.name}
+          </h1>
+          <p className="mt-2 text-ink/70">دخلتِ بنجاح إلى غراس المعلم.</p>
+
+          {/* ⚠️ يُقال متى ينتهي الاشتراك: خبرٌ يخصّها ولا تجده في مكان آخر */}
+          {welcome.subEnd && (
+            <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
+              اشتراكك سارٍ حتى{' '}
+              {new Date(welcome.subEnd).toLocaleDateString('ar-KW', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              router.push(next);
+              router.refresh();
+            }}
+            className="mt-6 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark"
+          >
+            ابدئي
+          </button>
+        </div>
+      ) : (
       <div
         className="card-3d w-full max-w-md p-8 mt-6 animate-float-in"
         style={{ animationDelay: '0.1s' }}
@@ -260,6 +309,7 @@ function LoginForm() {
           </p>
         </div>
       </div>
+      )}
 
       <Link
         href="/"
