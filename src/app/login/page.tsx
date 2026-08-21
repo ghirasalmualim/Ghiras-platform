@@ -55,8 +55,34 @@ function LoginForm() {
       password,
     });
 
+    /**
+     * ⚠️ **لا تُترجَم كلُّ الأخطاء إلى «كلمة المرور غير صحيحة».**
+     *
+     * كانت كذلك، فبقيت مشتركةٌ يومين تُعطى كلمات مرورٍ جديدة ولا تدخل،
+     * ونحن نظنّ المشكلة في كلمتها — وقد يكون السبب تجاوزَ عددِ
+     * المحاولات أو غيرَه. والرسالة التي تصف سببًا واحدًا لكل الأسباب
+     * تُضلّل من يقرؤها ومن يُصلحها معًا.
+     *
+     * ⚠️ ويُعرض رمزُ الخطأ حين لا نعرفه: حرفان في زاوية الشاشة يوفّران
+     * يومين من التخمين.
+     */
     if (error || !auth.user) {
-      setMessage('رقم الجوال أو كلمة المرور غير صحيحة');
+      const code = (error as { code?: string } | null)?.code ?? '';
+      const status = (error as { status?: number } | null)?.status ?? 0;
+
+      if (code === 'invalid_credentials' || status === 400)
+        setMessage('رقم الجوال أو كلمة المرور غير صحيحة');
+      else if (code === 'over_request_rate_limit' || status === 429)
+        setMessage('حاولت كثيرًا في وقت قصير — انتظري دقائق ثم أعيدي المحاولة');
+      else if (code === 'email_not_confirmed')
+        setMessage('الحساب لم يُفعَّل بعد — تواصلي مع إدارة المنصة');
+      else if (code === 'user_banned')
+        setMessage('هذا الحساب موقوف — تواصلي مع إدارة المنصة');
+      else
+        setMessage(
+          `تعذّر الدخول — تواصلي مع إدارة المنصة${code || status ? ` (رمز: ${code || status})` : ''}`
+        );
+
       setLoading(false);
       return;
     }
