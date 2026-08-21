@@ -505,6 +505,18 @@ function Garden({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 text-center">
+          {/*
+            ⚠️ القطرة تُعلَن ولو لم تكن ثمّة نبتةٌ تُسقى.
+            كانت لا تُعرض إلا مع نبتةٍ نامية، فسمّعت صاحبة المنصة
+            واستحقّت قطرتها ثم فتحت حديقتها فلم تجد لها ذكرًا — وقد
+            كانت في يدها. وما كُسب يُقال لصاحبه في حينه، وإلا ظنّ أن
+            سعيه ضاع.
+          */}
+          {drops > 0 && (
+            <p className="text-[0.92rem] font-bold text-[var(--q-accent)]">
+              💧 عندك {drops === 1 ? 'قطرة' : `${drops} قطرات`} تنتظر نبتةً تسقيها
+            </p>
+          )}
           <p className="text-[0.95rem] font-bold text-[var(--q-ink)]">
             ما عندك نبتة تنمو الحين
           </p>
