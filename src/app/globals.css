@@ -699,3 +699,19 @@ body {
   .quran .g-flit,
   .quran .g-glide { animation: none; }
 }
+
+/* القطرة داخل المشهد — تنزل على النبتة نفسها بإحداثياتها.
+   ⚠️ ‏transform-box: view-box يجعل الإزاحة بوحدات المشهد لا بوحدات
+   الصفحة، فتصيب النبتة مهما تغيّر عرض الشاشة. */
+@keyframes g-pour-fall {
+  0%   { transform: translate(var(--px), calc(var(--py) - 74px)) scale(0.7); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--px), calc(var(--py) - 4px)) scale(1); opacity: 0; }
+}
+.quran .g-pour {
+  transform-box: view-box;
+  animation: g-pour-fall 500ms cubic-bezier(0.4, 0, 0.8, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quran .g-pour { display: none; }
+}

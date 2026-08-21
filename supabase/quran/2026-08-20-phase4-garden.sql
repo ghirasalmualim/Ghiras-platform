@@ -156,6 +156,20 @@ begin
   values (v_user)
   on conflict (user_id) do nothing;
 
+  -- SELF-HEALING: close any plant that is already at or past the threshold
+  -- but was never stamped complete.
+  --
+  -- WHY THIS IS NEEDED
+  --   Completion is stamped at the moment of watering. If the threshold is
+  --   lowered while plants are growing -- which happened, 18 drops down to 12
+  --   after real use showed 18 was too slow -- a plant can end up above the
+  --   new threshold with no drops left to trigger another watering. It then
+  --   draws as fully grown, still counts as growing, and blocks every new
+  --   seed. The garden strands itself and the learner cannot plant again.
+  update public.quran_garden_plant
+  set completed_at = now()
+  where user_id = v_user and completed_at is null and drops_used >= 12;
+
   -- Enforced by quran_garden_one_growing: finish what you started.
   if exists (
     select 1 from public.quran_garden_plant

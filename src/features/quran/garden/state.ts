@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { GARDEN_TUNING } from './tuning';
 import {
   careDays as countCareDays,
+  isComplete,
   progressWithinStage,
   stageForDrops,
   unlockedRewards,
@@ -86,8 +87,21 @@ export async function readGardenState(
   ]);
 
   const rows = (plants ?? []) as PlantRow[];
-  const growing = rows.find((p) => !p.completed_at) ?? null;
-  const done = rows.filter((p) => p.completed_at);
+
+  /**
+   * ⚠️ النبتة التي بلغت عتبة الاكتمال مكتملةٌ ولو لم يُختم تاريخُها.
+   *
+   * الختم يقع لحظةَ السقي. فإن خُفّضت العتبة ونبتةٌ تنمو — وقد وقع:
+   * من ثماني عشرة إلى اثنتي عشرة بعد أن جُرّبت فوُجدت طويلة — بقيت
+   * نبتةٌ فوق العتبة بلا قطرةٍ تُوقظ الختم. فتُرسم مكتملةً، وتُحسب
+   * نامية، وتمنع كل بذرةٍ جديدة.
+   *
+   * والقاعدة تختمها عند أول زرعٍ بعدها، وهذا يُصلح الحساب. لكن العرض
+   * لا ينتظر ذلك: من فتح حديقته الآن يجب أن يرى الحقيقة الآن.
+   */
+  const finished = (p: PlantRow) => Boolean(p.completed_at) || isComplete(p.drops_used);
+  const growing = rows.find((p) => !finished(p)) ?? null;
+  const done = rows.filter(finished);
 
   const careDays = countCareDays(
     ((spent ?? []) as { used_at: string }[]).map((d) => d.used_at)

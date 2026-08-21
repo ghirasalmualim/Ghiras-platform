@@ -48,6 +48,7 @@ export default function GardenScene({
   picked,
   onPick,
   highlightSlot,
+  pouringSlot,
 }: {
   plants: GardenPlantView[];
   rewards: RewardKey[];
@@ -57,6 +58,7 @@ export default function GardenScene({
   onPick?: (slot: number) => void;
   /** النبتة التي تُسقى الآن — تُبرز قليلًا. */
   highlightSlot?: number | null;
+  pouringSlot?: number | null;
 }) {
   const bySlot = new Map(plants.map((p) => [p.slot, p]));
 
@@ -103,6 +105,23 @@ export default function GardenScene({
 
       {/* الزينة تُرسم قبل النبات لتبقى خلفها ولا تحجبها */}
       <Props rewards={rewards} night={night} />
+
+      {/*
+        ⚠️ القطرة تنزل **فوق النبتة** لا فوق البطاقة.
+        كانت مرسومة في زاوية البطاقة بنسبةٍ ثابتة من عرضها، فتسقط
+        بعيدًا عن النبتة التي تُسقى — فسألت صاحبة المنصة: «القطرة ما
+        كانت عليها، كانت بعيدة عنها، ليش؟». ورسمُها داخل المشهد يجعلها
+        تتبع موضع النبتة مهما تغيّر حجم الشاشة، لأنها في إحداثيات
+        المشهد نفسه لا في إحداثيات الصفحة.
+      */}
+      {pouringSlot !== null && pouringSlot !== undefined && SPOTS[pouringSlot] && (
+        <g
+          className="g-pour"
+          style={{ ['--px' as string]: `${SPOTS[pouringSlot].x}px`, ['--py' as string]: `${SPOTS[pouringSlot].y}px` }}
+        >
+          <ellipse cx="0" cy="0" rx="3.4" ry="4.6" fill="#7fb3d5" />
+        </g>
+      )}
 
       {SPOTS.map((spot, i) => {
         const plant = bySlot.get(i);

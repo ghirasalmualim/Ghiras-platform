@@ -454,13 +454,13 @@ function Garden({
   return (
     <div className="flex flex-col gap-4">
       {/* المشهد أولًا — هو الحديقة، وما تحته أدواتُ العناية بها */}
-      <div className="g-card relative overflow-hidden">
-        {pouring && <span className="g-drop" aria-hidden />}
+      <div className="g-card overflow-hidden">
         <GardenScene
           plants={all}
           rewards={state.rewards}
           night={night}
           highlightSlot={state.current?.slot ?? null}
+          pouringSlot={pouring ? (state.current?.slot ?? null) : null}
         />
       </div>
 
@@ -488,9 +488,20 @@ function Garden({
           ) : (
             /* ⚠️ لا لومَ ولا «أهملت»: نقول ما الخطوة القادمة ونسكت */
             <p className="max-w-xs text-center text-[0.88rem] leading-relaxed text-[var(--q-mute)]">
-              نبتتك تنتظر سقيتها. أكمل تسميعًا أو مراجعة وترجع لك قطرة 🌿
+              نبتتك تنتظر سقيتها. أكمل تسميعًا وترجع لك قطرة 🌿
             </p>
           )}
+
+          {/*
+            ⚠️ يُقال لماذا لا بذرةَ الآن.
+            سألت صاحبة المنصة: «وين أشوف اختيار البذرة؟» — وكان الجواب
+            أنها لا تظهر ما دامت نبتةٌ تنمو، وهو قرارٌ متعمّد. لكن
+            الشاشة كانت تسكت عنه، فبحثت عن شيءٍ ليس ضائعًا. والقرار
+            الذي لا يُشرح يُقرأ خللًا.
+          */}
+          <p className="mt-1 text-center text-[0.76rem] text-[var(--q-mute)]">
+            بذرة جديدة تجيك أول ما تكتمل نبتتك هذي 🌱
+          </p>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 text-center">
