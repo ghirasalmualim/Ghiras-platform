@@ -6,6 +6,7 @@ import type { Ayah, Reciter, Segment, StudyMode, Surah } from '../types';
 import { HIDE_LEVELS, LEVEL_LABEL, type HideLevel } from '../engine/hide';
 import { opensWithSpokenBasmala } from '../engine/basmala';
 import {
+  clearLastPosition,
   getReciterId,
   getSegmentProgress,
   isGuest,
@@ -114,6 +115,50 @@ export default function StudyScreen({
    * إلى جوابٍ يُتلى كاملًا.
    */
   const playFrom = useRef<((ayah: number) => void) | null>(null);
+
+  /** ما يُقال بعد تسجيل «انتهيت» — يزول وحده. */
+  const [doneNote, setDoneNote] = useState<string | null>(null);
+
+  /**
+   * «انتهيت عند هذه الآية».
+   *
+   * ⚠️ **يُحفظ ما بعدها لا هي.** من أتمّ الخامسة يستأنف من السادسة،
+   * ولو حفظنا الخامسة لأعدناه إلى ما قرأه — وهو الشكوى التي وُلد منها
+   * هذا الزرّ: «تابع من حيث توقفت» كان يردّه إلى ما بدأ منه لا إلى ما
+   * بلغه، لأن الموضع كان يُحفظ عند **فتح** المقطع لا عند إتمامه.
+   *
+   * ⚠️ وإن أتمّ آخر السورة انتقل إلى التي تليها، فالمصحف يُقرأ متّصلًا.
+   * وإن أتمّ الناس — وهي آخره — **مُحي الاقتراح** ولم يُعَد إلى أوّله:
+   * من ختم لا يُقال له «تابع».
+   */
+  async function markDoneAt(ayah: number | null) {
+    if (ayah === null) return;
+    setPickedAyah(null);
+    try {
+      if (ayah < surah.ayah_count) {
+        await saveLastPosition(surah.number, ayah + 1);
+        setDoneNote(`سُجّل: انتهيت عند الآية ${toArabic(ayah)} — ونكمل من ${toArabic(ayah + 1)} 🌿`);
+      } else if (surah.number < 114) {
+        await saveLastPosition(surah.number + 1, 1);
+        setDoneNote(
+          `سُجّل: أتممت سورة ${surah.name_ar} — ونكمل من التي تليها 🌿`
+        );
+      } else {
+        await clearLastPosition();
+        setDoneNote('ختمتَ المصحف — تقبّل الله 🌿');
+      }
+    } catch {
+      /* ⚠️ التقدّم ميزة مساعدة: سقوط حفظه لا يُفسد قراءةً وقعت */
+      setDoneNote('ما قدرنا نحفظ الموضع — بس قراءتك وقعت 🌿');
+    }
+  }
+
+  // ⚠️ الرسالة تزول وحدها: إعلانٌ لا حالةٌ تبقى على الشاشة
+  useEffect(() => {
+    if (!doneNote) return;
+    const id = setTimeout(() => setDoneNote(null), 4000);
+    return () => clearTimeout(id);
+  }, [doneNote]);
 
   const segment = { surah: surah.number, from_ayah: from, to_ayah: to };
   /**
@@ -304,9 +349,22 @@ export default function StudyScreen({
         {/* ⚠️ يُقال إن الآيات تُلمس — وإلا بقيت الميزة سرًّا بين
             من كتبها ومن يقرأ الكود */}
         <p className="mt-5 text-center text-[0.78rem] text-[var(--q-mute)]">
-          اضغط على أي آية لتسمعها 🔊
+          اضغط على أي آية لتسمعها 🔊 أو لتقول «انتهيت عندها» ✅
         </p>
       </section>
+
+      {/* ⚠️ إعلانٌ يزول: يُقال ما وقع ثم يُخلي الشاشة */}
+      {doneNote && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-0 bottom-0 z-50 px-5 pb-6"
+        >
+          <p className="mx-auto w-full max-w-2xl rounded-2xl bg-[var(--q-accent)] px-5 py-3 text-center text-[0.88rem] font-bold text-white shadow-lg">
+            {doneNote}
+          </p>
+        </div>
+      )}
 
       {/* ── خيارات الآية الملموسة ── */}
       {pickedAyah !== null && (
@@ -335,6 +393,19 @@ export default function StudyScreen({
                 className="tap rounded-2xl bg-[var(--q-accent)] px-6 py-3 text-[0.92rem] font-extrabold text-white"
               >
                 🔊 استمع من هنا
+              </button>
+              {/*
+                «انتهيت عند هذه الآية».
+                ⚠️ ويُحفظ **ما بعدها** لا هي: من أتمّ الخامسة يستأنف
+                من السادسة. ولو حفظنا الخامسة لأعدناه إلى ما قرأه —
+                وهو أوّل ما شكت منه صاحبة المنصة.
+              */}
+              <button
+                type="button"
+                onClick={() => void markDoneAt(pickedAyah)}
+                className="tap rounded-2xl border-2 border-[var(--q-accent)] px-5 py-3 text-[0.92rem] font-extrabold text-[var(--q-accent)]"
+              >
+                ✅ انتهيت هنا
               </button>
               <button
                 type="button"
