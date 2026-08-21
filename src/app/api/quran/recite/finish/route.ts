@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
     improvedWeakSpots,
   });
 
-  await grantDrops({
+  const garden = await grantDrops({
     userId: user.id,
     reasons,
     segmentKey: `${surahNo}:${from}-${to}`,
@@ -198,6 +198,8 @@ export async function POST(req: NextRequest) {
     {
       usable: result.usable,
       unusableReason: result.unusableReason ?? null,
+      /** ⚠️ يُقال للطالبة ما وقع فعلًا، لا ما نتمنّاه. */
+      garden,
       verdict,
       summary: result.summary,
       weakSpots,

@@ -42,15 +42,37 @@ function todayKey(): string {
 }
 
 /**
- * يُرجع عدد القطرات الممنوحة فعلًا بعد السقوف ومنع التكرار.
+ * لماذا لم تُمنح قطرة — لتقوله الشاشةُ لصاحبها.
  *
+ * ⚠️ أُضيف بعد أن ظنّت صاحبة المنصة أن النظام معطّل: سمّعت فلم تجد
+ * قطرة، والشاشة تَعِدها بواحدة بلا شرط. وكان الحارس قد رفض بحقّ —
+ * فالمقطع نفسه في اليوم نفسه يُكافأ مرّة. **والرفض الصامت يُقرأ
+ * عطلًا**، وهو ثامن ما وقع من هذه العائلة في هذا المشروع.
+ */
+export type GrantOutcome = {
+  granted: number;
+  reason:
+    | 'GRANTED'
+    /** سمّع هذا المقطع اليوم وأخذ قطرته. */
+    | 'ALREADY_TODAY'
+    /** بلغ سقف اليوم. */
+    | 'DAY_CAP'
+    /** يده ممتلئة — يسقي أولًا. */
+    | 'HOLD_FULL'
+    /** جلسة غير صالحة أو لم يُحكم عليها — لا تُكافأ. */
+    | 'NOT_ELIGIBLE'
+    /** المفتاح غائب أو القاعدة تعثّرت — لا يُقال للطالبة شيء. */
+    | 'UNAVAILABLE';
+};
+
+/**
  * ⚠️ لا يرمي أبدًا. فشلُه صامت بقصد — راجع رأس الملف.
  */
-export async function grantDrops(input: GrantInput): Promise<number> {
-  if (!input.reasons.length) return 0;
+export async function grantDrops(input: GrantInput): Promise<GrantOutcome> {
+  if (!input.reasons.length) return { granted: 0, reason: 'NOT_ELIGIBLE' };
 
   const sb = serviceClient();
-  if (!sb) return 0;
+  if (!sb) return { granted: 0, reason: 'UNAVAILABLE' };
 
   try {
     const day = todayKey();
@@ -73,7 +95,11 @@ export async function grantDrops(input: GrantInput): Promise<number> {
       held: held ?? 0,
       earned: dropsForReasons(input.reasons),
     });
-    if (caps.granted <= 0) return 0;
+    if (caps.granted <= 0)
+      return {
+        granted: 0,
+        reason: caps.cappedByDay > 0 ? 'DAY_CAP' : 'HOLD_FULL',
+      };
 
     /**
      * ⚠️ تُقتطع الأسباب بترتيبها لا عشوائيًا، والترتيب في
@@ -105,8 +131,14 @@ export async function grantDrops(input: GrantInput): Promise<number> {
       if (!error) granted++;
     }
 
-    return granted;
+    /**
+     * ⚠️ صفرٌ بعد محاولةٍ صحيحة معناه أن الفهرس الفريد ردّها كلها:
+     * سمّع هذا المقطع اليوم وأخذ قطرته. وهذا الفرق — بين «رُفضت
+     * للتكرار» و«تعذّر المنح» — هو ما يُقال للطالبة.
+     */
+    if (granted === 0) return { granted: 0, reason: 'ALREADY_TODAY' };
+    return { granted, reason: 'GRANTED' };
   } catch {
-    return 0;
+    return { granted: 0, reason: 'UNAVAILABLE' };
   }
 }

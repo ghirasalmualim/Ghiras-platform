@@ -84,8 +84,43 @@ function mistakeLabel(kind: string): string {
   }
 }
 type Verdict = { level: MasteryLevel; headline: string; detail: string };
+type GardenOutcome = {
+  granted: number;
+  reason: 'GRANTED' | 'ALREADY_TODAY' | 'DAY_CAP' | 'HOLD_FULL' | 'NOT_ELIGIBLE' | 'UNAVAILABLE';
+};
+
+/**
+ * ما يُقال عن القطرة — صدقًا لا وعدًا.
+ *
+ * ⚠️ كان يُقال «تسميعك اليوم صار قطرة ماء 💧» بلا شرط، فسمّعت صاحبة
+ * المنصة مقطعًا سمّعته قبل ساعة فلم تُمنح — وقد رفض الحارس بحقّ —
+ * فذهبت تبحث عن قطرةٍ وعدناها بها ولم تكن. **والوعد الذي لا يقع
+ * أسوأ من الصمت.**
+ *
+ * ⚠️ و`null` تعني: لا تقل شيئًا. فالجلسة غير الصالحة شرحتها النتيجةُ
+ * نفسها، وغيابُ المفتاح شأنٌ لا يعني الطالبة.
+ */
+function gardenLine(g?: GardenOutcome): string | null {
+  if (!g) return null;
+  switch (g.reason) {
+    case 'GRANTED':
+      return g.granted === 1
+        ? 'تسميعك صار قطرة ماء 💧'
+        : `تسميعك صار ${g.granted} قطرات ماء 💧`;
+    case 'ALREADY_TODAY':
+      return 'سمّعت هذا المقطع اليوم وأخذت قطرته — جرّب مقطعًا ثانيًا 🌿';
+    case 'DAY_CAP':
+      return 'خذت قطرات اليوم كاملة — ونكمل بكرة 🌿';
+    case 'HOLD_FULL':
+      return 'عندك قطرات كثيرة محفوظة — اسقِ نبتتك أول 💧';
+    default:
+      return null;
+  }
+}
+
 type FinishResult = {
   usable: boolean;
+  garden?: GardenOutcome;
   /** سبب عدم الصلاحية — يُصاغ منه ما يُقال للطالبة. */
   unusableReason?: string | null;
   verdict: Verdict;
@@ -1004,9 +1039,11 @@ function Result({
         >
           🌱 ازرع حديقتك
         </Link>
-        <p className="mt-2 text-center text-[0.78rem] text-[var(--q-mute)]">
-          تسميعك اليوم صار قطرة ماء 💧
-        </p>
+        {gardenLine(result.garden) && (
+          <p className="mt-2 text-center text-[0.8rem] font-bold text-[var(--q-mute)]">
+            {gardenLine(result.garden)}
+          </p>
+        )}
       </div>
     </div>
   );
