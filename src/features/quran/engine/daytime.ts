@@ -27,7 +27,17 @@ const LON = 47.9774;
 const TZ_MINUTES = 3 * 60;
 
 /** الزاوية المعتمدة لقرص الشمس عند الأفق مع الانكسار الجوّي. */
-const ZENITH = 90.833;
+const ZENITH_HORIZON = 90.833;
+
+/**
+ * زاوية الفجر: ١٨° تحت الأفق.
+ *
+ * ⚠️ وهذه **زاويةٌ اصطلاحية تختلف فيها الجهات** — منها ١٨ ومنها ١٨.٥
+ * ومنها ١٩. اخترنا ١٨° لأنها الأشيع في الكويت، والفرق بينها وبين
+ * غيرها دقائق. ⚠️ ويكفي هذا الفرقُ لإظهار زرٍّ وإخفائه، **ولا يكفي
+ * لصلاة**.
+ */
+const ZENITH_FAJR = 108;
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -40,18 +50,14 @@ function dayOfYear(y: number, m: number, d: number): number {
 
 export type SunTimes = {
   /** دقائق من منتصف ليل توقيت الكويت. */
+  fajrMin: number;
   sunriseMin: number;
   sunsetMin: number;
 };
 
-/**
- * شروق الكويت وغروبها ليومٍ ميلادي.
- *
- * @param y سنة · @param m شهر (٠ = يناير) · @param d يوم
- */
-export function sunTimesKuwait(y: number, m: number, d: number): SunTimes {
+/** ثوابت الشمس ليومٍ ما — تُحسب مرّة وتُستعمل لكل الزوايا. */
+function solarDay(y: number, m: number, d: number) {
   const n = dayOfYear(y, m, d);
-  // الزاوية السنوية عند منتصف النهار تقريبًا
   const g = ((2 * Math.PI) / 365) * (n - 1 + 0.5);
 
   const eqTime =
@@ -71,21 +77,38 @@ export function sunTimesKuwait(y: number, m: number, d: number): SunTimes {
     0.002697 * Math.cos(3 * g) +
     0.00148 * Math.sin(3 * g);
 
+  return { eqTime, decl };
+}
+
+/** لحظة بلوغ الشمس زاويةً ما، صباحًا أو مساءً، بدقائق توقيت الكويت. */
+function eventMin(
+  eqTime: number,
+  decl: number,
+  zenith: number,
+  morning: boolean
+): number {
   const cosHa =
-    Math.cos(rad(ZENITH)) / (Math.cos(rad(LAT)) * Math.cos(decl)) -
+    Math.cos(rad(zenith)) / (Math.cos(rad(LAT)) * Math.cos(decl)) -
     Math.tan(rad(LAT)) * Math.tan(decl);
 
   // ⚠️ لا يقع في الكويت (لا شمس دائمة ولا ليل دائم)، لكنه يُحرَس
   // لئلا تُرجع الدالة NaN لو استُعملت يومًا لخط عرض قطبي.
-  const clamped = Math.max(-1, Math.min(1, cosHa));
-  const ha = deg(Math.acos(clamped));
+  const ha = deg(Math.acos(Math.max(-1, Math.min(1, cosHa))));
+  const utc = 720 - 4 * (LON + (morning ? ha : -ha)) - eqTime;
+  return Math.round(utc) + TZ_MINUTES;
+}
 
-  const sunriseUtc = 720 - 4 * (LON + ha) - eqTime;
-  const sunsetUtc = 720 - 4 * (LON - ha) - eqTime;
-
+/**
+ * فجر الكويت وشروقها وغروبها ليومٍ ميلادي.
+ *
+ * @param y سنة · @param m شهر (٠ = يناير) · @param d يوم
+ */
+export function sunTimesKuwait(y: number, m: number, d: number): SunTimes {
+  const { eqTime, decl } = solarDay(y, m, d);
   return {
-    sunriseMin: Math.round(sunriseUtc) + TZ_MINUTES,
-    sunsetMin: Math.round(sunsetUtc) + TZ_MINUTES,
+    fajrMin: eventMin(eqTime, decl, ZENITH_FAJR, true),
+    sunriseMin: eventMin(eqTime, decl, ZENITH_HORIZON, true),
+    sunsetMin: eventMin(eqTime, decl, ZENITH_HORIZON, false),
   };
 }
 
@@ -110,27 +133,36 @@ export function kuwaitNow(at: Date = new Date()): {
   };
 }
 
-/** الجمعة بتوقيت الكويت، وقبل المغرب. */
+/**
+ * الجمعة: من فجرها إلى مغربها.
+ *
+ * ⚠️ **يبدأ بالفجر لا بمنتصف الليل** — بقرار صاحبة المنصة ألّا تجتمع
+ * الدعوتان. ولو بدأ بمنتصف الليل لاجتمع مع دعوة الملك من منتصف ليل
+ * الجمعة إلى فجرها، لأن تلك الساعات جمعةٌ وليلٌ معًا.
+ *
+ * فصار الفجر حدًّا واحدًا لا حدَّين: تنتهي عنده دعوة الليل، وتبدأ
+ * عنده دعوة الجمعة، فلا فجوة بينهما ولا ازدحام.
+ */
 export function isFridayBeforeMaghrib(at: Date = new Date()): boolean {
   const now = kuwaitNow(at);
   if (now.weekday !== 5) return false;
-  const { sunsetMin } = sunTimesKuwait(now.year, now.month, now.day);
-  return now.minutes < sunsetMin;
+  const { fajrMin, sunsetMin } = sunTimesKuwait(now.year, now.month, now.day);
+  return now.minutes >= fajrMin && now.minutes < sunsetMin;
 }
 
 /** ساعة ظهور دعوة الملك — الثامنة مساءً. */
 export const MULK_FROM_MIN = 20 * 60;
 
 /**
- * الليل: من الثامنة مساءً حتى الشروق.
+ * الليل: من الثامنة مساءً حتى **الفجر**.
  *
  * ⚠️ ويعبر منتصف الليل، فالمقارنة شرطان لا شرط: بعد الثامنة **أو**
- * قبل الشروق. ولو كتبناها مدًى واحدًا (`from < now < to`) لاختفى
+ * قبل الفجر. ولو كتبناها مدًى واحدًا (`from < now < to`) لاختفى
  * الزرّ عند منتصف الليل بالضبط — وهو أكثر أوقات قراءتها.
  */
 export function isMulkNight(at: Date = new Date()): boolean {
   const now = kuwaitNow(at);
   if (now.minutes >= MULK_FROM_MIN) return true;
-  const { sunriseMin } = sunTimesKuwait(now.year, now.month, now.day);
-  return now.minutes < sunriseMin;
+  const { fajrMin } = sunTimesKuwait(now.year, now.month, now.day);
+  return now.minutes < fajrMin;
 }
