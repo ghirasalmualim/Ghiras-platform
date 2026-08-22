@@ -93,24 +93,104 @@ export default async function SubjectPage({
     redirect(`/login?next=${encodeURIComponent(path)}`);
   }
   // ── الملف الشخصي والحالة ──
-  const { data: profile } = await supabase
+  /**
+   * ⚠️ `maybeSingle()` لا `single()`.
+   *
+   * `single()` يرمي خطأً (`PGRST116`) حين لا يجد صفًّا، فيختلط **غيابُ
+   * الملف** بـ**تعثُّرِ القراءة** في قناةٍ واحدة. و`maybeSingle()` يفصلهما
+   * فصلًا نظيفًا: خطأٌ ⇒ عطب، و`null` بلا خطأ ⇒ غياب.
+   */
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('full_name, status, sub_end')
+    .select('full_name, status, sub_end, role')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
+
   const expired =
     profile?.sub_end &&
     new Date(profile.sub_end) < new Date(new Date().toDateString());
-  const blocked =
-    !profile || profile.status !== 'active' || Boolean(expired);
-  // ── التحقق من الصلاحية على هذه المادة تحديداً ──
-  let canAccess = false;
-  if (!blocked) {
-    const { data } = await supabase.rpc('can_access_subject', {
+
+  /**
+   * ⚠️ **الأدمِن معفًى من التاريخ، لا من الحالة.**
+   *
+   * `can_access_subject` تفعل هذا بحرفه: `pr.status = 'active'` تشمل
+   * الجميع، وفحصُ `sub_end` في فرع غير الأدمِن وحده. وكان هذا الحارس
+   * أقسى من القاعدة — فيمنع صاحبة المنصّة يوم ينقضي تاريخها والقاعدة
+   * تُجيز لها. ولا أحد يفتحها لها، لأن الفتح نفسه يحتاج أدمِن.
+   *
+   * ⚠️ و«منتهٍ» كلمتان لا واحدة: `status === 'expired'` قرارٌ مسجَّل
+   * يردّ الجميع، و`expired` تاريخٌ يمضي بنفسه — وهذا وحده يُستثنى منه.
+   */
+  const isAdmin = profile?.role === 'admin';
+
+  /**
+   * ⚠️ **حالةٌ واحدة لكل سبب — و«ليس لديك صلاحية» واحدةٌ منها فقط.**
+   *
+   * كان سطرٌ واحد يبتلع أربعة أسبابٍ ثم يُخرجها كلها باسم واحد: غيابَ
+   * الملف، وتعثُّرَ قراءته، والإيقاف، والانقضاء. فيُتَّهم حسابٌ سليم
+   * بسبب تعثُّرِ قراءة.
+   *
+   * **والاتهام لا يقع الآن إلا حين تقول الدالّة `false` صراحةً وبلا خطأ.**
+   *
+   * ⚠️ وهذا ما وقع فعلًا: معرّفٌ ليس UUID أخرج `22P02` من القاعدة،
+   * فصار `data = null`، و`null !== true` — فقيل لحسابٍ صلاحيتُه
+   * سليمة تمامًا «ليس لديك صلاحية».
+   */
+  type AuthState =
+    | 'ALLOWED'
+    | 'ACCESS_DENIED'
+    | 'PROFILE_ERROR'
+    | 'PROFILE_MISSING'
+    | 'STATUS_SUSPENDED'
+    | 'SUBSCRIPTION_EXPIRED'
+    | 'AUTHORIZATION_ERROR'
+    | 'CONTENT_MISCONFIGURED';
+
+  const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  let authState: AuthState;
+  let faultCode: string | null = null;
+
+  if (profileError) {
+    authState = 'PROFILE_ERROR';
+    faultCode = (profileError as { code?: string }).code ?? null;
+  } else if (!profile) {
+    authState = 'PROFILE_MISSING';
+  } else if (profile.status === 'suspended') {
+    authState = 'STATUS_SUSPENDED';
+  } else if (profile.status === 'expired' || (!isAdmin && Boolean(expired))) {
+    authState = 'SUBSCRIPTION_EXPIRED';
+  } else if (!UUID_RE.test(subject.id)) {
+    // ⚠️ معرّفٌ مصدرُه القاعدة وليس UUID ⇒ عطبٌ عندنا، لا نقصٌ في المحتوى
+    authState = 'CONTENT_MISCONFIGURED';
+  } else {
+    const { data, error } = await supabase.rpc('can_access_subject', {
       p_subject: subject.id,
     });
-    canAccess = data === true;
+    if (error) {
+      // ⚠️ خطأٌ ليس رفضًا — ولا يجوز أن يُترجَم إلى «ممنوع»
+      authState = 'AUTHORIZATION_ERROR';
+      faultCode = (error as { code?: string }).code ?? null;
+    } else {
+      authState = data === true ? 'ALLOWED' : 'ACCESS_DENIED';
+    }
   }
+
+  const canAccess = authState === 'ALLOWED';
+  const isTechnicalFault =
+    authState === 'PROFILE_ERROR' ||
+    authState === 'AUTHORIZATION_ERROR' ||
+    authState === 'CONTENT_MISCONFIGURED';
+
+  /**
+   * ⚠️ الأعطاب تُسجَّل على الخادم — **ولا يرى المستخدم رمز قاعدةٍ أبدًا.**
+   * الرمز يُفشي بنية القاعدة ولا يُفيد المشتركة في شيء.
+   */
+  if (isTechnicalFault || authState === 'PROFILE_MISSING') {
+    console.error('[SUBJECT_AUTH_FAULT]', authState, faultCode ?? '-');
+  }
+
   // ── جلب الألعاب (سياسات الأمان لا تُعيدها إلا لمن يملك الصلاحية) ──
   let games: Game[] = [];
   if (canAccess) {
@@ -168,26 +248,66 @@ export default async function SubjectPage({
             <LogoutButton />
           </div>
         </div>
-        {/* ── لا يملك صلاحية ── */}
+        {/* ── تعذّر الوصول — والسبب يُقال كما هو ── */}
         {!canAccess && (
           <div
             className="card-3d mt-10 p-10 text-center animate-float-in"
             style={{ animationDelay: '0.12s' }}
           >
             <span aria-hidden="true" className="text-5xl">
-              🔒
+              {authState === 'ACCESS_DENIED'
+                ? '🔒'
+                : authState === 'STATUS_SUSPENDED'
+                ? '⛔'
+                : authState === 'SUBSCRIPTION_EXPIRED'
+                ? '🗓️'
+                : authState === 'PROFILE_MISSING'
+                ? '📄'
+                : '⚠️'}
             </span>
             <h2 className="mt-4 text-xl font-extrabold text-ink">
-              ليس لديك صلاحية للوصول إلى هذا المحتوى
+              {authState === 'ACCESS_DENIED'
+                ? 'ليس لديك صلاحية للوصول إلى هذا المحتوى'
+                : authState === 'STATUS_SUSPENDED'
+                ? 'هذا الحساب موقوف'
+                : authState === 'SUBSCRIPTION_EXPIRED'
+                ? 'انتهى اشتراكك'
+                : authState === 'PROFILE_MISSING'
+                ? 'حسابك يحتاج تهيئة'
+                : 'تعذّر التحقق الآن'}
             </h2>
             <p className="mt-2 text-ink/60 leading-relaxed">
-              اشتراكك الحالي لا يشمل هذه المادة.
-              <br />
-              للاشتراك أو الترقية، يرجى التواصل مع إدارة غراس المعلم.
+              {authState === 'ACCESS_DENIED'
+                ? 'اشتراكك الحالي لا يشمل هذه المادة. للاشتراك أو الترقية، يرجى التواصل مع إدارة غراس المعلم.'
+                : authState === 'STATUS_SUSPENDED'
+                ? 'يرجى التواصل مع إدارة غراس المعلم.'
+                : authState === 'SUBSCRIPTION_EXPIRED'
+                ? 'جدّدي اشتراكك للمتابعة — ومحتواك محفوظ كما هو.'
+                : authState === 'PROFILE_MISSING'
+                ? 'تواصلي معنا وسنُتمّها لك.'
+                : 'خللٌ تقنيّ عندنا — لا علاقة له بحسابك ولا باشتراكك.'}
             </p>
 
-            {/* زر التجربة المجانية — يظهر فقط للمواد التي لها نسخة مجانية */}
-            {freeUrl && (
+            {/*
+              ⚠️ زرُّ إعادةٍ للأعطاب التقنية وحدها — ورابطٌ لا زرُّ عميل،
+              فالصفحة مكوّن خادم.
+            */}
+            {isTechnicalFault && (
+              <div className="mt-6">
+                <a
+                  href={path}
+                  className="inline-block rounded-xl bg-sage px-8 py-3 font-extrabold text-white shadow-soft transition-colors hover:bg-sage-dark"
+                >
+                  إعادة المحاولة
+                </a>
+              </div>
+            )}
+
+            {/*
+              زر التجربة المجانية — للرفض الحقيقي وحده.
+              ⚠️ وعرضُه عند عطبٍ نحن سببه استغلالٌ لخللٍ من عندنا لا عرضُ خدمة.
+            */}
+            {authState === 'ACCESS_DENIED' && freeUrl && (
               <div className="mt-6">
                 <a
                   href={freeUrl}
