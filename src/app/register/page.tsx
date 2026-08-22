@@ -125,7 +125,7 @@ export default function RegisterPage() {
             تمّ إنشاء حسابك
           </h1>
           <p className="mt-2 text-ink/70 leading-relaxed">
-            أهلًا <b className="text-ink">{createdFor}</b> — حسابك جاهز ودخلتِ فعلًا.
+            أهلًا <b className="text-ink">{createdFor}</b> — الحساب جاهز وتمّ الدخول فعلًا.
           </p>
 
           {/* ⚠️ ويُقال ما ينقص: بلا هذا تظنّ أن المنصة معطّلة */}
@@ -146,7 +146,7 @@ export default function RegisterPage() {
           </button>
 
           <p className="mt-4 text-[0.78rem] text-ink/45">
-            ⚠️ لا تُعيدي التسجيل — حسابك موجود. وإن خرجتِ، ادخلي من
+            ⚠️ لا داعي لإعادة التسجيل — الحساب موجود. وعند الخروج، يمكن الدخول من
             «تسجيل الدخول» بنفس الرقم وكلمة المرور.
           </p>
         </div>

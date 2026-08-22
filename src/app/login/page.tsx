@@ -101,14 +101,14 @@ function LoginForm() {
       if (code === 'invalid_credentials' || status === 400)
         setMessage('رقم الجوال أو كلمة المرور غير صحيحة');
       else if (code === 'over_request_rate_limit' || status === 429)
-        setMessage('حاولت كثيرًا في وقت قصير — انتظري دقائق ثم أعيدي المحاولة');
+        setMessage('محاولاتٌ كثيرة في وقتٍ قصير — يرجى الانتظار دقائق ثم إعادة المحاولة');
       else if (code === 'email_not_confirmed')
-        setMessage('الحساب لم يُفعَّل بعد — تواصلي مع إدارة المنصة');
+        setMessage('الحساب لم يُفعَّل بعد — يرجى التواصل مع إدارة المنصة');
       else if (code === 'user_banned')
-        setMessage('هذا الحساب موقوف — تواصلي مع إدارة المنصة');
+        setMessage('هذا الحساب موقوف — يرجى التواصل مع إدارة المنصة');
       else
         setMessage(
-          `تعذّر الدخول — تواصلي مع إدارة المنصة${code || status ? ` (رمز: ${code || status})` : ''}`
+          `تعذّر الدخول — يرجى التواصل مع إدارة المنصة${code || status ? ` (رمز: ${code || status})` : ''}`
         );
 
       setLoading(false);
@@ -141,7 +141,7 @@ function LoginForm() {
       setMessage(
         code === 'PGRST116'
           ? 'الحساب غير مُهيأ بعد — يرجى التواصل مع إدارة المنصة'
-          : `تعذّر قراءة بيانات حسابك — تواصلي مع إدارة المنصة${code ? ` (رمز: ${code})` : ''}`
+          : `تعذّر قراءة بيانات حسابك — يرجى التواصل مع إدارة المنصة${code ? ` (رمز: ${code})` : ''}`
       );
       setLoading(false);
       return;
@@ -249,7 +249,7 @@ function LoginForm() {
           <h1 className="mt-3 text-2xl font-black text-sage-deep">
             أهلًا {welcome.name}
           </h1>
-          <p className="mt-2 text-ink/70">دخلتِ بنجاح إلى غراس المعلم.</p>
+          <p className="mt-2 text-ink/70">تم الدخول بنجاح إلى غراس المعلم.</p>
 
           {/* ⚠️ يُقال متى ينتهي الاشتراك: خبرٌ يخصّها ولا تجده في مكان آخر.
               وللأدمِن لا يُقال — وصولُه لا ينقضي بتاريخ. */}
@@ -277,7 +277,7 @@ function LoginForm() {
             }}
             className="mt-6 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark"
           >
-            ابدئي
+            الدخول إلى المنصة
           </button>
         </div>
       ) : (
@@ -365,7 +365,7 @@ function LoginForm() {
             </Link>
           </p>
           <p className="text-center text-xs text-ink/45">
-            نسيت كلمة السر؟ تواصلي مع إدارة غراس المعلم
+            نسيت كلمة السر؟ يمكن التواصل مع إدارة غراس المعلم
           </p>
         </div>
       </div>

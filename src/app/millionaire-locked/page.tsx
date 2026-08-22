@@ -45,7 +45,7 @@ export default function MillionaireLockedPage() {
         </div>
 
         <p className="mt-6 text-sm text-ink/50 leading-relaxed">
-          لتفعيل رصيدك، تواصلي مع إدارة غراس المعلم.
+          لتفعيل الرصيد، يرجى التواصل مع إدارة غراس المعلم.
           <br />
           والدفع الإلكتروني المباشر قريباً 🌱
         </p>

@@ -42,7 +42,7 @@ export default function AdventureLockedPage() {
         </div>
 
         <p className="mt-5 text-sm text-ink/50 leading-relaxed">
-          لتفعيل اشتراكك تواصلي مع إدارة غراس المعلم.
+          لتفعيل الاشتراك يرجى التواصل مع إدارة غراس المعلم.
           <br />
           والدفع الإلكتروني المباشر قريبًا 🌱
         </p>
