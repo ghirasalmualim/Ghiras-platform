@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, usernameToEmail } from '@/lib/supabase/client';
+import PasswordField from '@/components/PasswordField';
 
 /**
  * حسابي — تغيير كلمة المرور.
@@ -150,16 +151,15 @@ function Field({
   onChange: (v: string) => void;
   autoComplete: string;
 }) {
+  // ⚠️ حالة العين داخل `PasswordField` نفسه — فلكل حقلٍ عينُه المستقلّة
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-bold text-ink/80">{label}</span>
-      <input
-        type="password"
-        value={value}
-        autoComplete={autoComplete}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 outline-none focus:border-sage"
-      />
-    </label>
+    <PasswordField
+      label={label}
+      value={value}
+      onChange={onChange}
+      autoComplete={autoComplete}
+      className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 outline-none focus:border-sage"
+      labelClassName="mb-1.5 block text-sm font-bold text-ink/80"
+    />
   );
 }

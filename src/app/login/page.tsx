@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
@@ -31,6 +32,30 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/';
+
+  /**
+   * ⚠️ **إعادةُ توجيهٍ مفتوحة — `next` يأتي من الرابط لا من مولِّداتنا.**
+   *
+   * كان يُدفع إلى `router.push` كما هو، فرابطٌ مصنوع يُخرج المشتركة من
+   * غراس **بعد** أن تُدخل بياناتها — وهي أخطر لحظةٍ تُنقل فيها، لأنها
+   * تظنّ أنها ما زالت عندنا.
+   *
+   * ⚠️ و`startsWith('/')` لا يكفي: `//x.com` و`/\x.com` و`\t//x.com`
+   * كلها تبدأ بشرطةٍ مائلة وتُحلّ خارج غراس. ومثلها `%2F%2Fx.com` —
+   * فـ`searchParams.get` يفكّ ترميزه إلى `//x.com` قبل أن نراه.
+   *
+   * فنسأل المُحلِّل نفسه: إن اختلف الأصل رفضنا، وإلا أخذنا المسار
+   * والاستعلام والمرساة — لا القيمة الخام.
+   */
+  function safeNext(raw: string) {
+    try {
+      const u = new URL(raw, window.location.origin);
+      if (u.origin !== window.location.origin) return '/';
+      return u.pathname + u.search + u.hash;
+    } catch {
+      return '/';
+    }
+  }
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -77,14 +102,14 @@ function LoginForm() {
       if (code === 'invalid_credentials' || status === 400)
         setMessage('رقم الجوال أو كلمة المرور غير صحيحة');
       else if (code === 'over_request_rate_limit' || status === 429)
-        setMessage('حاولت كثيرًا في وقت قصير — انتظري دقائق ثم أعيدي المحاولة');
+        setMessage('محاولاتٌ كثيرة في وقتٍ قصير — يرجى الانتظار دقائق ثم إعادة المحاولة');
       else if (code === 'email_not_confirmed')
-        setMessage('الحساب لم يُفعَّل بعد — تواصلي مع إدارة المنصة');
+        setMessage('الحساب لم يُفعَّل بعد — يرجى التواصل مع إدارة المنصة');
       else if (code === 'user_banned')
-        setMessage('هذا الحساب موقوف — تواصلي مع إدارة المنصة');
+        setMessage('هذا الحساب موقوف — يرجى التواصل مع إدارة المنصة');
       else
         setMessage(
-          `تعذّر الدخول — تواصلي مع إدارة المنصة${code || status ? ` (رمز: ${code || status})` : ''}`
+          `تعذّر الدخول — يرجى التواصل مع إدارة المنصة${code || status ? ` (رمز: ${code || status})` : ''}`
         );
 
       setLoading(false);
@@ -117,7 +142,7 @@ function LoginForm() {
       setMessage(
         code === 'PGRST116'
           ? 'الحساب غير مُهيأ بعد — يرجى التواصل مع إدارة المنصة'
-          : `تعذّر قراءة بيانات حسابك — تواصلي مع إدارة المنصة${code ? ` (رمز: ${code})` : ''}`
+          : `تعذّر قراءة بيانات حسابك — يرجى التواصل مع إدارة المنصة${code ? ` (رمز: ${code})` : ''}`
       );
       setLoading(false);
       return;
@@ -152,29 +177,44 @@ function LoginForm() {
     }
 
     /**
-     * 3) تسجيل الدخول الناجح وتحديث آخر نشاط.
+     * 3) السجلّ والنشاط — **بأفضل جهد، ومستقلَّين، ولا يحبسان الدخول.**
      *
-     * ⚠️ **يُنتظَران قبل الانتقال.** كانا يُرسَلان بلا انتظار ثم يُنقَل
-     * المستخدم فورًا — والانتقال يُجهض الطلبَ قبل أن يصل. فبقي جدول
-     * `login_logs` **فارغًا تمامًا**، وظلّت لوحة التحكم تقول «لم تدخل
-     * بعد» عن مشتركاتٍ دخلن فعلًا.
+     * ⚠️ مصادقةٌ نجحت لا ينقضها فشلُ سطرٍ إحصائي. ولا يُنتظَران:
+     * شاشة الترحيب تُبقي الصفحة قائمة فيتمّان في خلفيتها.
      *
-     * ⚠️ ولا يُعطَّل الدخول لأجل السجلّ: إن تعثّر مضينا. فالسجلّ خبرٌ
-     * عن الدخول لا شرطٌ له، ومن دخل بحقٍّ لا يُمنع لأن سطرًا لم يُكتب.
+     * ⚠️ **ولا يُجمعان في نداءٍ واحد**: سقوطُ أحدهما شبكيًّا كان يُسقط
+     * الآخر معه، وهما لا علاقة لأحدهما بالآخر.
+     *
+     * ⚠️ ولا يُبتلع الفشل: Supabase **يُرجع** الخطأ ولا يرميه
+     * (`shouldThrowOnError = false`) — فـ`catch` وحده لا يراه.
+     * ويُفحص `error` صراحةً، ويُسجَّل **رمزه وحده**: لا كائن خطأ،
+     * ولا استجابة، ولا ترويسات، ولا جلسة، ولا بيانات مستخدم.
+     *
+     * ⚠️ وهذا رصدٌ في وحدة المتصفح فقط — الرصد المركزي يأتي لاحقًا.
      */
-    try {
-      await Promise.all([
-        supabase.from('login_logs').insert({
-          user_id: auth.user.id,
-          username: uname,
-          success: true,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        }),
-        supabase.rpc('touch_last_active'),
-      ]);
-    } catch {
-      /* السجلّ لا يستحقّ منعَ دخولٍ صحيح */
-    }
+    void supabase
+      .from('login_logs')
+      .insert({
+        user_id: auth.user.id,
+        username: uname,
+        success: true,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      })
+      .then(
+        ({ error }) => {
+          if (error) console.error('[LOGIN_LOG_FAILED]', error.code || 'unknown');
+        },
+        () => console.error('[LOGIN_LOG_NETWORK_FAILED]')
+      );
+
+    void supabase
+      .rpc('touch_last_active')
+      .then(
+        ({ error }) => {
+          if (error) console.error('[LAST_ACTIVE_FAILED]', error.code || 'unknown');
+        },
+        () => console.error('[LAST_ACTIVE_NETWORK_FAILED]')
+      );
 
     /**
      * 4) ترحيبٌ ثم انتقال.
@@ -210,7 +250,7 @@ function LoginForm() {
           <h1 className="mt-3 text-2xl font-black text-sage-deep">
             أهلًا {welcome.name}
           </h1>
-          <p className="mt-2 text-ink/70">دخلتِ بنجاح إلى غراس المعلم.</p>
+          <p className="mt-2 text-ink/70">تم الدخول بنجاح إلى غراس المعلم.</p>
 
           {/* ⚠️ يُقال متى ينتهي الاشتراك: خبرٌ يخصّها ولا تجده في مكان آخر.
               وللأدمِن لا يُقال — وصولُه لا ينقضي بتاريخ. */}
@@ -233,12 +273,12 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => {
-              router.push(next);
+              router.push(safeNext(next));
               router.refresh();
             }}
             className="mt-6 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark"
           >
-            ابدئي
+            الدخول إلى المنصة
           </button>
         </div>
       ) : (
@@ -279,27 +319,16 @@ function LoginForm() {
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-bold text-ink/80 mb-1.5"
-            >
-              كلمة المرور
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="current-password"
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="w-full rounded-xl border border-sage/30 bg-white px-4 py-3 text-left focus:border-sage focus:ring-2 focus:ring-sage/25 outline-none transition"
-              placeholder="••••••••"
-            />
-          </div>
+          <PasswordField
+            id="password"
+            label="كلمة المرور"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            className="w-full rounded-xl border border-sage/30 bg-white px-4 py-3 text-left focus:border-sage focus:ring-2 focus:ring-sage/25 outline-none transition"
+            placeholder="••••••••"
+          />
 
           {message && (
             <p
@@ -326,7 +355,7 @@ function LoginForm() {
             </Link>
           </p>
           <p className="text-center text-xs text-ink/45">
-            نسيت كلمة السر؟ تواصلي مع إدارة غراس المعلم
+            نسيت كلمة السر؟ يمكن التواصل مع إدارة غراس المعلم
           </p>
         </div>
       </div>

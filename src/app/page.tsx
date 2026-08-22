@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
-import AdminLink from '@/components/AdminLink';
+import AccountBar from '@/components/AccountBar';
 import { getStages } from '@/lib/supabase/data';
 
 export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين مؤقت للسرعة
@@ -11,24 +11,8 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-dvh flex flex-col">
-      {/* شريط علوي: دخول / إنشاء حساب */}
-      <header className="w-full flex items-center justify-start gap-2.5 px-5 pt-5">
-        <Link
-          href="/register"
-          className="rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold text-sm px-5 py-2.5 shadow-soft transition-all"
-        >
-          إنشاء حساب
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-extrabold text-sm px-5 py-2.5 transition-all"
-        >
-          دخول
-        </Link>
-
-        {/* يظهر للأدمِن وحده — يفحص الهوية في المتصفح فلا يكسر التخزين المؤقت */}
-        <AdminLink />
-      </header>
+      {/* شريط الحساب — زائرًا كان أو داخلًا */}
+      <AccountBar />
 
       <section className="flex-1 flex flex-col items-center px-5 pt-10 pb-10 text-center">
         {/* الشعار والاسم */}

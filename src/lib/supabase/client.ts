@@ -1,45 +1,13 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import { cookieDomainOption } from './cookie-domain';
 
 /**
  * عميل Supabase للمتصفح — يُستخدم في تسجيل الدخول والخروج
  * وتسجيل زيارات الألعاب.
  */
-/**
- * إزالة كوكي الجلسة **المحصورة بالمضيف** التي تُظلّل كوكي النطاق الأب.
- *
- * ⚠️ **عطبٌ أوقف مشتركةً يومين، وكان سيوقف كل مشتركة جديدة.**
- *
- * الجلسة تُكتب على النطاق الأب `.ghiras-edu.com` ليقرأها الاستوديو.
- * لكن من زار الموقع قبل ذلك بقيت على جهازه كوكي بالاسم نفسه محصورةٌ
- * بـ`www` وحده. فيجتمع في المتصفح كوكيّان باسمٍ واحد، ويُقرأ الأقدم
- * الفارغ — فتضيع الجلسة **بعد نجاح الدخول مباشرة**.
- *
- * والأثر الذي رأيناه: تدخل المشتركة بكلمة مرورٍ صحيحة، ثم يُرفض
- * الطلبُ التالي لأنه بلا هوية، فيُقال لها «الحساب غير مُهيأ» — وملفُّها
- * سليمٌ تمامًا. وثبت بالتجربة: تنجح في نافذةٍ خاصة وتفشل في العادية.
- *
- * ⚠️ والحذف بلا `domain` يصيب المحصورة بالمضيف وحدها: حذفُ كوكي
- * النطاق الأب يشترط ذكرَ نطاقه، فتبقى الصحيحة سالمة. ولذلك يُشغَّل
- * هذا في كل تحميل بلا خطر.
- *
- * ⚠️ وتُحذف الأجزاء المرقّمة أيضًا (`.0` `.1` …): الجلسة أكبر من حدّ
- * الكوكي فتُقسَّم، وتركُ جزءٍ قديمٍ واحد يُفسد التجميع كلّه.
- */
-let shadowCleared = false;
-function clearShadowingCookies() {
-  if (typeof document === 'undefined' || shadowCleared) return;
-  shadowCleared = true;
-  const names = document.cookie
-    .split(';')
-    .map((c) => c.split('=')[0].trim())
-    .filter((n) => n === 'sb-ghiras-auth' || n.startsWith('sb-ghiras-auth.'));
-  for (const n of names) document.cookie = `${n}=; Max-Age=0; path=/`;
-}
-
 export function createClient() {
-  clearShadowingCookies();
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -50,9 +18,7 @@ export function createClient() {
       cookieOptions: {
         name: 'sb-ghiras-auth',
         path: '/',
-        ...(process.env.NODE_ENV === 'production'
-          ? { domain: '.ghiras-edu.com' }
-          : {}),
+        ...cookieDomainOption,
       },
     }
   );

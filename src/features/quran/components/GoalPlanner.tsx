@@ -97,7 +97,7 @@ export default function GoalPlanner({
 
         {plan.overloaded ? (
           <p className="mb-3 rounded-xl bg-[#fdf6ec] px-3 py-2.5 text-[0.82rem] leading-relaxed text-[#8a6d3b]">
-            المقدار اليومي كبير على الأيام المتبقية. لو أخّرتِ الموعد
+            المقدار اليومي كبير على الأيام المتبقية. لو تأخّر الموعد
             قليلًا لصارت الخطة أهدأ وأثبت.
           </p>
         ) : null}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
@@ -125,7 +126,7 @@ export default function RegisterPage() {
             تمّ إنشاء حسابك
           </h1>
           <p className="mt-2 text-ink/70 leading-relaxed">
-            أهلًا <b className="text-ink">{createdFor}</b> — حسابك جاهز ودخلتِ فعلًا.
+            أهلًا <b className="text-ink">{createdFor}</b> — الحساب جاهز وتمّ الدخول فعلًا.
           </p>
 
           {/* ⚠️ ويُقال ما ينقص: بلا هذا تظنّ أن المنصة معطّلة */}
@@ -146,7 +147,7 @@ export default function RegisterPage() {
           </button>
 
           <p className="mt-4 text-[0.78rem] text-ink/45">
-            ⚠️ لا تُعيدي التسجيل — حسابك موجود. وإن خرجتِ، ادخلي من
+            ⚠️ لا داعي لإعادة التسجيل — الحساب موجود. وعند الخروج، يمكن الدخول من
             «تسجيل الدخول» بنفس الرقم وكلمة المرور.
           </p>
         </div>
@@ -197,21 +198,15 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-bold text-ink/80 mb-1.5">
-              كلمة المرور
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`${inputCls} text-left`}
-              placeholder="•••••••• (٦ خانات على الأقل)"
-            />
-          </div>
+          <PasswordField
+            id="password"
+            label="كلمة المرور"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            className={`${inputCls} text-left`}
+            placeholder="•••••••• (٦ خانات على الأقل)"
+          />
 
           <div>
             <label htmlFor="email" className="block text-sm font-bold text-ink/80 mb-1.5">

@@ -56,7 +56,7 @@ export default async function CurriculumPage() {
           <p className="mb-2 text-3xl" aria-hidden>📚</p>
           <p className="mb-1.5 font-bold text-[var(--q-ink)]">ما أُدخل المنهج بعد</p>
           <p className="text-[0.85rem] leading-relaxed text-[var(--q-mute)]">
-            وحتى ذلك الحين تقدرين تقرئين وتحفظين من{' '}
+            وحتى ذلك الحين يمكن القراءة والحفظ من{' '}
             <Link href="/quran/browse" className="font-bold text-[var(--q-accent)] underline underline-offset-4">
               القرآن الكريم
             </Link>{' '}
