@@ -21,6 +21,19 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const supabaseConfigured = Boolean(url && anonKey);
 
+// ⚠️ تشخيصٌ مؤقّت — عند نقطة القرار نفسها، قبل أن يرجع `client()` بـ`null`
+//    أو يُرمى `NO_SUPABASE_CONFIG`. أعلامٌ فقط، بلا قيمةٍ ولا طول.
+console.log(
+  '[BUILD_ENV_PROBE:data]',
+  JSON.stringify({
+    NEXT_PUBLIC_SUPABASE_URL_PRESENT: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY_PRESENT: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    SUPABASE_CONFIGURED: Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ),
+  })
+);
+
 /**
  * خطأٌ تقنيّ في قراءة الهيكل — **يُرفع ولا يُداوى ببيانات**.
  *
