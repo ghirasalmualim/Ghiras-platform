@@ -32,6 +32,30 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/';
 
+  /**
+   * ⚠️ **إعادةُ توجيهٍ مفتوحة — `next` يأتي من الرابط لا من مولِّداتنا.**
+   *
+   * كان يُدفع إلى `router.push` كما هو، فرابطٌ مصنوع يُخرج المشتركة من
+   * غراس **بعد** أن تُدخل بياناتها — وهي أخطر لحظةٍ تُنقل فيها، لأنها
+   * تظنّ أنها ما زالت عندنا.
+   *
+   * ⚠️ و`startsWith('/')` لا يكفي: `//x.com` و`/\x.com` و`\t//x.com`
+   * كلها تبدأ بشرطةٍ مائلة وتُحلّ خارج غراس. ومثلها `%2F%2Fx.com` —
+   * فـ`searchParams.get` يفكّ ترميزه إلى `//x.com` قبل أن نراه.
+   *
+   * فنسأل المُحلِّل نفسه: إن اختلف الأصل رفضنا، وإلا أخذنا المسار
+   * والاستعلام والمرساة — لا القيمة الخام.
+   */
+  function safeNext(raw: string) {
+    try {
+      const u = new URL(raw, window.location.origin);
+      if (u.origin !== window.location.origin) return '/';
+      return u.pathname + u.search + u.hash;
+    } catch {
+      return '/';
+    }
+  }
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -152,29 +176,44 @@ function LoginForm() {
     }
 
     /**
-     * 3) تسجيل الدخول الناجح وتحديث آخر نشاط.
+     * 3) السجلّ والنشاط — **بأفضل جهد، ومستقلَّين، ولا يحبسان الدخول.**
      *
-     * ⚠️ **يُنتظَران قبل الانتقال.** كانا يُرسَلان بلا انتظار ثم يُنقَل
-     * المستخدم فورًا — والانتقال يُجهض الطلبَ قبل أن يصل. فبقي جدول
-     * `login_logs` **فارغًا تمامًا**، وظلّت لوحة التحكم تقول «لم تدخل
-     * بعد» عن مشتركاتٍ دخلن فعلًا.
+     * ⚠️ مصادقةٌ نجحت لا ينقضها فشلُ سطرٍ إحصائي. ولا يُنتظَران:
+     * شاشة الترحيب تُبقي الصفحة قائمة فيتمّان في خلفيتها.
      *
-     * ⚠️ ولا يُعطَّل الدخول لأجل السجلّ: إن تعثّر مضينا. فالسجلّ خبرٌ
-     * عن الدخول لا شرطٌ له، ومن دخل بحقٍّ لا يُمنع لأن سطرًا لم يُكتب.
+     * ⚠️ **ولا يُجمعان في نداءٍ واحد**: سقوطُ أحدهما شبكيًّا كان يُسقط
+     * الآخر معه، وهما لا علاقة لأحدهما بالآخر.
+     *
+     * ⚠️ ولا يُبتلع الفشل: Supabase **يُرجع** الخطأ ولا يرميه
+     * (`shouldThrowOnError = false`) — فـ`catch` وحده لا يراه.
+     * ويُفحص `error` صراحةً، ويُسجَّل **رمزه وحده**: لا كائن خطأ،
+     * ولا استجابة، ولا ترويسات، ولا جلسة، ولا بيانات مستخدم.
+     *
+     * ⚠️ وهذا رصدٌ في وحدة المتصفح فقط — الرصد المركزي يأتي لاحقًا.
      */
-    try {
-      await Promise.all([
-        supabase.from('login_logs').insert({
-          user_id: auth.user.id,
-          username: uname,
-          success: true,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        }),
-        supabase.rpc('touch_last_active'),
-      ]);
-    } catch {
-      /* السجلّ لا يستحقّ منعَ دخولٍ صحيح */
-    }
+    void supabase
+      .from('login_logs')
+      .insert({
+        user_id: auth.user.id,
+        username: uname,
+        success: true,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      })
+      .then(
+        ({ error }) => {
+          if (error) console.error('[LOGIN_LOG_FAILED]', error.code || 'unknown');
+        },
+        () => console.error('[LOGIN_LOG_NETWORK_FAILED]')
+      );
+
+    void supabase
+      .rpc('touch_last_active')
+      .then(
+        ({ error }) => {
+          if (error) console.error('[LAST_ACTIVE_FAILED]', error.code || 'unknown');
+        },
+        () => console.error('[LAST_ACTIVE_NETWORK_FAILED]')
+      );
 
     /**
      * 4) ترحيبٌ ثم انتقال.
@@ -233,7 +272,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => {
-              router.push(next);
+              router.push(safeNext(next));
               router.refresh();
             }}
             className="mt-6 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark"
