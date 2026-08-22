@@ -161,6 +161,20 @@ export default async function SubjectPage({
     authState = 'STATUS_SUSPENDED';
   } else if (profile.status === 'expired' || (!isAdmin && Boolean(expired))) {
     authState = 'SUBSCRIPTION_EXPIRED';
+  } else if (profile.status !== 'active') {
+    /**
+     * ⚠️ **رفضٌ آمن لما لا نعرفه.**
+     *
+     * الـenum اليوم ثلاثٌ (`active` · `expired` · `suspended`)، فهذا
+     * الفرع لا يُبلَغ الآن. لكن تفكيك الحالة إلى فروعٍ مسمّاة يفتح ثغرةً
+     * ليوم يُضاف فيه وضعٌ رابع: يمرّ بلا حارس، فتردّه الدالّة بـ`false`
+     * فيخرج باسم «ليس لديك صلاحية» — تهمةٌ على حسابٍ سليم بدل إقرارٍ
+     * بعطبٍ عندنا. وهو النمط نفسه الذي أخرج `22P02` في صورة منع.
+     *
+     * ⚠️ وعطبٌ في فهمنا للبيانات لا يجوز أن يصير حكمًا على المستخدم.
+     */
+    authState = 'PROFILE_ERROR';
+    faultCode = 'UNKNOWN_STATUS';
   } else if (!UUID_RE.test(subject.id)) {
     // ⚠️ معرّفٌ مصدرُه القاعدة وليس UUID ⇒ عطبٌ عندنا، لا نقصٌ في المحتوى
     authState = 'CONTENT_MISCONFIGURED';
