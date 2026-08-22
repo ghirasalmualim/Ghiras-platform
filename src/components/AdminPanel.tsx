@@ -372,6 +372,27 @@ export default function AdminPanel() {
 
   const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString('ar-KW') : '—');
 
+  /**
+   * آخر ظهور — بالتاريخ **والوقت**.
+   *
+   * ⚠️ ولا تُستعمل `fmt` هنا: هي لتواريخ الاشتراك (٤ مواضع) ولا تحتاج
+   * ساعةً، وتوسيعُها كان سيُقحم وقتًا في كل تاريخِ انتهاء.
+   *
+   * ⚠️ ودقّةُ هذا الحقل ساعةٌ لا لحظة: `touch_activity` مخنوقةٌ عمدًا
+   * لئلا يتضخّم `profiles` بكتاباتٍ متكرّرة — وهو يُقرأ في كل فحص صلاحية.
+   * فهو «آخر ظهور تقريبيّ» لا حضورٌ لحظيّ.
+   */
+  const fmtSeen = (s: string | null) => {
+    if (!s) return null;
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return null;
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    const h24 = d.getHours();
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const mer = h24 < 12 ? 'ص' : 'م';
+    return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}، ${h12}:${p2(d.getMinutes())} ${mer}`;
+  };
+
   /** «قبل ٣ أيام» — أوضح من التاريخ وحده عند تصفّح قائمة طويلة */
   const sinceLabel = (s: string | null) => {
     if (!s) return '';
@@ -683,7 +704,15 @@ export default function AdminPanel() {
                   </span>
                   {/* يُحدَّث عند الدخول وعند استخدام المنصة (touch_activity، مخنوق بساعة) */}
                   <span className={`block text-xs mt-0.5 ${activeRecently ? 'text-sage-dark font-bold' : 'text-ink/40'}`}>
-                    آخر نشاط: {r.last_active ? `${fmt(r.last_active)} (${sinceLabel(r.last_active)})` : 'لم تدخل بعد'}
+                    {/*
+                      ⚠️ «لم تدخل بعد» كانت تُقال عن مشتركاتٍ دخلن فعلًا —
+                      لأن تسجيل النشاط كان يُرسَل بلا انتظار فلا يصل. فالجملة
+                      تصف سلوك المشتركة، والحقيقة أنها تصف سجلَّنا نحن.
+                    */}
+                    آخر ظهور:{' '}
+                    {fmtSeen(r.last_active)
+                      ? `${fmtSeen(r.last_active)} (${sinceLabel(r.last_active)})`
+                      : 'لا يوجد نشاط مسجّل بعد'}
                   </span>
                 </span>
                 <span className="flex items-center gap-1.5 flex-wrap justify-end text-xs font-bold">
