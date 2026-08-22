@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
@@ -197,21 +198,15 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-bold text-ink/80 mb-1.5">
-              كلمة المرور
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`${inputCls} text-left`}
-              placeholder="•••••••• (٦ خانات على الأقل)"
-            />
-          </div>
+          <PasswordField
+            id="password"
+            label="كلمة المرور"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            className={`${inputCls} text-left`}
+            placeholder="•••••••• (٦ خانات على الأقل)"
+          />
 
           <div>
             <label htmlFor="email" className="block text-sm font-bold text-ink/80 mb-1.5">

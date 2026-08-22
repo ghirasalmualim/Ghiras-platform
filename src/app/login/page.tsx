@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
 
 /**
@@ -318,27 +319,16 @@ function LoginForm() {
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-bold text-ink/80 mb-1.5"
-            >
-              كلمة المرور
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="current-password"
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="w-full rounded-xl border border-sage/30 bg-white px-4 py-3 text-left focus:border-sage focus:ring-2 focus:ring-sage/25 outline-none transition"
-              placeholder="••••••••"
-            />
-          </div>
+          <PasswordField
+            id="password"
+            label="كلمة المرور"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            className="w-full rounded-xl border border-sage/30 bg-white px-4 py-3 text-left focus:border-sage focus:ring-2 focus:ring-sage/25 outline-none transition"
+            placeholder="••••••••"
+          />
 
           {message && (
             <p
