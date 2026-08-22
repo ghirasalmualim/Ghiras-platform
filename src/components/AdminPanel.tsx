@@ -382,26 +382,66 @@ export default function AdminPanel() {
    * لئلا يتضخّم `profiles` بكتاباتٍ متكرّرة — وهو يُقرأ في كل فحص صلاحية.
    * فهو «آخر ظهور تقريبيّ» لا حضورٌ لحظيّ.
    */
+  /**
+   * ⚠️ **توقيت الكويت صراحةً — لا توقيت جهاز القارئ.**
+   *
+   * كان العرض يعتمد `getHours()` و`getDate()`، وهما بتوقيت الجهاز. فلو
+   * فتحت الإدارةُ اللوحة من سفرٍ لرأت أوقاتًا لا تطابق ما تعرفه — والمنصّة
+   * كويتية، ومواعيد الاشتراكات والنشاط تُقاس بيومها لا بيوم المسافر.
+   *
+   * والكويت `UTC+3` ثابتًا بلا توقيتٍ صيفي — كما في
+   * `features/quran/engine/daytime.ts`. فتُزاح اللحظة ثلاث ساعات وتُقرأ
+   * حقولُها بـ`getUTC*`، فتخرج حقولُ الكويت مهما كان الجهاز.
+   */
+  const KW_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+  /** رقم اليوم التقويمي بتوقيت الكويت — أساسُ «اليوم/أمس» */
+  const kwDayIndex = (d: Date) => Math.floor((d.getTime() + KW_OFFSET_MS) / 86400000);
+
+  /**
+   * آخر ظهور — بالتاريخ **والوقت** بتوقيت الكويت.
+   *
+   * ⚠️ ولا تُستعمل `fmt` هنا: هي لتواريخ الاشتراك (٤ مواضع) ولا تحتاج
+   * ساعةً، وتوسيعُها كان سيُقحم وقتًا في كل تاريخِ انتهاء.
+   *
+   * ⚠️ ودقّةُ هذا الحقل ساعةٌ لا لحظة: `touch_activity` مخنوقةٌ عمدًا
+   * لئلا يتضخّم `profiles` بكتاباتٍ متكرّرة — وهو يُقرأ في كل فحص صلاحية.
+   * فهو «آخر ظهور تقريبيّ» لا حضورٌ لحظيّ.
+   */
   const fmtSeen = (s: string | null) => {
     if (!s) return null;
     const d = new Date(s);
     if (Number.isNaN(d.getTime())) return null;
+    const k = new Date(d.getTime() + KW_OFFSET_MS);
     const p2 = (n: number) => String(n).padStart(2, '0');
-    const h24 = d.getHours();
+    const h24 = k.getUTCHours();
     const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
     const mer = h24 < 12 ? 'ص' : 'م';
-    return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}، ${h12}:${p2(d.getMinutes())} ${mer}`;
+    return `${p2(k.getUTCDate())}/${p2(k.getUTCMonth() + 1)}/${k.getUTCFullYear()}، ${h12}:${p2(k.getUTCMinutes())} ${mer}`;
   };
 
-  /** «قبل ٣ أيام» — أوضح من التاريخ وحده عند تصفّح قائمة طويلة */
+  /**
+   * «أمس» — بيومٍ تقويميّ لا بمرور ٢٤ ساعة.
+   *
+   * ⚠️ كان يقسم فرقَ المِللي على ٢٤ ساعة، فيقول «اليوم» عن سجلٍّ من أمس
+   * ما دام أقلّ من يومٍ كامل. فظهر في اللوحة: «٢١/٠٨/٢٠٢٦، ١٠:٥٩ م
+   * (اليوم)» — والنصفان يقيسان شيئين مختلفين، فيناقض السطرُ نفسه.
+   *
+   * فصار المقياسان واحدًا: يومٌ تقويميّ بتوقيت الكويت، هو نفسه الذي
+   * يُبنى منه التاريخ المعروض.
+   */
   const sinceLabel = (s: string | null) => {
     if (!s) return '';
-    const days = Math.floor((Date.now() - new Date(s).getTime()) / 86400000);
+    const t = new Date(s);
+    if (Number.isNaN(t.getTime())) return '';
+    const days = kwDayIndex(new Date()) - kwDayIndex(t);
     if (days <= 0) return 'اليوم';
     if (days === 1) return 'أمس';
+    if (days === 2) return 'قبل يومين';
+    if (days <= 10) return `قبل ${days} أيام`;
     if (days < 30) return `قبل ${days} يومًا`;
     const months = Math.floor(days / 30);
-    return months === 1 ? 'قبل شهر' : `قبل ${months} أشهر`;
+    return months === 1 ? 'قبل شهر' : months === 2 ? 'قبل شهرين' : `قبل ${months} أشهر`;
   };
   const stillValid = (s: string | null) => !!s && new Date(s) > new Date();
 
