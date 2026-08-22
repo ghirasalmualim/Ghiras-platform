@@ -1,6 +1,7 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import { cookieDomainOption } from './cookie-domain';
 
 /**
  * عميل Supabase للمتصفح — يُستخدم في تسجيل الدخول والخروج
@@ -17,9 +18,7 @@ export function createClient() {
       cookieOptions: {
         name: 'sb-ghiras-auth',
         path: '/',
-        ...(process.env.NODE_ENV === 'production'
-          ? { domain: '.ghiras-edu.com' }
-          : {}),
+        ...cookieDomainOption,
       },
     }
   );

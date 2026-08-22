@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookieDomainOption } from './cookie-domain';
 import { cookies } from 'next/headers';
 
 /**
@@ -26,10 +27,8 @@ export function createServerSupabase() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, {
                 ...options,
-                // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — في الإنتاج فقط
-                ...(process.env.NODE_ENV === "production"
-                  ? { domain: ".ghiras-edu.com" }
-                  : {}),
+                // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — بحسب البيئة
+                ...cookieDomainOption,
               })
             );
           } catch {

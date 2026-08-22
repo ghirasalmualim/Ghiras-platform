@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { cookieDomainOption } from '@/lib/supabase/cookie-domain';
 
 /**
  * وسيط الجلسات — يجدّد رمز الدخول تلقائياً مع كل طلب
@@ -28,10 +29,8 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, {
               ...options,
-              // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — في الإنتاج فقط
-              ...(process.env.NODE_ENV === "production"
-                ? { domain: ".ghiras-edu.com" }
-                : {}),
+              // مشاركة الجلسة مع الاستوديو عبر النطاق الأب — بحسب البيئة
+              ...cookieDomainOption,
             })
           );
         },
