@@ -279,10 +279,17 @@ export default async function AccountPage() {
                   {/*
                     ⚠️ يُذكر النطاق معلومةً ثانوية ولا يُسمّى «وصولًا»:
                     الصلاحية مسجّلة، والاشتراك غير سارٍ — فالباب مغلق.
+
+                    و«عند تفعيل الاشتراك» تصف ما سيُفتح لا ما هو مفتوح،
+                    فلا يُقرأ السطر وعدًا بوصولٍ قائم.
                   */}
                   {perms.length > 0 && (
                     <p className="mt-3 text-xs text-ink/45">
-                      نطاق الصلاحية المسجّل: {perms.map(scopeLabel).join(' · ')}
+                      {perms.some((p) => p.scope === 'all')
+                        ? 'المواد المشمولة عند تفعيل الاشتراك: جميع المواد'
+                        : `المحتوى المشمول عند تفعيل الاشتراك: ${perms
+                            .map(scopeLabel)
+                            .join(' · ')}`}
                     </p>
                   )}
                   <p className="mt-3 text-xs text-ink/45">
