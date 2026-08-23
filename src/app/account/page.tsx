@@ -1,165 +1,296 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient, usernameToEmail } from '@/lib/supabase/client';
-import PasswordField from '@/components/PasswordField';
+import { redirect } from 'next/navigation';
+import { createServerSupabase } from '@/lib/supabase/server';
+import ChangePassword from '@/components/ChangePassword';
+import LogoutButton from '@/components/LogoutButton';
+import {
+  listEntitlements,
+  hasAnyEntitlement,
+  hasActiveEntitlement,
+  fmtDate,
+} from '@/lib/entitlements';
+
+export const dynamic = 'force-dynamic';
 
 /**
- * حسابي — تغيير كلمة المرور.
+ * «حسابي» — مركز الحساب.
  *
- * ── لماذا ──
- * لم يكن للمشترك سبيلٌ إلى تغيير كلمته: يدخل برقم جواله لا ببريدٍ
- * حقيقي، فلا رسالةَ استعادة تصله. وكان كلُّ نسيانٍ يمرّ بصاحبة
- * المنصة تولّد له كلمةً مؤقتة — وذلك يوقفه حتى تردّ عليه.
+ * ⚠️ **مكوّن خادم لا عميل.** الصفحة ليست مخزَّنة مؤقتًا، فتُقرأ الجلسة
+ * والملف على الخادم قبل أول رسم — فلا وميضَ مصادقةٍ ولا لحظةَ يرى فيها
+ * صاحبُ الحساب نفسه زائرًا. والجزء الوحيد الذي يكتب — تغيير كلمة
+ * المرور — مكوّن عميلٍ مستقلّ.
  *
- * ⚠️ وتُطلب الكلمة الحالية قبل التغيير، ولو كانت الجلسة قائمة:
- * جهازٌ يُترك مفتوحًا في غرفة المعلّمات يكفي غيرَ صاحبه لتبديل
- * كلمته وإخراجه من حسابه. فالجلسة تُثبت أنه دخل، ولا تُثبت أنه هو
- * الجالس الآن.
+ * ⚠️ **وعرضٌ فقط.** لا تعديل ذاتيّ لهاتفٍ ولا بريدٍ ولا اسمِ مستخدم —
+ * ولا سياسةَ `UPDATE` على `profiles` لغير الأدمِن أصلًا، فأيُّ محاولة
+ * تُحجب صامتة. والسماحُ بذلك يحتاج سياسةً بأعمدة محدَّدة، وإلا فُتح
+ * معها `role` و`sub_end`.
+ *
+ * ⚠️ **والصلاحيات تُعرض مع الاشتراك.** `sub_end` سارٍ لا يعني وصولًا:
+ * `can_access_subject` تشترط صفَّ صلاحيةٍ أيضًا. فمن يُقال له «اشتراكك
+ * ساري» وهو محجوبٌ فعلًا يعيش عين ما عاشته أسماء — شاشةٌ تقول غير ما يقع.
  */
 
-const MIN_LEN = 8;
+type Perm = {
+  scope: string;
+  stage_id: string | null;
+  grade_id: string | null;
+  subject_id: string | null;
+};
 
-export default function AccountPage() {
-  const router = useRouter();
+const STATUS_LABEL: Record<string, string> = {
+  active: 'نشط',
+  expired: 'منتهي',
+  suspended: 'موقوف',
+};
 
-  const [username, setUsername] = useState<string | null>(null);
-  const [name, setName] = useState<string | null>(null);
-  const [current, setCurrent] = useState('');
-  const [next, setNext] = useState('');
-  const [again, setAgain] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="card-3d mt-5 p-6">
+      <h2 className="text-lg font-extrabold text-ink">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
-  useEffect(() => {
-    const sb = createClient();
-    sb.auth.getUser().then(async ({ data }) => {
-      if (!data.user) {
-        router.replace('/login?next=/account');
-        return;
-      }
-      // البريد داخليّ مبنيّ من رقم الجوال — نعرضه رقمًا كما يعرفه صاحبه
-      setUsername((data.user.email || '').split('@')[0] || null);
-      const { data: p } = await sb
-        .from('profiles')
-        .select('full_name')
-        .eq('id', data.user.id)
-        .single();
-      setName(p?.full_name ?? null);
-    });
-  }, [router]);
-
-  async function submit() {
-    if (busy) return;
-    setMsg(null);
-
-    if (!current || !next) return setMsg({ ok: false, text: 'اكتب كلمة المرور الحالية والجديدة' });
-    if (next.length < MIN_LEN)
-      return setMsg({ ok: false, text: `كلمة المرور الجديدة ${MIN_LEN} أحرف على الأقل` });
-    if (next !== again) return setMsg({ ok: false, text: 'الكلمتان غير متطابقتين' });
-    if (next === current) return setMsg({ ok: false, text: 'الكلمة الجديدة مثل الحالية' });
-
-    setBusy(true);
-    const sb = createClient();
-
-    // ١) إثبات أن الجالس الآن هو صاحب الحساب
-    const { data: me } = await sb.auth.getUser();
-    const email = me.user?.email || (username ? usernameToEmail(username) : '');
-    const { error: wrong } = await sb.auth.signInWithPassword({ email, password: current });
-    if (wrong) {
-      setBusy(false);
-      return setMsg({ ok: false, text: 'كلمة المرور الحالية غير صحيحة' });
-    }
-
-    // ٢) التغيير
-    const { error } = await sb.auth.updateUser({ password: next });
-    setBusy(false);
-    if (error) return setMsg({ ok: false, text: 'ما تغيّرت — جرّب مرة ثانية' });
-
-    setCurrent('');
-    setNext('');
-    setAgain('');
-    setMsg({ ok: true, text: '✅ تغيّرت كلمة المرور. استعملها في الدخول القادم.' });
-  }
-
+function Fault({ title, body }: { title: string; body: string }) {
   return (
     <main className="min-h-dvh px-5 py-10" dir="rtl">
-      <div className="mx-auto w-full max-w-md">
-        <Link href="/" className="text-sm font-bold text-ink/55 hover:text-sage-deep">
-          <span aria-hidden>→</span> الرئيسية
-        </Link>
-
-        <h1 className="mt-5 text-2xl font-black text-sage-deep">حسابي</h1>
-        {(name || username) && (
-          <p className="mt-1 text-sm text-ink/60">
-            {name ? <b className="text-ink">{name}</b> : null}
-            {name && username ? ' · ' : null}
-            {username}
-          </p>
-        )}
-
-        <div className="card-3d mt-6 p-6">
-          <h2 className="text-lg font-extrabold text-ink">تغيير كلمة المرور</h2>
-          <p className="mt-1 text-[0.82rem] text-ink/55">
-            {MIN_LEN} أحرف على الأقل. اكتبها في مكان تتذكّره.
-          </p>
-
-          <div className="mt-5 flex flex-col gap-3">
-            <Field label="كلمة المرور الحالية" value={current} onChange={setCurrent} autoComplete="current-password" />
-            <Field label="كلمة المرور الجديدة" value={next} onChange={setNext} autoComplete="new-password" />
-            <Field label="أعِد كتابة الجديدة" value={again} onChange={setAgain} autoComplete="new-password" />
-          </div>
-
-          {msg && (
-            <p
-              className={`mt-4 rounded-xl px-3 py-2 text-sm font-bold ${
-                msg.ok ? 'bg-sage/10 text-sage-deep' : 'bg-red-50 text-red-700'
-              }`}
-            >
-              {msg.text}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy}
-            className="mt-5 w-full rounded-xl bg-sage px-5 py-3 font-extrabold text-white transition-colors hover:bg-sage-dark disabled:opacity-50"
-          >
-            {busy ? 'جارٍ الحفظ…' : 'احفظ كلمة المرور'}
-          </button>
+      <div className="mx-auto w-full max-w-lg text-center">
+        <p className="text-5xl" aria-hidden>⚠️</p>
+        <h1 className="mt-4 text-xl font-black text-sage-deep">{title}</h1>
+        <p className="mt-2 leading-relaxed text-ink/70">{body}</p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <LogoutButton />
+          <Link href="/" className="text-sm font-bold text-sage-dark hover:underline">
+            الرئيسية
+          </Link>
         </div>
-
-        <p className="mt-4 text-center text-[0.78rem] text-ink/45">
-          نسيت كلمتك الحالية؟ تواصل مع إدارة المنصة لتوليد كلمة مؤقتة.
-        </p>
       </div>
     </main>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  autoComplete,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete: string;
-}) {
-  // ⚠️ حالة العين داخل `PasswordField` نفسه — فلكل حقلٍ عينُه المستقلّة
+export default async function AccountPage() {
+  const supabase = createServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login?next=/account');
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select(
+      'full_name, username, role, status, sub_start, sub_end, studio_until, gradebook_until, attendance_until, head_records_until, adventure_until, multiplication_until, workshops_until, game_credits, attendance_extra'
+    )
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // ⚠️ خطأُ قراءةٍ لا يُحوّل صاحبَ الحساب زائرًا، ولا يُعرض حسابًا طبيعيًّا
+  if (profileError) {
+    console.error('[ACCOUNT_FAULT]', 'PROFILE_ERROR', (profileError as { code?: string }).code ?? '-');
+    return <Fault title="تعذّر قراءة بيانات الحساب" body="خللٌ تقنيّ عندنا — لا علاقة له بحسابك ولا باشتراكك." />;
+  }
+  if (!profile) {
+    console.error('[ACCOUNT_FAULT]', 'PROFILE_MISSING', '-');
+    return <Fault title="حسابك يحتاج تهيئة" body="يمكن التواصل معنا لإتمامها — ولا حاجة لإنشاء حسابٍ جديد." />;
+  }
+
+  const status = profile.status as string;
+  // ⚠️ رفضُ عرضٍ آمن: الـenum ثلاثٌ اليوم وقد يزيد غدًا، ولا يُعرض المجهول حسابًا سليمًا
+  if (status !== 'active' && status !== 'expired' && status !== 'suspended') {
+    console.error('[ACCOUNT_FAULT]', 'UNKNOWN_STATUS', '-');
+    return <Fault title="تعذّر قراءة حالة الحساب" body="خللٌ تقنيّ عندنا — يمكن التواصل مع إدارة غراس المعلم." />;
+  }
+
+  const isAdmin = profile.role === 'admin';
+
+  // صلاحيات المحتوى — سياسة «own permissions read» تتيح للمستخدم صفوفه
+  const { data: permRows } = await supabase
+    .from('permissions')
+    .select('scope, stage_id, grade_id, subject_id')
+    .eq('user_id', user.id);
+  const perms = (permRows ?? []) as Perm[];
+
+  // ⚠️ لا تُعرض المعرّفات للمستخدم — تُترجَم أسماءً من الكتالوج العام
+  const ids = {
+    stage: perms.map((p) => p.stage_id).filter(Boolean) as string[],
+    grade: perms.map((p) => p.grade_id).filter(Boolean) as string[],
+    subject: perms.map((p) => p.subject_id).filter(Boolean) as string[],
+  };
+  const nameOf: Record<string, string> = {};
+  const gradeOfSubject: Record<string, string> = {};
+  if (ids.stage.length) {
+    const { data } = await supabase.from('stages').select('id, name').in('id', ids.stage);
+    for (const s of data ?? []) nameOf[s.id as string] = s.name as string;
+  }
+  if (ids.grade.length) {
+    const { data } = await supabase.from('grades').select('id, name').in('id', ids.grade);
+    for (const g of data ?? []) nameOf[g.id as string] = g.name as string;
+  }
+  if (ids.subject.length) {
+    const { data } = await supabase.from('subjects').select('id, name, grade_id').in('id', ids.subject);
+    for (const s of data ?? []) {
+      nameOf[s.id as string] = s.name as string;
+      if (s.grade_id) gradeOfSubject[s.id as string] = s.grade_id as string;
+    }
+    const gids = Object.values(gradeOfSubject).filter((g) => !nameOf[g]);
+    if (gids.length) {
+      const { data: gs } = await supabase.from('grades').select('id, name').in('id', gids);
+      for (const g of gs ?? []) nameOf[g.id as string] = g.name as string;
+    }
+  }
+
+  /** نصٌّ مفهوم لصلاحيةٍ واحدة — بصياغة `AdminPanel` نفسها */
+  const permLabel = (p: Perm): string => {
+    if (p.scope === 'all') return 'وصول كامل — كل المواد';
+    if (p.scope === 'stage') return `كل ${nameOf[p.stage_id || ''] || 'المرحلة'}`;
+    if (p.scope === 'grade') return `${nameOf[p.grade_id || ''] || 'صف'} — كل المواد`;
+    if (p.scope === 'subject') {
+      const s = nameOf[p.subject_id || ''] || 'مادة';
+      const g = nameOf[gradeOfSubject[p.subject_id || ''] || ''];
+      return g ? `${s} · ${g}` : s;
+    }
+    return p.scope;
+  };
+
+  const ents = listEntitlements(profile as Record<string, unknown>);
+  const anyEver = hasAnyEntitlement(profile as Record<string, unknown>);
+  const anyActive = hasActiveEntitlement(profile as Record<string, unknown>);
+  const credits = (profile.game_credits as number) ?? 0;
+  const extra = (profile.attendance_extra as number) ?? 0;
+
   return (
-    <PasswordField
-      label={label}
-      value={value}
-      onChange={onChange}
-      autoComplete={autoComplete}
-      className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 outline-none focus:border-sage"
-      labelClassName="mb-1.5 block text-sm font-bold text-ink/80"
-    />
+    <main className="min-h-dvh px-5 py-10" dir="rtl">
+      <div className="mx-auto w-full max-w-lg">
+        <Link href="/" className="text-sm font-bold text-ink/55 hover:text-sage-deep">
+          <span aria-hidden>→</span> الرئيسية
+        </Link>
+        <h1 className="mt-5 text-2xl font-black text-sage-deep">حسابي</h1>
+
+        {/* ── معلومات الحساب ── */}
+        <Card title="معلومات الحساب">
+          <dl className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <dt className="text-ink/55">الاسم</dt>
+              <dd className="font-bold text-ink">{profile.full_name || '—'}</dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              {/* ⚠️ من `profiles.username` لا من بريد المصادقة الداخلي */}
+              <dt className="text-ink/55">رقم المستخدم</dt>
+              <dd className="font-bold text-ink" dir="ltr">
+                {(profile.username as string) || '—'}
+              </dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <dt className="text-ink/55">حالة الحساب</dt>
+              <dd className="font-bold text-ink">{STATUS_LABEL[status]}</dd>
+            </div>
+            {isAdmin && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <span className="rounded-lg bg-gold-light/70 px-2.5 py-1 text-xs font-bold text-gold-dark">
+                  وصول الإدارة
+                </span>
+                <Link
+                  href="/admin"
+                  className="rounded-xl border border-sage/40 bg-white px-4 py-2 text-sm font-extrabold text-sage-deep transition-colors hover:border-sage"
+                >
+                  لوحة التحكم
+                </Link>
+              </div>
+            )}
+          </dl>
+        </Card>
+
+        {status === 'suspended' && (
+          <Card title="تنبيه">
+            <p className="text-sm leading-relaxed text-ink/70">
+              هذا الحساب موقوف — يرجى التواصل مع إدارة غراس المعلم.
+            </p>
+          </Card>
+        )}
+
+        {/* ⚠️ لا يُعرض للأدمِن اشتراكٌ ولا رصيد: وصولُه لا ينقضي ولا يُحدّ */}
+        {!isAdmin && status !== 'suspended' && (
+          <>
+            <Card title="اشتراكاتي">
+              {!anyEver ? (
+                <p className="text-sm text-ink/60">لا يوجد اشتراك ساري حاليًا</p>
+              ) : (
+                <>
+                  <ul className="flex flex-col gap-3">
+                    {ents.map((e) => {
+                      const d = fmtDate(e.until);
+                      return (
+                        <li
+                          key={e.key}
+                          className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ink/8 pb-2 last:border-0 last:pb-0"
+                        >
+                          <span className="font-bold text-ink">{e.name}</span>
+                          <span className={`text-sm ${e.active ? 'text-sage-dark' : 'text-ink/45'}`}>
+                            {e.active ? (
+                              <>
+                                ساري حتى <b>{d}</b>
+                              </>
+                            ) : (
+                              <>منتهي — {d}</>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {!anyActive && (
+                    <p className="mt-4 text-sm text-ink/60">لا يوجد اشتراك ساري حاليًا</p>
+                  )}
+                </>
+              )}
+              {profile.sub_start && (
+                <p className="mt-4 text-xs text-ink/45">
+                  بداية الاشتراك: {fmtDate(profile.sub_start as string)}
+                </p>
+              )}
+            </Card>
+
+            <Card title="صلاحيات المحتوى">
+              {perms.length === 0 ? (
+                <p className="text-sm leading-relaxed text-ink/60">
+                  لا توجد صلاحيات محتوى مفعّلة حاليًا — يمكن التواصل مع إدارة غراس المعلم.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2 text-sm">
+                  {perms.map((p, i) => (
+                    <li key={i} className="font-bold text-ink">
+                      · {permLabel(p)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            {(credits > 0 || extra > 0) && (
+              <Card title="الاستخدام والإضافات">
+                <ul className="flex flex-col gap-3 text-sm">
+                  {credits > 0 && (
+                    <li className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-ink/55">رصيد توليد الألعاب</span>
+                      <span className="font-bold text-ink">{credits}</span>
+                    </li>
+                  )}
+                  {extra > 0 && (
+                    <li className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-ink/55">سجلات حضور إضافية</span>
+                      <span className="font-bold text-ink">{extra}</span>
+                    </li>
+                  )}
+                </ul>
+              </Card>
+            )}
+          </>
+        )}
+
+        <ChangePassword username={(profile.username as string) ?? null} />
+      </div>
+    </main>
   );
 }
