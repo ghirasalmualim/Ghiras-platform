@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
+import { ENTITLEMENT_NAMES, fmtDate, isStillValid } from '@/lib/entitlements';
 
 /**
  * بوابة تسجيل الدخول — الدخول برقم الجوال (يُستخدم كاسم مستخدم).
@@ -148,9 +149,6 @@ function LoginForm() {
       return;
     }
 
-    const expired =
-      profile.sub_end && new Date(profile.sub_end) < new Date(new Date().toDateString());
-
     if (profile.status === 'suspended') {
       await supabase.auth.signOut();
       setMessage('هذا الحساب موقوف — يرجى التواصل مع إدارة المنصة');
@@ -159,19 +157,30 @@ function LoginForm() {
     }
 
     /**
-     * ⚠️ **الأدمِن معفًى من انتهاء الاشتراك — لغمٌ موقوت أُبطل.**
+     * ⚠️ **انقضاءُ `sub_end` لا يُقفل الحساب.**
      *
-     * حساب صاحبة المنصة يحمل `sub_end` بتاريخٍ محدَّد. ولولا هذا
-     * الاستثناء لأُخرجت يوم انقضائه من منصّتها ومن لوحة تحكّمها،
-     * **ولا أحد يستطيع إعادتها لأن الإعادة نفسها تحتاج أدمِن** —
-     * فيُقفَل الباب والمفتاح في الداخل.
+     * كان الدخول يُمنع لمجرّد انقضاء تاريخ المحتوى — فيُقفَل الحساب كلّه
+     * لانقضاء منتجٍ واحد. ومن اشترى الاستوديو وحده كان يُمنع لأنه لم
+     * يشترِ المواد، ومن انقضى محتواه لم يستطع أن يرى ماذا انقضى ولا أن
+     * يجدّد، فلا يبقى له إلا الاتصال بالإدارة أو الانصراف.
      *
-     * ⚠️ ويبقى «الموقوف» على حاله للجميع: ذاك إيقافٌ مقصودٌ بقرار،
-     * وهذا انقضاءٌ يقع بمرور الوقت وحده.
+     * وبقيّة المنصّة تعمل بغير ذلك أصلًا: الأدوات يحرسها `*_until`،
+     * والاستوديو `studio_until`، والألعاب رصيدُها، والمواد
+     * `can_access_subject` التي تشترط `active` وتاريخًا وصلاحية. فكلٌّ
+     * محروسٌ بنفسه — والحاجز هنا كان يقفل الباب الخارجي عليها جميعًا.
+     *
+     * فصار `status` حالةَ حسابٍ إدارية لا حالةَ اشتراك.
+     *
+     * ⚠️ و`'expired'` قيمةٌ لا يكتبها النظام في أي موضع — تُوضع يدويًّا
+     * وحدها. فتُعامَل حالةً استثنائية تُمنع، ولا تُنسب إلى انقضاء تاريخ،
+     * ورسالتُها عامّة لئلا تتّهم اشتراكًا قد يكون ساريًا.
+     *
+     * ⚠️ ويبقى «الموقوف» على حاله للجميع — الأدمِن معه: ذاك إيقافٌ
+     * مقصودٌ بقرار.
      */
-    if (profile.role !== 'admin' && (profile.status === 'expired' || expired)) {
+    if (profile.role !== 'admin' && profile.status !== 'active') {
       await supabase.auth.signOut();
-      setMessage('انتهى الاشتراك — يرجى التجديد للاستمرار في استخدام المنصة');
+      setMessage('هذا الحساب غير متاح حاليًا — يرجى التواصل مع إدارة غراس المعلم');
       setLoading(false);
       return;
     }
@@ -259,16 +268,33 @@ function LoginForm() {
               وصولك كإدارة للمنصة — بلا تاريخ انتهاء
             </p>
           )}
-          {welcome.subEnd && (
-            <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
-              اشتراكك سارٍ حتى{' '}
-              {new Date(welcome.subEnd).toLocaleDateString('ar-KW', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          )}
+          {/**
+            * ⚠️ **«سارٍ» تُقال عن السريان لا عن الوجود.**
+            *
+            * كان الشرط `welcome.subEnd &&` — يفحص أن التاريخ موجود، لا أنه
+            * لم يمضِ. وقبل Model B لم يكن ذلك يظهر: المنتهي يُردّ عند الباب
+            * فلا يبلغ هذه الشاشة. ثم صار يدخل — عن قصد — فبقيت العبارة
+            * تقول له «اشتراكك سارٍ حتى» تاريخٍ مضى.
+            *
+            * وهو وعدٌ تكذّبه المنصّة بعد نقرتين: يمضي إلى مادّته فتُردّ.
+            *
+            * ⚠️ والاسم من `ENTITLEMENT_NAMES` لا مكتوبًا هنا: «حسابي» يسمّيه
+            * اسمًا، فلو سُمّي هنا غيرَه ظنّهما اثنين.
+            *
+            * ⚠️ والتاريخ بـ`fmtDate` لا بـ`toLocaleDateString`: `sub_end` من
+            * نوع `date`، و`new Date('2026-01-01')` منتصفُ ليل UTC — أي ٣:٠٠
+            * فجرًا في الكويت، فينزلق اليوم إلى ما قبله.
+            */}
+          {welcome.subEnd &&
+            (isStillValid(welcome.subEnd) ? (
+              <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
+                اشتراكك سارٍ حتى {fmtDate(welcome.subEnd)}
+              </p>
+            ) : (
+              <p className="mt-5 rounded-xl bg-gold-light/70 px-4 py-3 text-[0.88rem] font-bold text-gold-dark">
+                انتهى اشتراك {ENTITLEMENT_NAMES.sub_end} في {fmtDate(welcome.subEnd)}
+              </p>
+            ))}
 
           <button
             type="button"
