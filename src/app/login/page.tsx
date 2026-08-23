@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import PasswordField from '@/components/PasswordField';
 import { createClient, usernameToEmail, toEnglishDigits } from '@/lib/supabase/client';
+import { ENTITLEMENT_NAMES, fmtDate, isStillValid } from '@/lib/entitlements';
 
 /**
  * بوابة تسجيل الدخول — الدخول برقم الجوال (يُستخدم كاسم مستخدم).
@@ -267,16 +268,33 @@ function LoginForm() {
               وصولك كإدارة للمنصة — بلا تاريخ انتهاء
             </p>
           )}
-          {welcome.subEnd && (
-            <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
-              اشتراكك سارٍ حتى{' '}
-              {new Date(welcome.subEnd).toLocaleDateString('ar-KW', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          )}
+          {/**
+            * ⚠️ **«سارٍ» تُقال عن السريان لا عن الوجود.**
+            *
+            * كان الشرط `welcome.subEnd &&` — يفحص أن التاريخ موجود، لا أنه
+            * لم يمضِ. وقبل Model B لم يكن ذلك يظهر: المنتهي يُردّ عند الباب
+            * فلا يبلغ هذه الشاشة. ثم صار يدخل — عن قصد — فبقيت العبارة
+            * تقول له «اشتراكك سارٍ حتى» تاريخٍ مضى.
+            *
+            * وهو وعدٌ تكذّبه المنصّة بعد نقرتين: يمضي إلى مادّته فتُردّ.
+            *
+            * ⚠️ والاسم من `ENTITLEMENT_NAMES` لا مكتوبًا هنا: «حسابي» يسمّيه
+            * اسمًا، فلو سُمّي هنا غيرَه ظنّهما اثنين.
+            *
+            * ⚠️ والتاريخ بـ`fmtDate` لا بـ`toLocaleDateString`: `sub_end` من
+            * نوع `date`، و`new Date('2026-01-01')` منتصفُ ليل UTC — أي ٣:٠٠
+            * فجرًا في الكويت، فينزلق اليوم إلى ما قبله.
+            */}
+          {welcome.subEnd &&
+            (isStillValid(welcome.subEnd) ? (
+              <p className="mt-5 rounded-xl bg-sage/10 px-4 py-3 text-[0.88rem] font-bold text-sage-deep">
+                اشتراكك سارٍ حتى {fmtDate(welcome.subEnd)}
+              </p>
+            ) : (
+              <p className="mt-5 rounded-xl bg-gold-light/70 px-4 py-3 text-[0.88rem] font-bold text-gold-dark">
+                انتهى اشتراك {ENTITLEMENT_NAMES.sub_end} في {fmtDate(welcome.subEnd)}
+              </p>
+            ))}
 
           <button
             type="button"
