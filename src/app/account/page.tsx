@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import ChangePassword from '@/components/ChangePassword';
 import LogoutButton from '@/components/LogoutButton';
 import {
+  isStillValid,
   listEntitlements,
   hasAnyEntitlement,
   hasActiveEntitlement,
@@ -141,9 +142,18 @@ export default async function AccountPage() {
     }
   }
 
-  /** نصٌّ مفهوم لصلاحيةٍ واحدة — بصياغة `AdminPanel` نفسها */
-  const permLabel = (p: Perm): string => {
-    if (p.scope === 'all') return 'وصول كامل — كل المواد';
+  /**
+   * ⚠️ **نطاقُ الصلاحية وحده — لا حكمٌ بالوصول.**
+   *
+   * كانت تُرجع «وصول كامل — كل المواد»، فرأى مشتركٌ صلاحيتُه `all`
+   * واشتراكُه فارغ أن وصوله كامل، ثم مُنع عند فتح أول مادة.
+   *
+   * و`can_access_subject` تشترط **اثنين** لغير الأدمِن: صفَّ صلاحيةٍ
+   * **و**`sub_end` ساريًا. فالنطاق نصفُ الشرط، والعرضُ الذي يذكر نصفًا
+   * ويسكت عن نصف يكذب — وهو عين ما نقتلعه: شاشةٌ تقول غير ما يقع.
+   */
+  const scopeLabel = (p: Perm): string => {
+    if (p.scope === 'all') return 'كل المواد';
     if (p.scope === 'stage') return `كل ${nameOf[p.stage_id || ''] || 'المرحلة'}`;
     if (p.scope === 'grade') return `${nameOf[p.grade_id || ''] || 'صف'} — كل المواد`;
     if (p.scope === 'subject') {
@@ -153,6 +163,14 @@ export default async function AccountPage() {
     }
     return p.scope;
   };
+
+  /**
+   * هل المحتوى المدفوع مفتوحٌ الآن؟ — `sub_end` وحده يحكمه.
+   *
+   * ⚠️ ولا يُربط به `*_until`: كل أداةٍ مستقلّةٌ بتاريخها، وأداةٌ سارية
+   * تبقى سارية ولو كان الاشتراك الأساسي منتهيًا.
+   */
+  const contentActive = isStillValid((profile.sub_end as string | null) ?? null);
 
   const ents = listEntitlements(profile as Record<string, unknown>);
   const anyEver = hasAnyEntitlement(profile as Record<string, unknown>);
@@ -253,7 +271,25 @@ export default async function AccountPage() {
             </Card>
 
             <Card title="صلاحيات المحتوى">
-              {perms.length === 0 ? (
+              {!contentActive ? (
+                <>
+                  <p className="text-sm leading-relaxed text-ink/70">
+                    لا يوجد وصول للمحتوى المدفوع حاليًا
+                  </p>
+                  {/*
+                    ⚠️ يُذكر النطاق معلومةً ثانوية ولا يُسمّى «وصولًا»:
+                    الصلاحية مسجّلة، والاشتراك غير سارٍ — فالباب مغلق.
+                  */}
+                  {perms.length > 0 && (
+                    <p className="mt-3 text-xs text-ink/45">
+                      نطاق الصلاحية المسجّل: {perms.map(scopeLabel).join(' · ')}
+                    </p>
+                  )}
+                  <p className="mt-3 text-xs text-ink/45">
+                    يمكن التواصل مع إدارة غراس المعلم لتفعيل الاشتراك.
+                  </p>
+                </>
+              ) : perms.length === 0 ? (
                 <p className="text-sm leading-relaxed text-ink/60">
                   لا توجد صلاحيات محتوى مفعّلة حاليًا — يمكن التواصل مع إدارة غراس المعلم.
                 </p>
@@ -261,7 +297,7 @@ export default async function AccountPage() {
                 <ul className="flex flex-col gap-2 text-sm">
                   {perms.map((p, i) => (
                     <li key={i} className="font-bold text-ink">
-                      · {permLabel(p)}
+                      · وصول فعّال — {scopeLabel(p)}
                     </li>
                   ))}
                 </ul>
