@@ -70,6 +70,25 @@ export default function QuranGate() {
         />
       </div>
 
+      {/* رحلتي — المرآة: أين أنا من القرآن كله. قبل المراجعة لأنها
+          الجواب الأول لمن يفتح: «وين وصلت؟» */}
+      <Link
+        href="/quran/journey"
+        className="tap mt-4 flex items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--q-line)] bg-white px-5 py-4 transition hover:border-[#cfe0d5]"
+      >
+        <span>
+          <span className="block font-[family-name:var(--font-cairo)] text-[1rem] font-extrabold text-[var(--q-ink)]">
+            📖 رحلتي مع القرآن
+          </span>
+          <span className="mt-0.5 block text-[0.8rem] text-[var(--q-mute)]">
+            هدفك وتقدمك وسورك — في مكان واحد
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-xl text-[var(--q-accent)]">
+          ←
+        </span>
+      </Link>
+
       {/* مراجعة اليوم — مدخل هادئ، والصفحة نفسها تتكفّل بحال الزائرة */}
       <Link
         href="/quran/review"
