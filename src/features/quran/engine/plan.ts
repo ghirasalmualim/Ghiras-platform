@@ -40,12 +40,19 @@ import type { DueSegment } from './planner';
 
 export type PlanIntensity = 'light' | 'balanced' | 'intense';
 
-/**
- * ميزانية الكلمات اليومية لكل شدّة.
+/* ═════════════════════════════════════════════════════════════
+ * ⚠️ USER_VALIDATION_REQUIRED — معايرة الخطة كلها هنا
+ * ═════════════════════════════════════════════════════════════
  *
- * ⚠️ أرقام اجتهادية قابلة للمعايرة — كأرقام الحديقة سواء. مرجعها
- * التقريبي: قصار المفصّل ١٠–٢٥ كلمة للسورة، فالخفيفة نحو نصف سورة
- * قصيرة يوميًا والمكثفة نحو سورة. تعديلها سطرٌ واحد هنا.
+ * كل رقم في هذه الكتلة **اجتهادٌ تجريبي لا قرار تربوي نهائي** —
+ * كأرقام الحديقة يومَ وُلدت. لم يجرّبها مستخدم حقيقي بعد، وتُراجَع
+ * بعد تجربة مستخدمين (بند PLAN_TUNING_VALIDATION في ورقة الحالة).
+ * تعديل أيٍّ منها سطرٌ واحد هنا ولا يمسّ منطقًا.
+ */
+
+/**
+ * ميزانية الكلمات اليومية لكل شدّة. مرجعها التقريبي: قصار المفصّل
+ * ١٠–٢٥ كلمة للسورة — فالخفيفة نصف سورة قصيرة والمكثفة نحو سورة.
  */
 export const DAILY_WORD_BUDGET: Record<PlanIntensity, number> = {
   light: 12,
@@ -58,13 +65,27 @@ export const MAX_WORDS_PER_DAY = 48;
 
 /**
  * كلفة عناصر المراجعة بالكلمات المكافئة — تُخصم من ميزانية اليوم
- * قبل الحفظ الجديد. اجتهادٌ معلن لا قياس.
+ * قبل الحفظ الجديد.
  */
 export const REVIEW_WORD_COST = 6;
 export const SPOT_WORD_COST = 3;
 
+/** أقصى ما يُخدم يوميًّا من كل نوع — قريبة، دورية، مواضع. */
+export const MAX_NEAR_PER_DAY = 2;
+export const MAX_PERIODIC_PER_DAY = 2;
+export const MAX_SPOTS_PER_DAY = 2;
+
+/**
+ * رسوخُ الاكتمال: المدى كله بمقاطع صندوقها ≥ هذا الرقم قبل أن
+ * يُقال «اكتمل». ٣ = دون الإتقان الكامل (٤ + يومان) وفوق البداية.
+ * ⚠️ قرارٌ تربوي يُراجع بعد تجربة حقيقية.
+ */
+export const COMPLETION_MIN_BOX = 3;
+
 /** التقدير الزمني: كلمات/دقيقة تقريبًا — للعرض فقط، لا يدخل قرارًا. */
 const WORDS_PER_MINUTE = 4;
+
+/* ═══════════ نهاية كتلة USER_VALIDATION_REQUIRED ═══════════ */
 
 /** نصيب التثبيت من ذيل خطةٍ لها موعد: خُمس الأيام، بين يوم وثلاثة. */
 export function consolidationDays(totalDays: number): number {
@@ -195,8 +216,6 @@ function wordsIn(goal: PlanGoal, ayahWords: number[], from: number, to: number):
  * دون الإتقان الكامل (٤ + يومان) وفوق البداية — «رسخ» لا «اكتمل
  * حرفًا». والمقطع المتقن (`isMastered`) يُقبل كذلك.
  */
-export const COMPLETION_MIN_BOX = 3;
-
 export function goalStatus(
   goal: PlanGoal,
   verifiedUpTo: number,
@@ -324,11 +343,11 @@ export function buildMemorizationPlan(inputs: PlanInputs): MemorizationPlan {
      * بالأيام المتاحة وبذيل التثبيت.
      */
     const dueByDate = (r: DueSegment) => daysBetween(r.state.dueOn, date) >= 0;
-    const near = reviewQueue.filter((r) => dueByDate(r) && r.state.box <= 1).slice(0, 2);
-    const periodic = reviewQueue.filter((r) => dueByDate(r) && r.state.box >= 2).slice(0, 2);
+    const near = reviewQueue.filter((r) => dueByDate(r) && r.state.box <= 1).slice(0, MAX_NEAR_PER_DAY);
+    const periodic = reviewQueue.filter((r) => dueByDate(r) && r.state.box >= 2).slice(0, MAX_PERIODIC_PER_DAY);
     const served = new Set([...near, ...periodic]);
     reviewQueue = reviewQueue.filter((r) => !served.has(r));
-    const daySpots = spotQueue.splice(0, 2);
+    const daySpots = spotQueue.splice(0, MAX_SPOTS_PER_DAY);
 
     // كلفة المراجعة تُخصم قبل الجديد — ثبات القديم أولًا
     const reviewCost = (near.length + periodic.length) * REVIEW_WORD_COST + daySpots.length * SPOT_WORD_COST;
