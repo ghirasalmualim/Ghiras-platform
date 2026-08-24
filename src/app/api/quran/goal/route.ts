@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getSurah } from '@/features/quran/data/corpus';
 import { withinLessonRange } from '@/features/quran/engine/memory';
+import { checkPolicySafe, RATE_MESSAGES } from '@/features/quran/engine/rate-policies';
 
 /**
  * هدف الحفظ — الكتابة من هنا وحدها.
@@ -61,6 +62,16 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
+  // حدّ الاستدعاء — سياسة WRITE المركزية (fail-open عند عطل العدّاد نفسه)
+  {
+    const rl = checkPolicySafe('WRITE', user.id);
+    if (!rl.ok)
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: RATE_MESSAGES.shortWait, retryAfterSec: rl.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      );
+  }
+
 
   let body: Body;
   try {

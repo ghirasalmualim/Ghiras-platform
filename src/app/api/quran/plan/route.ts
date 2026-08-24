@@ -13,6 +13,7 @@ import {
 import { SETTLE_MIN_DISTINCT_DAYS } from '@/features/quran/engine/memory';
 import type { DueSegment } from '@/features/quran/engine/planner';
 import type { ReviewState } from '@/features/quran/engine/review';
+import { checkPolicySafe, RATE_MESSAGES } from '@/features/quran/engine/rate-policies';
 
 /**
  * خطة اليوم — تُحسب هنا وتُقرأ من كل الواجهات.
@@ -69,6 +70,16 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
+  // حدّ الاستدعاء — سياسة READ المركزية (fail-open عند عطل العدّاد نفسه)
+  {
+    const rl = checkPolicySafe('READ', user.id);
+    if (!rl.ok)
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: RATE_MESSAGES.shortWait, retryAfterSec: rl.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      );
+  }
+
 
   const today = dayAtOffset(Date.now());
 

@@ -12,6 +12,7 @@ import { MAX_CHUNKS_PER_SESSION } from '@/features/quran/speech/limits';
 import { grantDrops } from '@/features/quran/garden/grant';
 import { applyTasmeeToReview } from '@/features/quran/review/apply-tasmee';
 import { awardsForRecitation } from '@/features/quran/garden/growth';
+import { checkPolicySafe, RATE_MESSAGES } from '@/features/quran/engine/rate-policies';
 
 /**
  * نهاية جلسة التسميع — هنا يقع الحكم.
@@ -67,6 +68,16 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
+  // حدّ الاستدعاء — سياسة JUDGE المركزية (fail-open عند عطل العدّاد نفسه)
+  {
+    const rl = checkPolicySafe('JUDGE', user.id);
+    if (!rl.ok)
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: RATE_MESSAGES.shortWait, retryAfterSec: rl.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      );
+  }
+
 
   let body: Body;
   try {

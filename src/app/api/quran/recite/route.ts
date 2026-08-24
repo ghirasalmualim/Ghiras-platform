@@ -5,7 +5,13 @@ import { buildExpected, type HeardToken } from '@/features/quran/engine/alignmen
 import { stripProviderArtifacts } from '@/features/quran/engine/artifacts';
 import { normalizeForComparison } from '@/features/quran/engine/normalize.mjs';
 import { AzureSpeechProvider } from '@/features/quran/speech/azure';
-import { checkRate, inspectWav, MAX_CLIP_BYTES } from '@/features/quran/speech/limits';
+import { inspectWav, MAX_CLIP_BYTES } from '@/features/quran/speech/limits';
+import {
+  checkPolicySafe,
+  DAILY_AUDIO_REQUESTS,
+  DAILY_AUDIO_SECONDS,
+  RATE_MESSAGES,
+} from '@/features/quran/engine/rate-policies';
 
 /**
  * مقطع صوتي واحد من جلسة تسميع.
@@ -47,11 +53,11 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
 
-  // ── ٢) حدّ المعدّل ─────────────────────────────────────────
-  const rate = checkRate(user.id);
+  // ── ٢) حدّ الدقيقة — سياسة AUDIO المركزية ──────────────────
+  const rate = checkPolicySafe('AUDIO', user.id);
   if (!rate.ok)
     return NextResponse.json(
-      { error: 'RATE_LIMITED', retryAfterSec: rate.retryAfterSec },
+      { error: 'RATE_LIMITED', message: RATE_MESSAGES.shortWait, retryAfterSec: rate.retryAfterSec },
       { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } }
     );
 
@@ -84,6 +90,47 @@ export async function POST(req: NextRequest) {
 
   const wav = inspectWav(audio);
   if (!wav.ok) return NextResponse.json({ error: wav.reason }, { status: 400 });
+
+  /**
+   * ── ٥ب) الحجز الذرّي للثواني — قبل أن يُدفع سنت ─────────────
+   *
+   * ⚠️ الكلفة تتبع **ثواني الصوت** لا عدد المقاطع، فالحد المالي
+   * الأساسي ثوانٍ يومية في Postgres (`quran_reserve_audio`):
+   * Reserve لا increment-ثم-حكم — الطلب المرفوض لا يكتب شيئًا،
+   * وقفلُ الصفّ يجعل المتسابقَين يُخدمان تسلسلًا فلا يقفز أحدٌ
+   * فوق الحد.
+   *
+   * ⚠️ والمدة من ترويسة WAV الحقيقية (`inspectWav` قرأ البايتات)
+   * لا من قول الواجهة. وملفٌ فاسد رُدّ قبل هذا السطر — لا حجز له.
+   *
+   * ⚠️ **FAIL CLOSED**: تعذُّرُ العدّاد = لا إرسال لـAzure — لا
+   * إنفاق بلا علم. (بخلاف عدّادات الذاكرة المفتوحة عند عطلها.)
+   *
+   * والاستدعاء بعميل جلسة الطالبة نفسه (anon + كوكي — لا
+   * service_role)، فـ`auth.uid()` داخل الدالة هو هويتها المثبتة —
+   * نفس نمط `garden_water` المجرَّب.
+   */
+  const seconds = Math.max(1, Math.min(31, Math.ceil(wav.seconds)));
+  try {
+    const { data: reserve, error: reserveErr } = await supabase.rpc('quran_reserve_audio', {
+      p_seconds: seconds,
+      p_seconds_limit: DAILY_AUDIO_SECONDS,
+      p_requests_limit: DAILY_AUDIO_REQUESTS,
+    });
+    if (reserveErr) throw reserveErr;
+    const r = reserve as { allowed: boolean; scope: string | null };
+    if (!r.allowed)
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: RATE_MESSAGES.dailyAudio, retryAfterSec: 3600 },
+        { status: 429, headers: { 'Retry-After': '3600' } }
+      );
+  } catch (err) {
+    console.error('[QURAN_RATE] RESERVE_UNAVAILABLE', String(err).slice(0, 120));
+    return NextResponse.json(
+      { error: 'PROVIDER_NOT_CONFIGURED', message: RATE_MESSAGES.unavailable },
+      { status: 503 }
+    );
+  }
 
   // ── ٦) النص المتوقَّع — من مصحفنا، نافذةً حول موضعها ────────
   const at = Math.max(0, Math.min(Number(q.get('at')) || 0, expected.length - 1));

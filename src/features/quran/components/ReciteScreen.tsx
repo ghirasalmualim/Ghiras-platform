@@ -522,7 +522,9 @@ export default function ReciteScreen({
       });
       if (!done.ok) {
         const j = await done.json().catch(() => ({}));
-        setResult(unusable(serverMessage(j.error)));
+        // رسالة الخادم العربية تُقدَّم إن وُجدت — تفرّق بين انتظارٍ
+        // قصير وحدٍّ يومي، والرمز وحده لا يفرّق
+        setResult(unusable(j.message || serverMessage(j.error)));
       } else {
         const r = (await done.json()) as FinishResult;
         // النتيجة غير صالحة ⇒ نقول لماذا بما قِسناه، لا بعبارة عامة

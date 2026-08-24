@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { readGardenState } from '@/features/quran/garden/state';
 import { newlyUnlocked } from '@/features/quran/garden/growth';
+import { checkPolicySafe, RATE_MESSAGES } from '@/features/quran/engine/rate-policies';
 
 /**
  * سقي النبتة.
@@ -24,6 +25,16 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'SIGN_IN_REQUIRED' }, { status: 401 });
+  // حدّ الاستدعاء — سياسة WRITE المركزية (fail-open عند عطل العدّاد نفسه)
+  {
+    const rl = checkPolicySafe('WRITE', user.id);
+    if (!rl.ok)
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: RATE_MESSAGES.shortWait, retryAfterSec: rl.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      );
+  }
+
 
   const { data, error } = await supabase.rpc('garden_water');
   if (error) {
