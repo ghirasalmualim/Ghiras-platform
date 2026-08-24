@@ -3,6 +3,7 @@ import { getManifest, getSurahs } from '@/features/quran/data/corpus';
 import ResumeCard from '@/features/quran/components/ResumeCard';
 import DailyTaskCard from '@/features/quran/components/DailyTaskCard';
 import { KahfFriday, MulkNight } from '@/features/quran/components/QuranCalls';
+import SourceLine from '@/features/quran/components/SourceLine';
 
 /**
  * بوابة قسم القرآن — أول شاشة.
@@ -146,14 +147,8 @@ export default function QuranGate() {
       </Link>
 
       {/* الإسناد — واجب ترخيصي، وموضعه هنا هادئ وقابل للوصول */}
-      <footer className="mt-12 text-center">
-        <Link
-          href="/quran/source"
-          className="tap inline-flex items-center text-[0.78rem] leading-loose text-[var(--q-mute)] underline decoration-dotted underline-offset-4 transition hover:text-[var(--q-accent)]"
-        >
-          النص العثماني من {manifest.source_name} · {manifest.licence}
-        </Link>
-      </footer>
+      {/* إسناد Tanzil — شرط CC BY، من المانيفست عبر مكوّنٍ واحد مشترك */}
+      <SourceLine className="mt-12" />
     </main>
   );
 }

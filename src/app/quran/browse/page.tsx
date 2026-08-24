@@ -3,6 +3,7 @@ import { getSurah, getSurahs } from '@/features/quran/data/corpus';
 import { TOTAL_PAGES, getPage } from '@/features/quran/engine/pages';
 import SurahPicker from '@/features/quran/components/SurahPicker';
 import PagePicker from '@/features/quran/components/PagePicker';
+import SourceLine from '@/features/quran/components/SourceLine';
 
 /**
  * اختيار ما يُقرأ: بالسورة والآيات، أو بصفحة المصحف.
@@ -60,6 +61,9 @@ export default function BrowsePage({
       </p>
 
       {byPage ? <PagePicker labels={pageLabels()} /> : <SurahPicker surahs={getSurahs()} />}
+
+      {/* إسناد المصدر — بوابة القراءة تستحقه قرب النص */}
+      <SourceLine className="mt-10" />
     </main>
   );
 }
