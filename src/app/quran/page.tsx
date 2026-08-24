@@ -107,6 +107,24 @@ export default function QuranGate() {
         </span>
       </Link>
 
+      {/* اختبار الثبات — دعوةٌ لا بوابة: لا يُقفل خلفه شيء */}
+      <Link
+        href="/quran/stability"
+        className="tap mt-3 flex items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--q-line)] bg-white px-5 py-4 transition hover:border-[#cfe0d5]"
+      >
+        <span>
+          <span className="block font-[family-name:var(--font-cairo)] text-[1rem] font-extrabold text-[var(--q-ink)]">
+            🧠 اختبر ثبات حفظك
+          </span>
+          <span className="mt-0.5 block text-[0.8rem] text-[var(--q-mute)]">
+            غراس يختار لك مقطعًا من محفوظك
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-xl text-[var(--q-accent)]">
+          ←
+        </span>
+      </Link>
+
       {/* حديقتي — أثر الرحلة لا بابٌ إلى عمل.
           ⚠️ وموضعها بعد المراجعة عمدًا: الحديقة نتيجةُ ما يُعمل هناك،
           فلو تصدّرت الصفحة لصارت هي المقصد وصار الحفظ وسيلةً إليها. */}

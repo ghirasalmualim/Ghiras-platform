@@ -139,6 +139,7 @@ export default function ReciteScreen({
   backHref,
   backLabel,
   lessonTitle,
+  stability = false,
 }: {
   surah: { number: number; name_ar: string };
   ayahs: Ayah[];
@@ -148,11 +149,17 @@ export default function ReciteScreen({
   backHref: string;
   backLabel: string;
   lessonTitle?: string;
+  /**
+   * اختبار ثبات (المرحلة ٩): الوضع «تسميع» إجباري — لا تلميح ولا
+   * نصّ ظاهر، فهذه فلسفة الاختبار — والنوع يُرسل مع الإنهاء
+   * (والخادم يتحقق قبل أن يصدّقه).
+   */
+  stability?: boolean;
 }) {
   const expected = buildExpected(ayahs);
 
   const [phase, setPhase] = useState<Phase>('setup');
-  const [mode, setMode] = useState<Mode>('train');
+  const [mode, setMode] = useState<Mode>(stability ? 'test' : 'train');
   const [note, setNote] = useState<string | null>(null);
   const [hint, setHint] = useState<Hint | null>(null);
   const [hintLevel, setHintLevel] = useState<HintLevel>(0);
@@ -510,6 +517,7 @@ export default function ReciteScreen({
           seconds: samples.length / TARGET_SAMPLE_RATE,
           tokens,
           clientKey: sessionKey.current || undefined,
+          ...(stability ? { sessionType: 'stability' } : {}),
         }),
       });
       if (!done.ok) {

@@ -21,7 +21,7 @@ export default function RecitePage({
   searchParams,
 }: {
   params: { surah: string; from: string; to: string };
-  searchParams: { lesson?: string };
+  searchParams: { lesson?: string; st?: string };
 }) {
   const surahNo = Number(params.surah);
   const from = Number(params.from);
@@ -51,6 +51,7 @@ export default function RecitePage({
       from={from}
       to={to}
       reciter={getReciter()}
+      stability={searchParams.st === '1'}
       {...(lesson
         ? { backHref: '/quran/curriculum', backLabel: 'منهجي الدراسي', lessonTitle: lesson }
         : {

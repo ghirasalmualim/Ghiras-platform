@@ -54,6 +54,8 @@ type Body = {
    * تمنح قطرةً ثانية ولا تحرّك جدول المراجعة مرتين.
    */
   clientKey?: string;
+  /** «اختبار ثبات» تدّعيه الواجهة — والخادم يتحقق قبل أن يصدّق. */
+  sessionType?: string;
 };
 
 /** حدٌّ يمنع جسمًا ضخمًا: صفحة مصحف ~٢٠٠ كلمة، فألف هامش واسع. */
@@ -130,6 +132,30 @@ export async function POST(req: NextRequest) {
     tokens.push(tok);
   }
 
+  /**
+   * ── نوع الجلسة: اختبار ثبات لا يُصدَّق على كلمة الواجهة ──────
+   *
+   * ⚠️ «الثبات» يعني أن غراس اختار مقطعًا **محفوظًا** — فلو أرسل
+   * المتصفح النوع على نطاقٍ لم تبلغه الطالبة (كل آيةٍ فيه لم
+   * تُراجَع بنجاح يومًا) هُبط بهدوء إلى تسميعٍ عادي: لا خطأ يُرمى
+   * — التسميع الحرّ مشروع دائمًا — لكن السجل لا يكذب عن نوعه.
+   */
+  let sessionType: 'recitation' | 'stability' = 'recitation';
+  if (body.sessionType === 'stability') {
+    const { data: covRows } = await supabase
+      .from('quran_review_state')
+      .select('from_ayah, to_ayah, distinct_days')
+      .eq('user_id', user.id)
+      .eq('surah', surahNo);
+    const covered = new Set<number>();
+    for (const r of covRows ?? [])
+      if (Number(r.distinct_days) >= 1)
+        for (let a = Number(r.from_ayah); a <= Number(r.to_ayah); a++) covered.add(a);
+    let all = true;
+    for (let a = from; a <= to; a++) if (!covered.has(a)) { all = false; break; }
+    if (all) sessionType = 'stability';
+  }
+
   // ── الحكم ─────────────────────────────────────────────────
   const result = alignRecitation(expected, tokens);
   const helpUsed = body.helpUsed === true;
@@ -159,6 +185,7 @@ export async function POST(req: NextRequest) {
       audio_seconds: typeof body.seconds === 'number' ? Math.round(body.seconds * 10) / 10 : null,
       weak_spots: weakSpots,
       client_key: clientKey,
+      session_type: sessionType,
     });
 
     for (const kind of eventsFor(result, verdict, helpUsed)) {
@@ -254,6 +281,7 @@ export async function POST(req: NextRequest) {
       /** ⚠️ يُقال للطالبة ما وقع فعلًا، لا ما نتمنّاه. */
       garden,
       review: { applied: review.applied },
+      sessionType,
       verdict,
       summary: result.summary,
       weakSpots,
