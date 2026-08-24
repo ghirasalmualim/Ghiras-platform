@@ -29,6 +29,21 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
   const [task, setTask] = useState<DailyTask | null>(null);
   const [welcome, setWelcome] = useState<string | null>(null);
   const [hidden, setHidden] = useState(true);
+  /**
+   * خطة اليوم من المرحلة ٧ — إن وُجد هدفٌ نشط تُعرض بدل المهمة
+   * القديمة، وإلا بقيت البطاقة كما كانت. المستخدم القديم بلا هدف
+   * لا يتغيّر عنده حرف.
+   */
+  const [planCard, setPlanCard] = useState<{
+    todayDay: {
+      newMemorization: { surah: number; from_ayah: number; to_ayah: number } | null;
+      nearReview: { surah: number; from_ayah: number; to_ayah: number }[];
+      periodicReview: { surah: number; from_ayah: number; to_ayah: number }[];
+      weakSpotPractice: { surah: number; ayah: number; transitionDays: number }[];
+      estimatedMinutes: number;
+    } | null;
+    goalName: string;
+  } | null>(null);
   /** كم موضعًا رصده «سمّع لي» وينتظر تثبيتًا — سطرٌ لطيف لا قائمة. */
   const [spotCount, setSpotCount] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -66,6 +81,21 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
         .sort()
         .pop() ?? null;
 
+      // خطة المرحلة ٧ — قراءة صامتة، فشلُها يعيدنا للمهمة القديمة
+      try {
+        const r = await fetch('/api/quran/plan');
+        if (r.ok) {
+          const p = (await r.json()) as {
+            goal: { surahName: string; status: string } | null;
+            todayDay: NonNullable<typeof planCard>['todayDay'];
+          };
+          if (alive && p.goal && p.goal.status !== 'CANCELLED' && p.goal.status !== 'COMPLETED')
+            setPlanCard({ todayDay: p.todayDay, goalName: p.goal.surahName });
+        }
+      } catch {
+        /* البطاقة القديمة تكفي */
+      }
+
       setWelcome(welcomeBack(lastActive, today));
       setTask(
         buildDailyTask(
@@ -82,6 +112,19 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
       alive = false;
     };
   }, [surahNames]);
+
+  function PlanLine({ icon, label, href }: { icon: string; label: string; href: string }) {
+    return (
+      <li>
+        <Link href={href}
+          className="tap flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.92rem] text-[var(--q-ink)] transition hover:bg-[#f6f9f7]">
+          <span aria-hidden className="shrink-0 text-lg">{icon}</span>
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          <span aria-hidden className="shrink-0 text-[var(--q-accent)]">←</span>
+        </Link>
+      </li>
+    );
+  }
 
   /**
    * إخفاء المهمة **لليوم وحده**.
@@ -153,6 +196,45 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
           </span>
         </div>
 
+        {/* ☀️ خطة اليوم (المرحلة ٧) — أنواعها الأربعة بلغة الطالبة */}
+        {planCard && planCard.todayDay ? (
+          <ul className="grid gap-1.5">
+            {planCard.todayDay.newMemorization && (
+              <PlanLine
+                icon="🧠"
+                label={`حفظ: ${planCard.goalName} ${toArabic(planCard.todayDay.newMemorization.from_ayah)}–${toArabic(planCard.todayDay.newMemorization.to_ayah)}`}
+                href={`/quran/study/${planCard.todayDay.newMemorization.surah}/${planCard.todayDay.newMemorization.from_ayah}/${planCard.todayDay.newMemorization.to_ayah}`}
+              />
+            )}
+            {planCard.todayDay.nearReview.map((s, i) => (
+              <PlanLine key={`n${i}`} icon="🔄"
+                label={`مراجعة: ${surahNames[s.surah - 1] ?? ''} ${toArabic(s.from_ayah)}–${toArabic(s.to_ayah)}`}
+                href={`/quran/study/${s.surah}/${s.from_ayah}/${s.to_ayah}`} />
+            ))}
+            {planCard.todayDay.periodicReview.map((s, i) => (
+              <PlanLine key={`p${i}`} icon="🌿"
+                label={`مراجعة دورية: ${surahNames[s.surah - 1] ?? ''} ${toArabic(s.from_ayah)}–${toArabic(s.to_ayah)}`}
+                href={`/quran/study/${s.surah}/${s.from_ayah}/${s.to_ayah}`} />
+            ))}
+            {planCard.todayDay.weakSpotPractice.map((s, i) => (
+              <PlanLine key={`w${i}`} icon="🎯"
+                label={
+                  s.transitionDays >= 2 && s.ayah > 1
+                    ? `تثبيت: الوصل ${toArabic(s.ayah - 1)} ← ${toArabic(s.ayah)}`
+                    : `تثبيت: الآية ${toArabic(s.ayah)}`
+                }
+                href={s.transitionDays >= 2 && s.ayah > 1
+                  ? `/quran/study/${s.surah}/${s.ayah - 1}/${s.ayah}`
+                  : `/quran/study/${s.surah}/${s.ayah}/${s.ayah}`} />
+            ))}
+            <li>
+              <Link href="/quran/plan"
+                className="tap mt-1 flex items-center justify-center gap-2 rounded-xl bg-[var(--q-accent)] px-3 py-2.5 text-[0.92rem] font-extrabold text-white">
+                ابدأ ←
+              </Link>
+            </li>
+          </ul>
+        ) : (
         <ul className="grid gap-1.5">
           {task.items.map((item, i) => (
             <li key={i}>
@@ -171,6 +253,7 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
             </li>
           ))}
         </ul>
+        )}
 
         {/* ⚠️ لغةٌ تبني: لا «ضعف» ولا «أخطاء» — مواضع نثبّتها معًا */}
         {spotCount > 0 && (

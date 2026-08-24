@@ -118,6 +118,16 @@ export default function CurriculumBrowser({
                       ابدأ
                     </span>
                   </Link>
+                  {/* درسُ حفظٍ له خطة — القراءة والمراجعة لا تُخطَّط.
+                      الخادم يعيد التحقق من حدود الدرس عند الإنشاء. */}
+                  {l.requirement === 'memorize' && (
+                    <Link
+                      href={`/quran/plan?lesson=${l.id}&surah=${l.surah}&from=${l.from_ayah}&to=${l.to_ayah}`}
+                      className="tap mt-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[0.8rem] font-bold text-[var(--q-accent)] transition hover:bg-[var(--q-accent-soft)]"
+                    >
+                      📅 خطّط لحفظه
+                    </Link>
+                  )}
                 </li>
               );
             })}
