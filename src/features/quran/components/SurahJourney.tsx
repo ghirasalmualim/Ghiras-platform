@@ -76,7 +76,7 @@ export default function SurahJourney({ surah }: { surah: number }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-5">
+      <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-4">
         <h2 className="font-[family-name:var(--font-cairo)] text-xl font-extrabold text-[var(--q-ink)]">
           سورة {d.name}
         </h2>
@@ -94,13 +94,20 @@ export default function SurahJourney({ surah }: { surah: number }) {
         )}
         {d.dueCount > 0 && (
           <p className="mt-2 text-[0.82rem] font-bold text-[var(--q-ink)]">
-            🔄 {toArabic(d.dueCount)} {d.dueCount === 1 ? 'مراجعة مستحقة' : 'مراجعات مستحقة'} فيها اليوم
+            🔄 فيها اليوم{' '}
+            {d.dueCount === 1
+              ? 'مراجعة مستحقة'
+              : d.dueCount === 2
+                ? 'مراجعتان مستحقتان'
+                : d.dueCount <= 10
+                  ? `${toArabic(d.dueCount)} مراجعات مستحقة`
+                  : `${toArabic(d.dueCount)} مراجعة مستحقة`}
           </p>
         )}
       </section>
 
       {/* ── خريطة الآيات — كتل برموز ووسوم ── */}
-      <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-5">
+      <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-4">
         <h3 className="mb-3 font-[family-name:var(--font-cairo)] text-[1.02rem] font-extrabold text-[var(--q-ink)]">
           خريطة السورة
         </h3>
@@ -127,7 +134,7 @@ export default function SurahJourney({ surah }: { surah: number }) {
 
       {/* ── مواضع فيها ── */}
       {d.spots.length > 0 && (
-        <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-5">
+        <section className="rounded-[1.25rem] border border-[var(--q-line)] bg-white p-4">
           <h3 className="mb-2 font-[family-name:var(--font-cairo)] text-[1rem] font-extrabold text-[var(--q-ink)]">
             🎯 نثبتها معًا
           </h3>
