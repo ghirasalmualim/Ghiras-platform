@@ -10,6 +10,7 @@ import { normalizeForComparison } from '@/features/quran/engine/normalize.mjs';
 import { eventsFor, gradeSession } from '@/features/quran/engine/grading';
 import { MAX_CHUNKS_PER_SESSION } from '@/features/quran/speech/limits';
 import { grantDrops } from '@/features/quran/garden/grant';
+import { applyTasmeeToReview } from '@/features/quran/review/apply-tasmee';
 import { awardsForRecitation } from '@/features/quran/garden/growth';
 
 /**
@@ -47,6 +48,12 @@ type Body = {
   tokens?: { text?: string; confidence?: number }[];
   /** حدود المقاطع التي قُطعت عند حدٍّ تقني لا عند سكتة. */
   artificialCuts?: number;
+  /**
+   * مفتاح idempotency — يولّده المتصفح لكل جلسة ويعيده نفسه إن أعاد
+   * الإرسال. فإعادة `finish` لنفس الجلسة لا تحفظ سجلًّا ثانيًا ولا
+   * تمنح قطرةً ثانية ولا تحرّك جدول المراجعة مرتين.
+   */
+  clientKey?: string;
 };
 
 /** حدٌّ يمنع جسمًا ضخمًا: صفحة مصحف ~٢٠٠ كلمة، فألف هامش واسع. */
@@ -82,6 +89,32 @@ export async function POST(req: NextRequest) {
   if (raw.length > MAX_TOKENS) return NextResponse.json({ error: 'TOO_MANY_TOKENS' }, { status: 413 });
 
   const chunks = Math.max(1, Math.min(Number(body.chunks) || 1, MAX_CHUNKS_PER_SESSION));
+
+  /**
+   * ── الجلسة المكرَّرة تُرَدّ قبل أي حكم ──────────────────────
+   *
+   * ⚠️ حارسان على نفس الباب: هذا الفحص هنا، وفهرسٌ فريد على
+   * `(user_id, client_key)` في القاعدة نفسها — فلو تسابق طلبان
+   * متزامنان ومرّا من هذا الفحص معًا، رُفض ثانيهما عند الإدراج.
+   *
+   * والردّ صريح `DUPLICATE_SESSION` لا نتيجة ملفَّقة: النتيجة
+   * الحقيقية وصلت مع الطلب الأول، وتلفيقُ ثانيةٍ من السجل يعرض
+   * حكمًا منقوصًا كأنه كامل. والمتصفح الحالي لا يعيد الإرسال أصلًا
+   * — هذا حزامُ أمانٍ لمن يعيده يومًا.
+   */
+  const clientKey =
+    typeof body.clientKey === 'string' && /^[\w-]{8,64}$/.test(body.clientKey)
+      ? body.clientKey
+      : null;
+  if (clientKey) {
+    const { data: dup } = await supabase
+      .from('quran_recitation_session')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('client_key', clientKey)
+      .maybeSingle();
+    if (dup) return NextResponse.json({ error: 'DUPLICATE_SESSION' }, { status: 409 });
+  }
 
   // ── النص المتوقَّع من مصحفنا ────────────────────────────────
   const expected = buildExpected(getAyahs(surahNo, from, to));
@@ -125,6 +158,7 @@ export async function POST(req: NextRequest) {
       chunk_count: chunks,
       audio_seconds: typeof body.seconds === 'number' ? Math.round(body.seconds * 10) / 10 : null,
       weak_spots: weakSpots,
+      client_key: clientKey,
     });
 
     for (const kind of eventsFor(result, verdict, helpUsed)) {
@@ -194,12 +228,32 @@ export async function POST(req: NextRequest) {
     sourceKind: 'recitation',
   });
 
+  /**
+   * ── المراجعة الذكية (المرحلة ٦) ────────────────────────────
+   *
+   * حكمُ التسميع يغذّي جدول المراجعة **من هنا وحدها** — الخادم حكم
+   * والخادم يجدول، والمتصفح لا يمرّ في الطريق. البوّابة في الوصلة
+   * نفسها: `UNJUDGED` وusable:false لا يحرّكان شيئًا، وUNCERTAIN
+   * لا يصير موضعَ تثبيتٍ أبدًا.
+   *
+   * ⚠️ ولا تُعطَّل نتيجةُ الطالبة لأجلها — الوصلة لا ترمي، وفشلُها
+   * يلحق في الجلسة القادمة.
+   */
+  const review = await applyTasmeeToReview({
+    userId: user.id,
+    segment: { surah: surahNo, from_ayah: from, to_ayah: to },
+    verdict,
+    result,
+    helpUsed,
+  });
+
   return NextResponse.json(
     {
       usable: result.usable,
       unusableReason: result.unusableReason ?? null,
       /** ⚠️ يُقال للطالبة ما وقع فعلًا، لا ما نتمنّاه. */
       garden,
+      review: { applied: review.applied },
       verdict,
       summary: result.summary,
       weakSpots,

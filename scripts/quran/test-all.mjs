@@ -43,6 +43,7 @@ run("npx", [
   "src/features/quran/engine/artifacts.ts",
   "src/features/quran/engine/session.ts",
   "src/features/quran/engine/grading.ts",
+  "src/features/quran/engine/memory.ts",
   "src/features/quran/engine/hints.ts",
   "src/features/quran/engine/daytime.ts",
   "src/features/quran/speech/types.ts",
@@ -111,6 +112,7 @@ run("node", ["scripts/quran/test-alignment.mjs"]);
 run("node", ["scripts/quran/test-azure-adapter.mjs"]);
 run("node", ["scripts/quran/test-recitation.mjs"]);
 run("node", ["scripts/quran/test-garden.mjs"]);
+run("node", ["scripts/quran/test-review-smart.mjs"]);
 run("node", ["scripts/quran/test-daytime.mjs"]);
 run("node", ["scripts/quran/test-tajweed.mjs"]);
 

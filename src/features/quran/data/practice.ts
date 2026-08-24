@@ -297,3 +297,41 @@ export async function recordEvent(kind: EventKind, seg?: Segment): Promise<void>
     /* الاحتفاء لا يستحق تعطيل شيء */
   }
 }
+
+/* ═══════════════ مواضع التثبيت (المرحلة ٦) ═══════════════ */
+
+/**
+ * موضع تثبيت كما تعرضه الواجهة — آيةٌ رصد التسميعُ فيها تعثّرًا
+ * مؤكَّدًا ولم تسكن بعد.
+ *
+ * ⚠️ القراءة فقط: الجدول لا يقبل كتابةً من المتصفح أصلًا — يكتبه
+ * الخادم وحده بعد أن يحكم على التسميع بنفسه. فلا دالة حفظ هنا،
+ * وليست نسيانًا.
+ */
+export type MemorySpot = {
+  surah: number;
+  ayah: number;
+  confirmDays: number;
+  clearDays: number;
+  transitionDays: number;
+};
+
+export async function getMemorySpots(): Promise<MemorySpot[]> {
+  const uid = await currentUserId();
+  if (!uid) return [];
+  const sb = createClient();
+  const { data, error } = await sb
+    .from('quran_memory_spot')
+    .select('surah, ayah, confirm_days, clear_days, transition_days')
+    .eq('user_id', uid)
+    .order('surah')
+    .order('ayah');
+  if (error || !data) return [];
+  return data.map((r) => ({
+    surah: Number(r.surah),
+    ayah: Number(r.ayah),
+    confirmDays: Number(r.confirm_days ?? 0),
+    clearDays: Number(r.clear_days ?? 0),
+    transitionDays: Number(r.transition_days ?? 0),
+  }));
+}

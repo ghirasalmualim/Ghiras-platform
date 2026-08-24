@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAllSegments, type StoredSegment } from '../data/practice';
+import {
+  getAllSegments,
+  getMemorySpots,
+  type MemorySpot,
+  type StoredSegment,
+} from '../data/practice';
 import { isGuest } from '../data/progress';
 import { dueToday, needsWork } from '../engine/planner';
 import { removeSegment } from '../data/practice';
 import { stateLabel, toDay, progressPercent } from '../engine/review';
+import {
+  SETTLE_MIN_DISTINCT_DAYS,
+  TRANSITION_MIN_DISTINCT_DAYS,
+} from '../engine/memory';
 import { toArabic } from '../engine/numerals';
 
 /**
@@ -17,6 +26,7 @@ import { toArabic } from '../engine/numerals';
  */
 export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
   const [segments, setSegments] = useState<StoredSegment[] | null>(null);
+  const [spots, setSpots] = useState<MemorySpot[]>([]);
   /** المقطع الذي طُلبت إزالته وينتظر تأكيدًا — واحدٌ لا أكثر. */
   const [confirming, setConfirming] = useState<string | null>(null);
 
@@ -45,6 +55,9 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
     void getAllSegments()
       .then((s) => alive && setSegments(s))
       .catch(() => alive && setSegments([]));
+    void getMemorySpots()
+      .then((sp) => alive && setSpots(sp))
+      .catch(() => alive && setSpots([]));
     return () => {
       alive = false;
     };
@@ -83,6 +96,87 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
     (w) => !due.some((d) => d.surah === w.surah && d.from_ayah === w.from_ayah)
   );
 
+  /**
+   * قريبة ودورية — تصنيفٌ للفهم لا خوارزمية جديدة:
+   * ما دون الصندوق ٢ محفوظٌ جديد يُثبَّت عن قرب، وما فوقه محفوظٌ
+   * قديم يُتفقَّد دوريًّا. نفس ليتنر، باسمٍ تفهمه الطالبة.
+   */
+  const near = due.filter((s) => s.state.box <= 1);
+  const periodic = due.filter((s) => s.state.box >= 2);
+
+  /**
+   * مواضع التثبيت — من التسميع المحكوم خادميًا وحده.
+   *
+   * ⚠️ نشطٌ = تأكّد فيه تعثّرٌ ولم يُقرأ نظيفًا في يومين مختلفين
+   * بعدُ. والذي سكن لا يُعرض — الموضع لا يبقى موسومًا للأبد.
+   * ⚠️ واللغة تبني: لا «ضعف» ولا «أخطاء» — «نثبّته معًا».
+   */
+  const activeSpots = spots.filter(
+    (sp) => sp.confirmDays > 0 && sp.clearDays < SETTLE_MIN_DISTINCT_DAYS
+  );
+  const isTransition = (sp: MemorySpot) =>
+    sp.transitionDays >= TRANSITION_MIN_DISTINCT_DAYS;
+  const sortedSpots = [...activeSpots].sort(
+    (a, b) =>
+      (isTransition(b) ? 100 : 0) + b.confirmDays - ((isTransition(a) ? 100 : 0) + a.confirmDays)
+  );
+
+  /** بطاقة مقطعٍ مستحق — تُستعمل في القريبة والدورية سواء. */
+  const row = (s: StoredSegment) => (
+    <li
+      key={keyOf(s)}
+      className="flex items-stretch gap-2 rounded-2xl border border-[var(--q-line)] bg-white transition hover:border-[#cfe0d5]"
+    >
+      <Link
+        href={`/quran/study/${s.surah}/${s.from_ayah}/${s.to_ayah}`}
+        className="tap flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-4"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-[family-name:var(--font-cairo)] text-[1.02rem] font-bold text-[var(--q-ink)]">
+            {name(s.surah)}
+          </span>
+          <span className="block text-[0.78rem] text-[var(--q-mute)]">
+            الآيات {toArabic(s.from_ayah)}–{toArabic(s.to_ayah)} ·{' '}
+            {stateLabel(s.state)}
+          </span>
+        </span>
+        <span className="shrink-0 text-[0.74rem] font-bold text-[var(--q-accent)]">
+          {toArabic(progressPercent(s.state))}٪
+        </span>
+      </Link>
+    
+      {/* ⚠️ زرٌّ مستقلٌّ لا داخل الرابط: عنصرٌ قابل للنقر
+          داخل آخر يربك قارئات الشاشة ولوحة المفاتيح. */}
+      {confirming === keyOf(s) ? (
+        <span className="flex shrink-0 items-center gap-1 pl-2">
+          <button
+            type="button"
+            onClick={() => remove(s)}
+            className="tap rounded-xl bg-[#c9463a] px-3 py-1.5 text-[0.76rem] font-bold text-white"
+          >
+            إزالة
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(null)}
+            className="tap rounded-xl px-2 py-1.5 text-[0.76rem] font-bold text-[var(--q-mute)]"
+          >
+            تراجع
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirming(keyOf(s))}
+          aria-label={`إزالة ${name(s.surah)} ${toArabic(s.from_ayah)}–${toArabic(s.to_ayah)} من المراجعة`}
+          className="tap shrink-0 px-3 text-[1.1rem] text-[#b9c4bb] transition hover:text-[#c9463a]"
+        >
+          ×
+        </button>
+      )}
+    </li>
+  );
+
   return (
     <>
       {due.length === 0 ? (
@@ -111,64 +205,66 @@ export default function ReviewToday({ surahNames }: { surahNames: string[] }) {
             لديك اليوم {toArabic(due.length)}{' '}
             {due.length === 1 ? 'مراجعة' : due.length === 2 ? 'مراجعتان' : 'مراجعات'} 🌿
           </p>
+          {[
+            { key: 'near', label: '🌱 مراجعة قريبة — محفوظك الجديد وما نثبّته', list: near },
+            { key: 'far', label: '🌿 مراجعة دورية — محفوظك القديم نتفقّده', list: periodic },
+          ]
+            .filter((g) => g.list.length)
+            .map((g) => (
+              <section key={g.key} className="mb-4">
+                {/* العنوان يظهر حين تجتمع المجموعتان — قائمةٌ واحدة لا تحتاج تقسيمًا */}
+                {near.length > 0 && periodic.length > 0 && (
+                  <h3 className="mb-2 text-[0.85rem] font-extrabold text-[var(--q-mute)]">
+                    {g.label}
+                  </h3>
+                )}
+                <ul className="grid gap-2">{g.list.map(row)}</ul>
+              </section>
+            ))}
+        </>
+      )}
+
+      {/* ── مواضع نثبّتها معًا — من «سمّع لي» ── */}
+      {sortedSpots.length ? (
+        <section className="mt-8">
+          <h2 className="mb-1 font-[family-name:var(--font-cairo)] text-[1.05rem] font-extrabold text-[var(--q-ink)]">
+            مواضع نثبّتها معًا 🌿
+          </h2>
+          <p className="mb-3 text-[0.8rem] text-[var(--q-mute)]">
+            لاحظناها في تسميعك — وتثبيتها أسرع طريقٍ لرسوخ الحفظ.
+          </p>
           <ul className="grid gap-2">
-            {due.map((s) => (
-              <li
-                key={keyOf(s)}
-                className="flex items-stretch gap-2 rounded-2xl border border-[var(--q-line)] bg-white transition hover:border-[#cfe0d5]"
-              >
+            {sortedSpots.map((sp) => (
+              <li key={`${sp.surah}:${sp.ayah}`}>
                 <Link
-                  href={`/quran/study/${s.surah}/${s.from_ayah}/${s.to_ayah}`}
-                  className="tap flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-4"
+                  href={
+                    isTransition(sp) && sp.ayah > 1
+                      ? `/quran/study/${sp.surah}/${sp.ayah - 1}/${sp.ayah}`
+                      : `/quran/study/${sp.surah}/${sp.ayah}/${sp.ayah}`
+                  }
+                  className="tap flex items-center gap-3 rounded-2xl border border-[var(--q-line)] bg-white px-4 py-3.5 transition hover:border-[#cfe0d5]"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-[family-name:var(--font-cairo)] text-[1.02rem] font-bold text-[var(--q-ink)]">
-                      {name(s.surah)}
-                    </span>
-                    <span className="block text-[0.78rem] text-[var(--q-mute)]">
-                      الآيات {toArabic(s.from_ayah)}–{toArabic(s.to_ayah)} ·{' '}
-                      {stateLabel(s.state)}
-                    </span>
+                  <span className="text-xl" aria-hidden>
+                    {isTransition(sp) ? '🔗' : '📍'}
                   </span>
-                  <span className="shrink-0 text-[0.74rem] font-bold text-[var(--q-accent)]">
-                    {toArabic(progressPercent(s.state))}٪
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-[family-name:var(--font-cairo)] text-[0.98rem] font-bold text-[var(--q-ink)]">
+                      {name(sp.surah)} — الآية {toArabic(sp.ayah)}
+                    </span>
+                    <span className="block text-[0.76rem] text-[var(--q-mute)]">
+                      {isTransition(sp)
+                        ? `نتدرّب على الوصل من الآية ${toArabic(sp.ayah - 1)} إلى ${toArabic(sp.ayah)}`
+                        : sp.clearDays > 0
+                          ? 'قريبٌ من الثبات — قراءةٌ متقنة أخرى وتثبت'
+                          : 'موضع نثبّته معًا'}
+                    </span>
                   </span>
                 </Link>
-
-                {/* ⚠️ زرٌّ مستقلٌّ لا داخل الرابط: عنصرٌ قابل للنقر
-                    داخل آخر يربك قارئات الشاشة ولوحة المفاتيح. */}
-                {confirming === keyOf(s) ? (
-                  <span className="flex shrink-0 items-center gap-1 pl-2">
-                    <button
-                      type="button"
-                      onClick={() => remove(s)}
-                      className="tap rounded-xl bg-[#c9463a] px-3 py-1.5 text-[0.76rem] font-bold text-white"
-                    >
-                      إزالة
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(null)}
-                      className="tap rounded-xl px-2 py-1.5 text-[0.76rem] font-bold text-[var(--q-mute)]"
-                    >
-                      تراجع
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(keyOf(s))}
-                    aria-label={`إزالة ${name(s.surah)} ${toArabic(s.from_ayah)}–${toArabic(s.to_ayah)} من المراجعة`}
-                    className="tap shrink-0 px-3 text-[1.1rem] text-[#b9c4bb] transition hover:text-[#c9463a]"
-                  >
-                    ×
-                  </button>
-                )}
               </li>
             ))}
           </ul>
-        </>
-      )}
+        </section>
+      ) : null}
 
       {/* ── مواضع تحتاج تقوية ── */}
       {weak.length ? (

@@ -196,6 +196,12 @@ export default function ReciteScreen({
   const helpUsed = useRef(false);
   const audio = useRef<HTMLAudioElement | null>(null);
   const startedAt = useRef(0);
+  /**
+   * مفتاح idempotency للجلسة — يتولّد عند بدء جلسةٍ جديدة ويثبت
+   * عبر إيقافها واستئنافها. فلو أُعيد إرسال «إنهاء» لنفس الجلسة
+   * (شبكة تعيد المحاولة يومًا) رفضها الخادم ولم يحسبها مرتين.
+   */
+  const sessionKey = useRef('');
 
   // ── مغادرة الصفحة أثناء التسجيل ──────────────────────────
   //
@@ -270,6 +276,10 @@ export default function ReciteScreen({
       await r.start();
       recorder.current = r;
       if (fresh) {
+        sessionKey.current =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
         parts.current = [];
         unsent.current = [];
         inFlight.current = [];
@@ -499,6 +509,7 @@ export default function ReciteScreen({
           chunks: outcomes.length,
           seconds: samples.length / TARGET_SAMPLE_RATE,
           tokens,
+          clientKey: sessionKey.current || undefined,
         }),
       });
       if (!done.ok) {

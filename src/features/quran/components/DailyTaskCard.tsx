@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getActiveGoal, getAllSegments } from '../data/practice';
+import { getActiveGoal, getAllSegments, getMemorySpots } from '../data/practice';
+import { SETTLE_MIN_DISTINCT_DAYS } from '../engine/memory';
 import { isGuest } from '../data/progress';
 import {
   buildDailyTask,
@@ -28,6 +29,8 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
   const [task, setTask] = useState<DailyTask | null>(null);
   const [welcome, setWelcome] = useState<string | null>(null);
   const [hidden, setHidden] = useState(true);
+  /** كم موضعًا رصده «سمّع لي» وينتظر تثبيتًا — سطرٌ لطيف لا قائمة. */
+  const [spotCount, setSpotCount] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -39,11 +42,16 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
       setHidden(false);
 
       const today = toDay(new Date());
-      const [goal, segments] = await Promise.all([
+      const [goal, segments, spots] = await Promise.all([
         getActiveGoal().catch(() => null),
         getAllSegments().catch(() => []),
+        getMemorySpots().catch(() => []),
       ]);
       if (!alive) return;
+
+      setSpotCount(
+        spots.filter((sp) => sp.confirmDays > 0 && sp.clearDays < SETTLE_MIN_DISTINCT_DAYS).length
+      );
 
       const plan = goal
         ? buildPlan(goal.surah, goal.from_ayah, goal.to_ayah, goal.target_date, today)
@@ -163,6 +171,24 @@ export default function DailyTaskCard({ surahNames }: { surahNames: string[] }) 
             </li>
           ))}
         </ul>
+
+        {/* ⚠️ لغةٌ تبني: لا «ضعف» ولا «أخطاء» — مواضع نثبّتها معًا */}
+        {spotCount > 0 && (
+          <Link
+            href="/quran/review"
+            className="tap mt-2 flex items-center gap-2 rounded-xl bg-[var(--q-accent-soft)] px-3 py-2.5 text-[0.85rem] font-bold text-[var(--q-ink)] transition hover:opacity-90"
+          >
+            <span aria-hidden>🌿</span>
+            <span className="min-w-0 flex-1">
+              {spotCount === 1
+                ? 'وعندنا موضعٌ نثبّته معًا'
+                : spotCount === 2
+                  ? 'وعندنا موضعان نثبّتهما معًا'
+                  : 'وعندنا مواضع نثبّتها معًا'}
+            </span>
+            <span aria-hidden className="shrink-0 text-[var(--q-accent)]">←</span>
+          </Link>
+        )}
 
         <p className="mt-3 text-center text-[0.72rem] text-[var(--q-mute)]">
           التقدير تقريبي — خذ وقتك
