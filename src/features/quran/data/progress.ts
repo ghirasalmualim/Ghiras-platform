@@ -16,6 +16,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { newerResume, shouldSaveResume, type ResumePos } from '../engine/resume';
 import type { LastPosition, SegmentProgress, SegmentStatus } from '../types';
 
 const LAST_KEY = 'ghiras.quran.last';
@@ -48,26 +49,70 @@ const segKey = (s: number, f: number, t: number) => `${s}:${f}-${t}`;
 
 // ── آخر موضع ───────────────────────────────────────────────
 
+/** ذاكرة الوحدة — تُجنّب قراءة القاعدة قبل كل حفظٍ محروس. */
+let cachedPos: ResumePos | null | undefined;
+
 export async function getLastPosition(): Promise<LastPosition | null> {
+  const local = readLocal<LastPosition | null>(LAST_KEY, null);
+
   const sb = createClient();
   const {
     data: { user },
   } = await sb.auth.getUser();
 
-  if (user) {
-    const { data } = await sb
-      .from('quran_last_position')
-      .select('surah, ayah, updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (data) return data as LastPosition;
+  if (!user) {
+    cachedPos = local;
+    return local;
   }
-  return readLocal<LastPosition | null>(LAST_KEY, null);
+
+  const { data: db } = await sb
+    .from('quran_last_position')
+    .select('surah, ayah, updated_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  /**
+   * ⚠️ الأحدث يفوز — بقاعدة `newerResume` المحافظة الموثقة هناك:
+   * سجلُّ متصفحٍ قديم بلا طابعٍ لا يُخمَّن عمرُه، والقاعدة تغلبه.
+   * والوعد القديم «يُرفع ما في المتصفح عند الدخول» صار منفَّذًا:
+   * محليٌّ أحدث يُرفع، وقاعدةٌ أحدث تُنزل — فيتبع الموضعُ صاحبته
+   * بين أجهزتها.
+   */
+  const { pos, source } = newerResume(local, (db as ResumePos | null) ?? null);
+  cachedPos = pos;
+  if (pos && source === 'local')
+    void sb
+      .from('quran_last_position')
+      .upsert(
+        { user_id: user.id, surah: pos.surah, ayah: pos.ayah, updated_at: pos.updated_at ?? new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+  if (pos && source === 'db') writeLocal(LAST_KEY, pos);
+  return (pos as LastPosition | null) ?? null;
 }
 
-export async function saveLastPosition(surah: number, ayah: number): Promise<void> {
+/**
+ * ⚠️ **عقد الاستدعاء**: لا يُنادى إلا من تفاعل قراءةٍ صريح
+ * («استمع من هنا») أو بـ`force` («انتهيت هنا») — **وليس من mount
+ * ولا فتح رابطٍ ولا خطة اليوم أبدًا**. PAGE OPEN ≠ READING PROGRESS.
+ *
+ * والحارس `shouldSaveResume` يمنع الرجوع للخلف داخل نفس السورة
+ * بغير force — فمن بلغت ٢٢ لا يدوسها لمسُ العاشرة عرضًا.
+ */
+export async function saveLastPosition(
+  surah: number,
+  ayah: number,
+  opts: { force?: boolean } = {}
+): Promise<void> {
+  if (cachedPos === undefined)
+    cachedPos = readLocal<LastPosition | null>(LAST_KEY, null);
+
+  if (!shouldSaveResume(cachedPos ?? null, { surah, ayah }, opts.force === true)) return;
+
   const now = new Date().toISOString();
-  writeLocal(LAST_KEY, { surah, ayah, updated_at: now });
+  const next: ResumePos = { surah, ayah, updated_at: now };
+  cachedPos = next;
+  writeLocal(LAST_KEY, next);
 
   const sb = createClient();
   const {
@@ -167,6 +212,7 @@ export async function saveSegmentProgress(
  * والزائرة موضعها في متصفحها وحده، فيكفيها الأول.
  */
 export async function clearLastPosition(): Promise<void> {
+  cachedPos = null;
   try {
     window.localStorage.removeItem(LAST_KEY);
   } catch {

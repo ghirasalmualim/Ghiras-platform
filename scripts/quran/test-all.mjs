@@ -48,6 +48,7 @@ run("npx", [
   "src/features/quran/engine/journey.ts",
   "src/features/quran/engine/stability.ts",
   "src/features/quran/engine/rate-policies.ts",
+  "src/features/quran/engine/resume.ts",
   "src/features/quran/engine/hints.ts",
   "src/features/quran/engine/daytime.ts",
   "src/features/quran/speech/types.ts",
@@ -121,6 +122,7 @@ run("node", ["scripts/quran/test-plan.mjs"]);
 run("node", ["scripts/quran/test-journey.mjs"]);
 run("node", ["scripts/quran/test-stability.mjs"]);
 run("node", ["scripts/quran/test-rate.mjs"]);
+run("node", ["scripts/quran/test-resume.mjs"]);
 run("node", ["scripts/quran/test-daytime.mjs"]);
 run("node", ["scripts/quran/test-tajweed.mjs"]);
 

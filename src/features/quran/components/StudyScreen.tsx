@@ -136,10 +136,10 @@ export default function StudyScreen({
     setPickedAyah(null);
     try {
       if (ayah < surah.ayah_count) {
-        await saveLastPosition(surah.number, ayah + 1);
+        await saveLastPosition(surah.number, ayah + 1, { force: true });
         setDoneNote(`سُجّل: انتهيت عند الآية ${toArabic(ayah)} — ونكمل من ${toArabic(ayah + 1)} 🌿`);
       } else if (surah.number < 114) {
-        await saveLastPosition(surah.number + 1, 1);
+        await saveLastPosition(surah.number + 1, 1, { force: true });
         setDoneNote(
           `سُجّل: أتممت سورة ${surah.name_ar} — ونكمل من التي تليها 🌿`
         );
@@ -188,7 +188,17 @@ export default function StudyScreen({
     touched.current = false;
     let alive = true;
 
-    void saveLastPosition(surah.number, from);
+    /**
+     * ⚠️ **لا حفظَ موضعٍ عند فتح الشاشة — عمدًا وبقرار.**
+     *
+     * كان هنا حفظُ الموضع إلى بداية المقطع، فكان فتحُ أي مقطعٍ
+     * يبدأ بالآية ١ — تصفحًا أو من «ابدأ خطة اليوم» المتجددة كل
+     * صباح — يدوس موضعَ من بلغت الآية ٢٢ ويعيدها إلى ١، فبدا
+     * العطبُ مرتبطًا بمنتصف الليل وهو بريء.
+     *
+     * PAGE OPEN ≠ READING PROGRESS: الموضع يتحرك بنية قراءةٍ
+     * صريحة وحدها — «استمع من هنا» و«انتهيت هنا».
+     */
     void isGuest().then((g) => {
       if (alive) setGuest(g);
     });
@@ -398,7 +408,11 @@ export default function StudyScreen({
                    * على iPhone وiPad: الصوت لا يبدأ إلا استجابةً للمسة،
                    * ولو أجّلناه بمؤقّتٍ سقط الإذن ولم يعمل على الآيباد.
                    */
-                  if (a !== null) playFrom.current?.(a);
+                  if (a !== null) {
+                    playFrom.current?.(a);
+                    // نية قراءةٍ صريحة — تُسجَّل (والحارس يمنع الرجوع للخلف)
+                    void saveLastPosition(surah.number, a);
+                  }
                 }}
                 className="tap rounded-2xl bg-[var(--q-accent)] px-6 py-3 text-[0.92rem] font-extrabold text-white"
               >
