@@ -50,6 +50,7 @@ const TOOL_COLS = [
   'adventure_until',
   'multiplication_until',
   'workshops_until',
+  'clock_until',
 ] as const;
 
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
@@ -234,6 +235,7 @@ export default function AdminPanel() {
     { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
     { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
     { key: 'workshops', label: 'الورش التعليمية', emoji: '🎓' },
+    { key: 'clock', label: 'الساعة التفاعلية', emoji: '🕐' },
   ];
 
   const setTool = (id: string, tool: string, label: string, months: number) => {
