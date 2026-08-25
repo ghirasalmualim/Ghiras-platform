@@ -107,5 +107,27 @@ console.log("═══ ٨ · لا ارتداد على القائم ═══");
   check("المليون لم يُمس: نوع مكتبته باقٍ", mil.includes("TYPE='millionaire'"));
 }
 
+
+console.log("═══ دفعة إصلاحات QA — الحفظ والصوت والبطاقات وادعاء النطق ═══");
+{
+  const api = readFileSync("src/app/api/saved-games/route.ts", "utf8");
+  check("saved-games تقبل النوع balloons", api.includes("'balloons'"));
+
+  const b = readFileSync("src/app/balloons/page.tsx", "utf8");
+  check("الحفظ بنفس عقد المكتبة: TYPE balloons", b.includes("TYPE='balloons'"));
+  check("commitSave عند التشغيل الأول فقط (داخل حارس COMMITTED)",
+    /if\(!COMMITTED\)\{[\s\S]{0,400}GHLib\.commitSave/.test(b.replace(/\\n/g,"\n")));
+  check("فتح المحفوظة يستعيد COMMITTED — لا خصم ثانٍ", b.includes("COMMITTED=!!d.committed"));
+  check("مؤثرات: إطلاق وإصابة وخطأ وفوز", ["SFX.launch()","SFX.correct()","SFX.wrong()","SFX.win()"].every(x=>b.includes(x)));
+  check("الصوت كسول بعد لمسة — لا تشغيل تلقائي", b.includes("createOscillator") && !b.includes("autoplay"));
+  check("القصير داخل البالون والطويل بطاقة", b.includes("drawOptText") && b.includes("wrapText") && b.includes("roundRect"));
+  check("الهدف المصاب يبقى البالون — البطاقة لافتة", b.includes("b._sx=x;") && !b.includes("cardHit"));
+  check("حد أدنى مقروء للخط داخل البالون", b.includes("Math.max(12,r*0.3)"));
+
+  const cl = readFileSync("src/app/clock-locked/page.tsx", "utf8");
+  const gp = readFileSync("src/app/games/page.tsx", "utf8");
+  check("لا ادعاء نطق في نصوص الساعة الظاهرة", !cl.includes("نطق") && !gp.includes("نطق"));
+}
+
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);

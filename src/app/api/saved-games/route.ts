@@ -12,7 +12,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TYPES = ['millionaire', 'snake', 'xo', 'sinjim'];
+const TYPES = ['millionaire', 'snake', 'xo', 'sinjim', 'balloons'];
 const MAX_PER_TYPE = 60; // سقف آمن لكل نوع
 
 async function auth() {
