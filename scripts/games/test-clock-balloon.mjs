@@ -129,5 +129,18 @@ console.log("═══ دفعة إصلاحات QA — الحفظ والصوت و
   check("لا ادعاء نطق في نصوص الساعة الظاهرة", !cl.includes("نطق") && !gp.includes("نطق"));
 }
 
+
+console.log("═══ صوت الساعة — إيقاظ Safari والتكة المكبوحة ═══");
+{
+  const c = readFileSync("src/app/clock/game-html.ts", "utf8");
+  check("resume عند كل beep", c.includes("if(actx.state==='suspended')actx.resume()"));
+  check("إيقاظ عند pointerdown — تفعيل مستخدم حقيقي", c.includes("window.addEventListener('pointerdown'"));
+  check("تكة مكبوحة زمنيًا لا لكل بكسل", c.includes("lastTick<70"));
+  check("التكة لكل المستويات — قيد step>=15 زال", !c.includes("if(step>=15) tick()"));
+  check("أصوات النجاح والخطأ قائمة", c.includes("const good=") && c.includes("const bad=") && c.includes("const win="));
+  check("لا موسيقى خلفية — نغمات قصيرة فقط", !/loop|backgroundMusic|Audio\(/.test(c));
+  check("فشل الصوت مبتلَع لا يوقف اللعبة", c.includes("}catch(e){}"));
+}
+
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);

@@ -379,7 +379,7 @@ window.addEventListener('pointermove',e=>{
   let abs=T+d;
   if(abs>=720){pm=!pm} if(abs<0){pm=!pm}                           // عبور منتصف الليل/النهار
   const old=T; T=((abs%720)+720)%720;
-  if(T!==old){ render(true); if(step>=15) tick(); }
+  if(T!==old){ render(true); tick(); }
 });
 window.addEventListener('pointerup',()=>{
   if(!drag) return;
@@ -391,6 +391,7 @@ let actx=null;
 function beep(f,dur=.12,type='sine',vol=.15){
   if(!snd) return;
   try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
     const o=actx.createOscillator(),g=actx.createGain();
     o.type=type;o.frequency.value=f;o.connect(g);g.connect(actx.destination);
     const t=actx.currentTime; g.gain.setValueAtTime(0,t);
@@ -399,7 +400,9 @@ function beep(f,dur=.12,type='sine',vol=.15){
   }catch(e){}
 }
 const SC=[523,587,659,784,880,1046,1175,1318];
-const tick=()=>beep(1500,.03,'square',.05);
+/* تكة العقرب: عند عبور خطوة زمنية فقط، وبكابحٍ زمني كي لا تتراكم في السحب السريع */
+let lastTick=0;
+const tick=()=>{const t=Date.now();if(t-lastTick<70)return;lastTick=t;beep(1500,.03,'square',.05);};
 const good=s=>{const f=SC[Math.min(s,SC.length-1)];beep(f,.14);setTimeout(()=>beep(f*1.5,.1,'sine',.08),70)};
 const bad=()=>{beep(200,.15,'triangle',.12);setTimeout(()=>beep(150,.19,'triangle',.1),90)};
 const win=()=>[0,120,240,400].forEach((d,i)=>setTimeout(()=>beep(SC[i*2]||880,.2),d));
@@ -599,6 +602,12 @@ $('#reset').onclick=e=>{
   D=JSON.parse(JSON.stringify(DEF)); D.lv={}; save();
   rScore=0;sScore=0;rStreak=0;sStreak=0; updProg(); toast('تمّت البداية الجديدة ✨');
 };
+
+/* Safari/iPad لا يعدّ حركة السحب تفعيلًا — يُوقَظ الصوت عند اللمسة نفسها،
+   وفشله لا يمس اللعبة */
+window.addEventListener('pointerdown',()=>{ if(!snd) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume(); }catch(e){} });
 
 /* ═══ تشغيل ═══ */
 renderLv(); face(); updProg();
