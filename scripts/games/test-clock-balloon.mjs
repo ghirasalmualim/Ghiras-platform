@@ -142,5 +142,21 @@ console.log("═══ صوت الساعة — إيقاظ Safari والتكة ا
   check("فشل الصوت مبتلَع لا يوقف اللعبة", c.includes("}catch(e){}"));
 }
 
+
+console.log("═══ مسار الحفظ كاملًا — القيد كان في القاعدة لا في الـAPI وحده ═══");
+{
+  const api = readFileSync("src/app/api/saved-games/route.ts", "utf8");
+  check("API تقبل balloons وتردّ رسالة الخطأ لا تبتلعها", api.includes("'balloons'") && api.includes("error.message"));
+  const mig = readFileSync("supabase/2026-08-26-saved-games-balloons.sql", "utf8");
+  check("هجرة القيد تعيد تعريفه بالأنواع الخمسة",
+    mig.includes("saved_games_game_type_check") && mig.includes("'balloons'") && mig.includes("drop constraint if exists"));
+  check("الهجرة لا تنشئ جدولًا ولا عمودًا ولا RLS", !/create table|add column|policy/i.test(mig));
+
+  const b = readFileSync("src/app/balloons/page.tsx", "utf8");
+  check("بطاقة المكتبة تعرف أيقونة البالون", b.includes("balloons:'🎈'"));
+  check("فتح المحفوظة يمر بـ__libApply ويستعيد الأسئلة", b.includes("__libApply") && b.includes("d.questions"));
+  check("لا معاملة خاصة للأدمِن في الحفظ — يحفظ كالجميع", !api.includes("is_admin") && !api.includes("role"));
+}
+
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
