@@ -11,13 +11,49 @@ alter table public.profiles
 
 -- ٢) admin_set_tool: إضافة 'clock' إلى القائمة المغلقة
 --
--- [BLOCKED — OWNER PASTE REQUIRED]
--- تعريف الدالة الحالي خارج Git، وإعادة كتابته تخمينًا قد تغيّر سلوك
--- المنح للأدوات السبع القائمة (هل المدة تُحسب من الآن أم تُمدَّد؟ نص
--- الرفض؟ نوع الإرجاع؟). يُلصق هنا ناتج pg_get_functiondef الذي أخرجه
--- تدقيق Staging حرفيًا، مضافًا إليه سطر واحد داخل CASE:
---
---     when 'clock' then 'clock_until'
---
--- مع بقاء: SECURITY DEFINER · set search_path = 'public' ·
--- فحص public.is_admin() · سلوك p_months (منح/سحب) · رفض الأداة المجهولة.
+-- التعريف أدناه منقول حرفيًا من ghiras-staging · PREVIEW
+-- (pg_get_functiondef — لقطات ٢٠٢٦-٠٨-٢٥)، والتغيير الوحيد فيه سطرُ
+-- when 'clock' في CASE. المنح يمدّد الاستحقاق القائم ولا يستبدله —
+-- سلوك أصلي يُحافَظ عليه كما هو.
+CREATE OR REPLACE FUNCTION public.admin_set_tool(p_user uuid, p_tool text, p_months integer DEFAULT 6)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_col text;
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  v_col := case p_tool
+    when 'studio'         then 'studio_until'
+    when 'gradebook'      then 'gradebook_until'
+    when 'attendance'     then 'attendance_until'
+    when 'adventure'      then 'adventure_until'
+    when 'multiplication' then 'multiplication_until'
+    when 'head_records'   then 'head_records_until'
+    when 'workshops'      then 'workshops_until'
+    when 'clock'          then 'clock_until'
+    else null
+  end;
+
+  if v_col is null then
+    raise exception 'unknown tool: %', p_tool;
+  end if;
+
+  if p_months > 0 then
+    execute format(
+      'update public.profiles set %I = greatest(coalesce(%I, now()), now()) + ($1 || '' months'')::interval where id = $2',
+      v_col, v_col
+    ) using p_months, p_user;
+    return 'granted';
+  else
+    execute format('update public.profiles set %I = null where id = $1', v_col)
+      using p_user;
+    return 'revoked';
+  end if;
+end;
+$function$;
