@@ -1895,7 +1895,7 @@ table.d-tbl td{padding:9px 5px;text-align:center;border-bottom:1px solid rgba(0,
 <!-- ================= HOME ================= -->
 <div class="hero" id="heroTop">
   <h1>كل ما يحتاجه المعلم من <span>وسائل تعليمية</span><br>في مكان واحد</h1>
-  <p>منهج وزارة التربية · دولة الكويت 🇰🇼 — ابحث · عدّل · اطبع خلال <b>أقل من ٣٠ ثانية</b></p>
+  <p>ابحث · عدّل · اطبع خلال <b>أقل من ٣٠ ثانية</b></p>
 </div>
 
 <!-- منطقة البحث والمرشّحات — تبقى ظاهرة في كل الشاشات -->
@@ -1929,7 +1929,7 @@ table.d-tbl td{padding:9px 5px;text-align:center;border-bottom:1px solid rgba(0,
 <section class="view on" id="v-home">
   <div class="sec-head">
     <h2>المناهج</h2>
-    <p>اختر المادة والصف — منهج وزارة التربية · دولة الكويت 🇰🇼</p>
+    <p>اختر المادة والصف</p>
   </div>
   <div class="curric" id="curric"></div>
 
@@ -2465,7 +2465,7 @@ try{document.querySelectorAll('[data-gheras-logo]').forEach(i=>i.src=GHERAS_LOGO
 
 const SUBJECTS = ['اللغة العربية','التربية الإسلامية','القرآن الكريم','الرياضيات','العلوم','اللغة الإنجليزية','الاجتماعيات','عام'];
 const SUBJ_SHORT = {'اللغة العربية':'عربي','التربية الإسلامية':'إسلامية','القرآن الكريم':'قرآن','الرياضيات':'رياضيات','العلوم':'علوم','اللغة الإنجليزية':'إنجليزي','الاجتماعيات':'اجتماعيات','عام':'عام'};
-const SUBJ_EM = {'اللغة العربية':'📖','التربية الإسلامية':'🕌','القرآن الكريم':'📕','الرياضيات':'🔢','العلوم':'🔬','اللغة الإنجليزية':'🔤','الاجتماعيات':'🇰🇼','عام':'🗂'};
+const SUBJ_EM = {'اللغة العربية':'📖','التربية الإسلامية':'🕌','القرآن الكريم':'📕','الرياضيات':'🔢','العلوم':'🔬','اللغة الإنجليزية':'🔤','الاجتماعيات':'🧭','عام':'🗂'};
 const GRADES = ['رياض الأطفال','الأول','الثاني','الثالث','الرابع','الخامس'];
 
 
@@ -15295,7 +15295,7 @@ function pickLesson(name){
     : (S.subj ? \`\${SUBJ_EM[S.subj]||'📚'} \${short}\${S.grade?' — الصف '+S.grade:''}\` : 'كل الوسائل');
   $('#browseSub').textContent = S.lesson
     ? \`\${short}\${S.grade?' · الصف '+S.grade:''} · كل وسائل هذا الدرس\`
-    : 'منهج وزارة التربية · دولة الكويت';
+    : 'بنك الوسائل التعليمية';
   renderBrowse(); go('browse');
 }
 
@@ -15318,7 +15318,7 @@ function applyFilters(changed){
   if(S.q)     bits.unshift('«'+S.q+'»');
   $('#browseTitle').textContent = bits.length ? bits.join(' · ') : 'كل الوسائل';
   $('#crumbCat').textContent = bits.length ? bits.join(' · ') : 'كل الوسائل';
-  $('#browseSub').textContent = 'منهج وزارة التربية · دولة الكويت';
+  $('#browseSub').textContent = 'بنك الوسائل التعليمية';
   renderBrowse();
   if(S.view!=='browse'){
     S.view='browse'; $$('.view').forEach(x=>x.classList.remove('on')); $('#v-browse').classList.add('on');
@@ -15351,7 +15351,7 @@ function openCurric(sub, grade){
   const short = SUBJ_SHORT[sub]||sub;
   $('#browseTitle').textContent = \`\${SUBJ_EM[sub]||'📚'} \${short} — الصف \${grade}\`;
   $('#crumbCat').textContent = \`\${short} · \${grade}\`;
-  $('#browseSub').textContent = 'منهج وزارة التربية · دولة الكويت';
+  $('#browseSub').textContent = 'بنك الوسائل التعليمية';
   renderBrowse(); go('browse');
 }
 function openRewards(sub){
