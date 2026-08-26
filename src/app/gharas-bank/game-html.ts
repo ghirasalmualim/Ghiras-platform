@@ -12593,6 +12593,72 @@ const PSVG={
     <ellipse cx="14" cy="22" rx="5" ry="3.5" fill="#fff" opacity=".45" transform="rotate(-24 14 22)"/></svg>\`;}
 };
 
+
+/* ═══ أوسمة Benchmark V3 الاحتفالية — أشعة وشريط ولوحة اسم ═══ */
+function _rays(cx,cy,r1,r2,n,fill,op){let o='';
+  for(let i=0;i<n;i++){const a=(i*360/n)*Math.PI/180,w=.055;
+    const p=(R,d)=>[(cx+R*Math.cos(a+d)).toFixed(1),(cy+R*Math.sin(a+d)).toFixed(1)];
+    const A=p(r1,-w),Bp=p(r2,-w*.4),C=p(r2,w*.4),D=p(r1,w);
+    o+=\`<path d="M\${A} L\${Bp} L\${C} L\${D}Z" fill="\${fill}" opacity="\${op}"/>\`;}
+  return o;}
+function _ribbon(x,y,b){return \`<path d="M\${x-26} \${y} L\${x-38} \${y+62} L\${x-14} \${y+50} L\${x-4} \${y+16}Z" fill="\${b}"/>
+  <path d="M\${x+26} \${y} L\${x+38} \${y+62} L\${x+14} \${y+50} L\${x+4} \${y+16}Z" fill="\${b}"/>
+  <path d="M\${x-26} \${y} L\${x-14} \${y+50} L\${x-4} \${y+16}Z" fill="#000" opacity=".14"/>\`;}
+function _cog(cx,cy,r1,r2,t){let d='';const st=Math.PI/t;
+  for(let i=0;i<t*2;i++){const r=i%2?r2:r1,g=i*st-Math.PI/2;
+    d+=(i?'L':'M')+(cx+r*Math.cos(g)).toFixed(1)+' '+(cy+r*Math.sin(g)).toFixed(1)+' ';}
+  return d+'Z';}
+function _artTrophy(a,b,c){return \`<path d="M38 20 H92 V62 C92 82 80 94 65 96 C50 94 38 82 38 62Z" fill="\${a}" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M38 20 H65 V96 C50 94 38 82 38 62Z" fill="#fff" opacity=".16"/>
+  <path d="M38 30 H24 C16 30 12 36 12 44 C12 58 22 66 38 68" fill="none" stroke="\${b}" stroke-width="6" stroke-linecap="round"/>
+  <path d="M92 30 H106 C114 30 118 36 118 44 C118 58 108 66 92 68" fill="none" stroke="\${b}" stroke-width="6" stroke-linecap="round"/>
+  <rect x="56" y="96" width="18" height="20" fill="\${b}"/>
+  <path d="M36 116 H94 L102 134 H28Z" fill="\${b}"/>
+  <rect x="22" y="134" width="86" height="14" rx="6" fill="\${a}" stroke="\${b}" stroke-width="3.5"/>
+  <circle cx="65" cy="52" r="17" fill="\${c}" opacity=".9"/>
+  <path d="M65 42 L68.4 49.5 L76 50.4 L70.4 55.6 L72 63 L65 59.3 L58 63 L59.6 55.6 L54 50.4 L61.6 49.5Z" fill="\${b}"/>\`;}
+function _artCrown(a,b,c){return \`<path d="M14 92 L22 30 L48 58 L70 16 L92 58 L118 30 L126 92Z" fill="\${a}" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M14 92 L22 30 L48 58 L70 16 L70 92Z" fill="#fff" opacity=".14"/>
+  <rect x="12" y="90" width="116" height="18" rx="6" fill="\${b}"/>
+  <circle cx="22" cy="28" r="7.5" fill="\${c}" stroke="\${b}" stroke-width="3"/>
+  <circle cx="70" cy="14" r="8.5" fill="\${c}" stroke="\${b}" stroke-width="3"/>
+  <circle cx="118" cy="28" r="7.5" fill="\${c}" stroke="\${b}" stroke-width="3"/>
+  <circle cx="44" cy="99" r="5" fill="\${c}"/><circle cx="70" cy="99" r="5" fill="\${c}"/><circle cx="96" cy="99" r="5" fill="\${c}"/>\`;}
+PSVG.badge=function(kind,a,label,num){
+  const b=DEEP(a), c='#FFF3D2';
+  const fs = label.length>16?8.5:label.length>11?10:12;
+  const plate=(y)=>\`<rect x="18" y="\${y}" width="114" height="26" rx="13" fill="#fff" stroke="\${b}" stroke-width="3"/>
+    <text x="75" y="\${y+18}" text-anchor="middle" font-family="Cairo,Tajawal,sans-serif" font-weight="900" font-size="\${fs}" fill="\${b}">\${label}</text>\`;
+  if(kind==='trophy') return \`<svg viewBox="0 0 150 196" style="position:absolute;inset:0;width:100%;height:100%">
+    \${_rays(75,74,44,86,16,a,'.30')}
+    <circle cx="75" cy="74" r="46" fill="\${a}"/><circle cx="75" cy="74" r="46" fill="none" stroke="\${b}" stroke-width="4"/>
+    <g transform="translate(75,74) scale(.52) translate(-65,-84)">\${_artTrophy(c,b,'#fff')}</g>
+    \${_ribbon(75,116,b)}\${plate(146)}</svg>\`;
+  if(kind==='crown') return \`<svg viewBox="0 0 150 196" style="position:absolute;inset:0;width:100%;height:100%">
+    \${_rays(75,74,44,88,20,a,'.26')}
+    <path d="\${_cog(75,74,50,42,18)}" fill="\${a}"/>
+    <circle cx="75" cy="74" r="40" fill="#fff"/><circle cx="75" cy="74" r="40" fill="none" stroke="\${b}" stroke-width="3.4"/>
+    <g transform="translate(75,74) scale(.46) translate(-70,-58)">\${_artCrown(c,b,c)}</g>
+    \${_ribbon(75,116,b)}\${plate(146)}</svg>\`;
+  if(kind==='star') return \`<svg viewBox="0 0 150 196" style="position:absolute;inset:0;width:100%;height:100%">
+    \${_rays(75,76,48,92,24,a,'.24')}
+    <path d="M75 16 L94 60 L142 65 L106 96 L117 143 L75 119 L33 143 L44 96 L8 65 L56 60Z" fill="\${a}"/>
+    <path d="M75 16 L94 60 L142 65 L106 96 L117 143 L75 119Z" fill="#000" opacity=".10"/>
+    <path d="M75 16 L94 60 L142 65 L106 96 L117 143 L75 119 L33 143 L44 96 L8 65 L56 60Z" fill="none" stroke="\${b}" stroke-width="4"/>
+    <circle cx="75" cy="80" r="26" fill="#fff" stroke="\${b}" stroke-width="3.4"/>
+    <text x="75" y="90" text-anchor="middle" font-family="Cairo,Tajawal,sans-serif" font-weight="900" font-size="26" fill="\${b}">\${num}</text>
+    <rect x="18" y="156" width="114" height="28" rx="14" fill="\${b}"/>
+    <text x="75" y="176" text-anchor="middle" font-family="Cairo,Tajawal,sans-serif" font-weight="900" font-size="\${fs}" fill="#fff">\${label}</text></svg>\`;
+  return \`<svg viewBox="0 0 150 196" style="position:absolute;inset:0;width:100%;height:100%">
+    \${_ribbon(75,110,b)}
+    \${_rays(75,70,42,80,14,a,'.28')}
+    <path d="\${_cog(75,70,50,40,20)}" fill="\${a}"/>
+    <circle cx="75" cy="70" r="37" fill="#fff" stroke="\${b}" stroke-width="3.6"/>
+    <circle cx="75" cy="70" r="29" fill="none" stroke="\${b}" stroke-width="1.4" opacity=".45"/>
+    <path d="M75 52 L79.6 63.4 L92 64.4 L82.6 72.6 L85.4 84.6 L75 78 L64.6 84.6 L67.4 72.6 L58 64.4 L70.4 63.4Z" fill="\${b}"/>
+    \${plate(152)}</svg>\`;
+};
+
 const BODY = {
 
   /* 🌀 متاهة — طريقٌ من البداية إلى النهاية مع محطّاتٍ تعليمية */
@@ -13390,24 +13456,10 @@ const BODY = {
   medal:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const cN = n <= 4 ? 2 : 3;
-    const D  = n <= 2 ? 130 : n <= 4 ? 112 : 92;
-    const MS = n <= 2 ? 1.35 : n <= 4 ? 1.15 : 1;
-    const mk = densK(list, n <= 4 ? 66 : 84, .6);
-    const EM = ['🏅','🥇','⭐','🏆','🎖','💫'];
-    return \`<div class="mdls c\${cN}" style="--mk:\${mk}">\${list.map((x,i)=>{
-      const c1 = cols[i % cols.length], c2 = lite(c1, .82);
-      const em = (s.ic === 'off') ? '' : (s.ic && s.ic !== 'auto' ? s.ic : EM[i % EM.length]);
-      return \`<div class="mdl" style="--c1:\${c1};--c2:\${c2};--md:\${D}px;--md-s:\${MS}">
-        <div class="mdl-b">
-          <i class="mdl-rb l" style="background-color:\${c1}"></i><i class="mdl-rb r" style="background-color:\${c1}"></i>
-          <div class="mdl-r" style="background-color:\${c1}"></div>
-          <div class="mdl-g" style="background-color:#fff"></div>
-          <div class="mdl-i" style="background-color:\${c2}">\${em?\`<span class="mdl-em">\${em}</span>\`:'<span class="mdl-em" style="font-size:0"></span>'}</div>
-          \${s.ic==='off'?'':'<span class="mdl-s a">✦</span><span class="mdl-s b">✦</span>'}
-        </div>
-        <div class="mdl-t"><b>\${LT(x)}</b><i></i></div>
-      </div>\`;}).join('')}</div>\`;
+    const D  = n <= 2 ? 200 : n <= 4 ? 168 : 142;
+    const KINDS=['star','crown','trophy','rosette'];
+    return \`<div class="mdls c\${n<=4?2:3}" style="display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-content:center">\${list.map((x,i)=>\`
+      <div style="position:relative;width:\${D}px;height:\${Math.round(D*1.31)}px">\${PSVG.badge(KINDS[i%KINDS.length], cols[i%cols.length], LT(x), AR(i+1))}</div>\`).join('')}</div>\`;
   },
   cert:(it,s,th,ac)=>\`
     <div class="cert-frame" style="border:3px double \${ac};"></div>
