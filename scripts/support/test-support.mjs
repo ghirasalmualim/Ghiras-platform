@@ -62,7 +62,7 @@ console.log("═══ ٤ · الواجهات ═══");
   const acc = readFileSync("src/app/account/page.tsx","utf8");
   check("رابط تواصل معنا في حسابي", acc.includes("/support") && acc.includes("تواصل معنا"));
   const ap = readFileSync("src/components/AdminPanel.tsx","utf8");
-  check("عدّاد الصندوق في اللوحة", ap.includes("supportCount") && ap.includes("/admin/support"));
+  check("عدّاد الصندوق في اللوحة — الشارة الحية", ap.includes("SupportWaitingBadge") && ap.includes("/admin/support"));
 }
 
 console.log("═══ ٥ · المعرفة: أرقام معتمدة فقط ═══");
