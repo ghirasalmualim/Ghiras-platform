@@ -40,7 +40,7 @@ console.log("═══ ٣ · الساعة — صفحة القفل بلا سعر 
 {
   const l = readFileSync("src/app/clock-locked/page.tsx", "utf8");
   check("نص التفعيل المحايد", l.includes("لتفعيل الساعة التفاعلية، تواصل مع إدارة غراس المعلم"));
-  check("لا رقم مالي: لا «د.ك» ولا «دنانير»", !l.includes("د.ك") && !l.includes("دنانير") && !l.includes("دينار"));
+  check("سعر الساعة المعتمد: ٣ دنانير · ٦ أشهر", lk.includes("دنانير") && lk.includes("اشتراك ٦ أشهر"));
 }
 
 console.log("═══ ٤ · حسابي ولوحة الأدمِن — الاستحقاق التاسع ═══");

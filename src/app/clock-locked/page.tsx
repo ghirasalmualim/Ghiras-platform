@@ -3,9 +3,8 @@ import Logo from '@/components/Logo';
 
 /**
  * صفحة الشراء لـ«الساعة التفاعلية» — منتج مستقل بسعره الخاص.
- * تظهر لغير المشتركات.
- * ⚠️ السعر لم يُعتمد بعد (OWNER INPUT) — لا يُعرض رقم مالي هنا
- * حتى تعتمده الإدارة، والتفعيل بالتواصل معها.
+ * تظهر لغير المشتركات — اشتراك ٦ أشهر بثلاثة دنانير (سعر معتمد من
+ * صاحبة المنصة ٢٠٢٦-٠٨-٢٦)، والتفعيل عبر الإدارة.
  */
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +46,13 @@ export default function ClockLockedPage() {
           ))}
         </ul>
 
-        {/* التفعيل عبر الإدارة — بلا سعر حتى يُعتمد */}
+        {/* السعر */}
+        <div className="mt-5 inline-flex items-baseline gap-2 rounded-2xl bg-sage/10 border border-sage/30 px-6 py-3">
+          <span className="text-4xl font-extrabold text-sage-dark">٣</span>
+          <span className="text-lg font-extrabold text-sage-dark">دنانير</span>
+          <span className="text-ink/50 text-sm font-bold">· اشتراك ٦ أشهر</span>
+        </div>
+
         <div className="mt-7 w-full rounded-xl bg-sage/10 border border-sage/30 px-6 py-4 text-sage-dark font-extrabold">
           لتفعيل الساعة التفاعلية، تواصل مع إدارة غراس المعلم
         </div>
