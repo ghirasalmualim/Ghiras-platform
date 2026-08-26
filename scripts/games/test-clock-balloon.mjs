@@ -47,9 +47,9 @@ console.log("═══ ٤ · حسابي ولوحة الأدمِن — الاست
 {
   const e = readFileSync("src/lib/entitlements.ts", "utf8");
   const tools = [...e.matchAll(/'(\w+_until)',/g)].map((m) => m[1]);
-  check("TOOL_COLS ثمانية أعمدة", tools.length === 8 && tools.includes("clock_until"));
+  check("TOOL_COLS تسعة أعمدة", tools.length === 9 && tools.includes("clock_until"));
   const names = [...e.matchAll(/^\s{2}(\w+): '/gm)].map((m) => m[1]);
-  check("تسعة منتجات مسماة (sub_end + ٨ أدوات)", names.length === 9 && names.includes("clock_until") && names[0] === "sub_end");
+  check("عشرة منتجات مسماة (sub_end + ٩ أدوات)", names.length === 10 && names.includes("clock_until") && names[0] === "sub_end");
   check("الاسم «الساعة التفاعلية»", e.includes("clock_until: 'الساعة التفاعلية'"));
   const a = readFileSync("src/components/AdminPanel.tsx", "utf8");
   check("اللوحة: clock_until في TOOL_COLS", a.includes("'clock_until',"));
@@ -183,7 +183,8 @@ console.log("═══ استحقاق قسم الألعاب — 🎮 ألعاب 
     m.includes("add column if not exists interactive_games_until") &&
     m.includes("when 'interactive_games' then 'interactive_games_until'") &&
     m.includes("when 'clock'          then 'clock_until'"));
-  check("منح القسم لا يلمس game_credits", !m.includes("game_credits"));
+  check("منح القسم لا يلمس game_credits — في SQL الفعلي لا التعليقات",
+    !m.split("\n").filter(l=>!l.trim().startsWith("--")).join("\n").includes("game_credits"));
   const cl = readFileSync("src/app/clock/route.ts", "utf8");
   check("الساعة خارج بوابة القسم — مستقلة كما هي", !cl.includes("interactive_games"));
 }
