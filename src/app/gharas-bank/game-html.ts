@@ -11648,9 +11648,9 @@ const MANIP = {
     const C = it.slice(0,6);
     return \`<div class="mwrap">
       <div class="train" style="display:flex;align-items:flex-end;gap:6px;justify-content:center;flex-wrap:wrap">
-        <div style="position:relative;width:96px;height:66px">\${PSVG.loco(ac)}</div>
-        \${C.map((x,i)=>\`<div style="position:relative;width:88px;height:64px">\${PSVG.wagon(cols[i%cols.length])}
-          <b style="position:absolute;inset:12% 10% 34%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;font-size:12px;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3)">\${x}</b>
+        <div style="position:relative;width:92px;height:110px">\${PSVG.loco(ac)}</div>
+        \${C.map((x,i)=>\`<div style="position:relative;width:88px;height:106px">\${PSVG.wagon(cols[i%cols.length])}
+          <b style="position:absolute;inset:42% 12% 24%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;font-size:12px;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3)">\${x}</b>
         </div>\`).join('')}
       </div>
       <div class="trail"></div>
@@ -12509,86 +12509,88 @@ function shade(hex,p){
   return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
 let _pid=0; const PID=()=>'pg'+(++_pid);
+/* التشريح المعتمد من Ghiras Visual Benchmark V3: جسم مملوء بلون القصة،
+   حدٌّ بالدرجة العميقة 4–4.5، تفصيل واحد يدل على النوع، لمعة واحدة
+   خفيفة وظل جانبي هادئ — لا تدرجات ولا فلاتر فتبقى الطباعة حادة. */
+const DEEP=c=>shade(c,-.52);
 const PSVG={
-  apple(c){const i=PID();return \`<svg viewBox="0 0 120 126" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <radialGradient id="\${i}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="\${shade(c,.5)}"/><stop offset=".55" stop-color="\${c}"/><stop offset="1" stop-color="\${shade(c,-.22)}"/></radialGradient>
-    <linearGradient id="\${i}l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CC576"/><stop offset="1" stop-color="#3F8F3C"/></linearGradient></defs>
-    <ellipse cx="60" cy="121" rx="34" ry="5" fill="rgba(0,0,0,.10)"/>
-    <path d="M60 26C42 8 8 18 8 56c0 34 26 64 44 64 4 0 6-2 8-2s4 2 8 2c18 0 44-30 44-64C112 18 78 8 60 26Z" fill="url(#\${i})"/>
-    <path d="M60 26c-2-10-1-16 4-22" fill="none" stroke="#7A4A21" stroke-width="6" stroke-linecap="round"/>
-    <path d="M64 12c14-9 26-5 30 4-10 6-24 5-30-4Z" fill="url(#\${i}l)"/>
-    <ellipse cx="38" cy="46" rx="12" ry="20" fill="rgba(255,255,255,.35)" transform="rotate(-18 38 46)"/></svg>\`;},
-  cookie(){const i=PID();return \`<svg viewBox="0 0 120 120" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <radialGradient id="\${i}" cx="38%" cy="32%" r="85%"><stop offset="0" stop-color="#F0C486"/><stop offset=".6" stop-color="#D79A55"/><stop offset="1" stop-color="#B57A3A"/></radialGradient></defs>
-    <path d="M60 4c8 0 12 6 20 7s14-3 21 3 3 13 8 20 9 9 9 18-6 12-7 20 3 14-3 21-13 3-20 8-9 9-18 9-12-6-20-7-14 3-21-3-3-13-8-20-9-9-9-18 6-12 7-20-3-14 3-21 13-3 20-8 9-9 18-9Z" fill="url(#\${i})" stroke="#9E6427" stroke-width="2.5"/>
-    \${[[36,32,-15],[78,26,20],[27,68,8],[63,60,-24],[86,74,14],[46,92,-8]].map(([x,y,r])=>\`<rect x="\${x}" y="\${y}" width="13" height="10" rx="4" fill="#5B3418" transform="rotate(\${r} \${x} \${y})"/><rect x="\${x+1.5}" y="\${y+1.5}" width="5" height="3" rx="1.5" fill="rgba(255,255,255,.28)" transform="rotate(\${r} \${x} \${y})"/>\`).join('')}
-    <ellipse cx="42" cy="30" rx="16" ry="9" fill="rgba(255,255,255,.22)" transform="rotate(-16 42 30)"/></svg>\`;},
-  hand(c){const i=PID();return \`<svg viewBox="0 0 100 112" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.32)}"/><stop offset="1" stop-color="\${shade(c,-.15)}"/></linearGradient></defs>
+  apple(c){const b=DEEP(c);return \`<svg viewBox="0 0 120 132" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M60 40 C46 26 22 32 20 58 C18 84 40 118 60 118 C80 118 102 84 100 58 C98 32 74 26 60 40Z" fill="\${c}"/>
+    <path d="M60 40 C46 26 22 32 20 58 C18 84 40 118 60 118 C64 100 62 62 60 40Z" fill="#000" opacity=".08"/>
+    <path d="M60 40 C46 26 22 32 20 58 C18 84 40 118 60 118 C80 118 102 84 100 58 C98 32 74 26 60 40Z" fill="none" stroke="\${b}" stroke-width="4.5"/>
+    <path d="M60 40 C60 28 58 18 55 10" fill="none" stroke="#7A4A22" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M63 30 C76 14 98 16 102 28 C98 44 74 46 63 30Z" fill="#3E9C63" stroke="\${b}" stroke-width="3.5" stroke-linejoin="round"/>
+    <ellipse cx="40" cy="60" rx="9" ry="14" fill="#fff" opacity=".38" transform="rotate(-22 40 60)"/></svg>\`;},
+  cookie(){const b='#7A4718';return \`<svg viewBox="0 0 120 120" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M60 6c7 0 11 5 18 6s13-3 19 3 3 12 7 18 8 8 8 16-5 11-6 18 3 13-3 19-12 3-18 7-8 8-16 8-11-5-18-6-13 3-19-3-3-12-7-18-8-8-8-16 5-11 6-18-3-13 3-19 12-3 18-7 8-8 16-8Z" fill="#DFA45E"/>
+    <path d="M60 6c-8 0-9 5-16 8s-15 1-18 7 1 12-3 19-8 8-6 18c4 28 20 42 43 44C48 84 46 34 60 6Z" fill="#000" opacity=".08"/>
+    <path d="M60 6c7 0 11 5 18 6s13-3 19 3 3 12 7 18 8 8 8 16-5 11-6 18 3 13-3 19-12 3-18 7-8 8-16 8-11-5-18-6-13 3-19-3-3-12-7-18-8-8-8-16 5-11 6-18-3-13 3-19 12-3 18-7 8-8 16-8Z" fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    \${[[36,32,-15],[80,26,20],[26,66,8],[64,58,-24],[86,76,14],[46,92,-8]].map(([x,y,r])=>\`<rect x="\${x}" y="\${y}" width="13" height="10" rx="4.5" fill="#5B3418" transform="rotate(\${r} \${x} \${y})"/>\`).join('')}
+    <ellipse cx="42" cy="28" rx="13" ry="7" fill="#fff" opacity=".3" transform="rotate(-16 42 28)"/></svg>\`;},
+  hand(c){const b=DEEP(c);return \`<svg viewBox="0 0 100 112" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M22 52V22c0-5 4-8 8-8s8 3 8 8v22-32c0-5 4-8 8-8s8 3 8 8v32-26c0-5 4-8 8-8s8 3 8 8v30-18c0-5 4-8 8-8s8 3 8 8v42c0 22-14 38-36 38H38C22 108 8 96 8 78v-8c0-6 4-9 8-9 3 0 5 1 6 3Z" fill="\${c}"/>
+    <path d="M22 52V22c0-5 4-8 8-8s8 3 8 8v22c-4 26-6 46-2 64h-2C22 106 8 96 8 78v-8c0-6 4-9 8-9 3 0 5 1 6 3Z" fill="#000" opacity=".08"/>
     <path d="M22 52V22c0-5 4-8 8-8s8 3 8 8v22-32c0-5 4-8 8-8s8 3 8 8v32-26c0-5 4-8 8-8s8 3 8 8v30-18c0-5 4-8 8-8s8 3 8 8v42c0 22-14 38-36 38H38C22 108 8 96 8 78v-8c0-6 4-9 8-9 3 0 5 1 6 3Z"
-      fill="url(#\${i})" stroke="\${shade(c,-.32)}" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M30 66c14 6 30 6 44 0" fill="none" stroke="\${shade(c,-.25)}" stroke-width="2" stroke-linecap="round" opacity=".6"/></svg>\`;},
-  cloud(c){const i=PID();return \`<svg viewBox="0 0 200 96" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.55)}"/><stop offset=".55" stop-color="\${shade(c,.18)}"/><stop offset="1" stop-color="\${c}"/></linearGradient></defs>
-    <ellipse cx="100" cy="90" rx="72" ry="5" fill="rgba(0,0,0,.08)"/>
+      fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    <ellipse cx="34" cy="76" rx="7" ry="11" fill="#fff" opacity=".32" transform="rotate(14 34 76)"/></svg>\`;},
+  cloud(c){const b=DEEP(c);return \`<svg viewBox="0 0 200 96" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25 13 0 24 7 29 17 4-3 9-4 14-4 14 0 24 10 26 21 12 1 21 10 21 21 0 12-11 19-24 19Z" fill="\${c}"/>
+    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25-8 24-10 50-4 74Z" fill="#000" opacity=".08"/>
     <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25 13 0 24 7 29 17 4-3 9-4 14-4 14 0 24 10 26 21 12 1 21 10 21 21 0 12-11 19-24 19Z"
-      fill="url(#\${i})" stroke="\${shade(c,-.18)}" stroke-width="2"/>
-    <ellipse cx="55" cy="34" rx="18" ry="8" fill="rgba(255,255,255,.55)" transform="rotate(-10 55 34)"/></svg>\`;},
-  candy(c){const i=PID();return \`<svg viewBox="0 0 170 110" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <radialGradient id="\${i}" cx="38%" cy="32%" r="85%"><stop offset="0" stop-color="\${shade(c,.45)}"/><stop offset=".6" stop-color="\${c}"/><stop offset="1" stop-color="\${shade(c,-.2)}"/></radialGradient></defs>
-    <path d="M32 55 6 30c8-2 12-6 14-12 6 8 12 10 18 10Zm0 0L6 80c8 2 12 6 14 12 6-8 12-10 18-10Z" fill="\${shade(c,-.12)}" stroke="\${shade(c,-.3)}" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M138 55l26-25c-8-2-12-6-14-12-6 8-12 10-18 10Zm0 0 26 25c-8 2-12 6-14 12-6-8-12-10-18-10Z" fill="\${shade(c,-.12)}" stroke="\${shade(c,-.3)}" stroke-width="2" stroke-linejoin="round"/>
-    <ellipse cx="85" cy="55" rx="52" ry="42" fill="url(#\${i})" stroke="\${shade(c,-.3)}" stroke-width="2.5"/>
-    <path d="M62 18c-8 22-8 52 0 74M108 18c8 22 8 52 0 74" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="6" stroke-linecap="round"/>
-    <ellipse cx="66" cy="34" rx="14" ry="8" fill="rgba(255,255,255,.4)" transform="rotate(-20 66 34)"/></svg>\`;},
-  treeBack(){const i=PID();return \`<svg viewBox="0 0 340 310" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <radialGradient id="\${i}a" cx="38%" cy="28%" r="90%"><stop offset="0" stop-color="#93CE6F"/><stop offset=".55" stop-color="#5CA24E"/><stop offset="1" stop-color="#3E7C3A"/></radialGradient>
-    <linearGradient id="\${i}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8A5A30"/><stop offset=".5" stop-color="#6E441F"/><stop offset="1" stop-color="#5A3517"/></linearGradient></defs>
-    <path d="M20 302c0-10 60-16 150-16s150 6 150 16-60 8-150 8-150 2-150-8Z" fill="#7DBB5E"/>
-    <path d="M170 292c-11 0-18-16-18-40l4-76c0-10 6-16 14-16s14 6 14 16l4 76c0 24-7 40-18 40Z" fill="url(#\${i}t)"/>
-    <path d="M156 200c-12-8-20-20-22-34M184 190c10-6 16-14 20-26" fill="none" stroke="#6E441F" stroke-width="8" stroke-linecap="round"/>
-    <path d="M170 10c-30 0-52 14-60 34-26 2-46 20-46 44 0 16 8 30 22 38-2 6-3 11-3 16 0 30 38 48 87 48s87-18 87-48c0-5-1-10-3-16 14-8 22-22 22-38 0-24-20-42-46-44-8-20-30-34-60-34Z"
-      fill="url(#\${i}a)" stroke="#39702F" stroke-width="3"/>
-    <ellipse cx="112" cy="52" rx="30" ry="13" fill="rgba(255,255,255,.25)" transform="rotate(-12 112 52)"/>
-    \${[[76,118],[252,96],[214,148],[128,86],[268,140]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="4.5" fill="rgba(255,255,255,.28)"/>\`).join('')}</svg>\`;
-  },
-  jarBack(){const i=PID();return \`<svg viewBox="0 0 300 270" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="rgba(190,214,232,.55)"/><stop offset=".18" stop-color="rgba(240,248,255,.28)"/><stop offset=".5" stop-color="rgba(224,238,248,.18)"/><stop offset=".82" stop-color="rgba(240,248,255,.28)"/><stop offset="1" stop-color="rgba(170,198,220,.55)"/></linearGradient>
-    <linearGradient id="\${i}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8CC8C"/><stop offset=".5" stop-color="#C99441"/><stop offset="1" stop-color="#A87628"/></linearGradient></defs>
-    <rect x="86" y="4" width="128" height="26" rx="12" fill="url(#\${i}m)" stroke="#8E6220" stroke-width="2"/>
-    <rect x="98" y="30" width="104" height="12" rx="5" fill="#B0C6D8"/>
-    <path d="M70 46c-16 10-26 26-26 48v118c0 30 24 52 54 52h104c30 0 54-22 54-52V94c0-22-10-38-26-48Z"
-      fill="url(#\${i}g)" stroke="#8FA9BE" stroke-width="3"/>
-    <path d="M64 78c-6 34-6 96 0 138" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="10" stroke-linecap="round"/></svg>\`;},
-  loco(c){const i=PID();return \`<svg viewBox="0 0 150 104" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.35)}"/><stop offset="1" stop-color="\${shade(c,-.2)}"/></linearGradient></defs>
-    <circle cx="120" cy="16" r="7" fill="rgba(160,170,180,.5)"/><circle cx="132" cy="8" r="5" fill="rgba(160,170,180,.35)"/>
-    <rect x="108" y="14" width="16" height="22" rx="3" fill="\${shade(c,-.35)}"/>
-    <rect x="70" y="30" width="66" height="34" rx="12" fill="url(#\${i})" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
-    <rect x="16" y="12" width="52" height="52" rx="8" fill="\${shade(c,-.1)}" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
-    <rect x="26" y="20" width="30" height="20" rx="4" fill="#DCEBF5" stroke="\${shade(c,-.35)}" stroke-width="2"/>
-    <rect x="8" y="60" width="136" height="12" rx="6" fill="\${shade(c,-.3)}"/>
-    <path d="M140 72l8 16h-22Z" fill="\${shade(c,-.3)}"/>
-    \${[[36,86],[86,86],[118,86]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="13" fill="#3A3F45" stroke="#20242A" stroke-width="3"/><circle cx="\${x}" cy="\${y}" r="4.5" fill="#C9D2DA"/><path d="M\${x-9} \${y}h18M\${x} \${y-9}v18" stroke="#C9D2DA" stroke-width="2"/>\`).join('')}</svg>\`;},
-  wagon(c){const i=PID();return \`<svg viewBox="0 0 130 96" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.32)}"/><stop offset="1" stop-color="\${shade(c,-.18)}"/></linearGradient></defs>
-    <rect x="6" y="10" width="118" height="56" rx="10" fill="url(#\${i})" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
-    <path d="M6 30h118M6 48h118" stroke="\${shade(c,-.25)}" stroke-width="1.6" opacity=".55"/>
-    <rect x="2" y="62" width="126" height="9" rx="4.5" fill="\${shade(c,-.35)}"/>
-    \${[[34,82],[96,82]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="11" fill="#3A3F45" stroke="#20242A" stroke-width="3"/><circle cx="\${x}" cy="\${y}" r="3.8" fill="#C9D2DA"/>\`).join('')}</svg>\`;},
-  scoop(c){const i=PID();return \`<svg viewBox="0 0 100 42" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.42)}"/><stop offset="1" stop-color="\${shade(c,-.08)}"/></linearGradient></defs>
-    <path d="M6 2h88c3 0 4 2 4 5v22c0 4-3 6-6 6-4 0-4 5-9 5s-6-4-11-4-6 3-11 3-6-5-11-5-6 4-11 4-6-3-11-3-5 5-10 5c-4 0-6-3-6-7V7c0-3 1-5 4-5Z"
-      fill="url(#\${i})" stroke="\${shade(c,-.28)}" stroke-width="2"/>
-    <ellipse cx="24" cy="10" rx="13" ry="4" fill="rgba(255,255,255,.4)"/></svg>\`;},
-  cone(){const i=PID();return \`<svg viewBox="0 0 100 88" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
-    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9BB77"/><stop offset="1" stop-color="#B0793A"/></linearGradient></defs>
-    <path d="M4 4h92L54 84c-2 3-6 3-8 0Z" fill="url(#\${i})" stroke="#8E5F2A" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M14 20l60 34M32 8l46 44M4 34l44 40M52 6l-36 52M78 8 30 66" stroke="#8E5F2A" stroke-width="1.6" opacity=".55"/></svg>\`;},
-  cherry(){const i=PID();return \`<svg viewBox="0 0 40 44" style="position:absolute;inset:0;width:100%;height:100%">
-    <path d="M20 16C22 8 26 4 34 2" fill="none" stroke="#4E7C33" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="20" cy="28" r="14" fill="#D63B4B" stroke="#A52534" stroke-width="2"/>
-    <ellipse cx="14" cy="22" rx="5" ry="3.5" fill="rgba(255,255,255,.5)" transform="rotate(-24 14 22)"/></svg>\`;}
+      fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    <ellipse cx="58" cy="32" rx="15" ry="7" fill="#fff" opacity=".42" transform="rotate(-10 58 32)"/></svg>\`;},
+  candy(c){const b=DEEP(c);return \`<svg viewBox="0 0 170 110" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M32 55 6 30c8-2 12-6 14-12 6 8 12 10 18 10Zm0 0L6 80c8 2 12 6 14 12 6-8 12-10 18-10Z" fill="\${c}" stroke="\${b}" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M138 55l26-25c-8-2-12-6-14-12-6 8-12 10-18 10Zm0 0 26 25c-8 2-12 6-14 12-6-8-12-10-18-10Z" fill="\${c}" stroke="\${b}" stroke-width="4" stroke-linejoin="round"/>
+    <ellipse cx="85" cy="55" rx="52" ry="42" fill="\${c}"/>
+    <path d="M85 13C63 13 37 30 33 55c4 25 30 42 52 42-12-26-12-58 0-84Z" fill="#000" opacity=".08"/>
+    <ellipse cx="85" cy="55" rx="52" ry="42" fill="none" stroke="\${b}" stroke-width="4.5"/>
+    <path d="M62 18c-8 22-8 52 0 74M108 18c8 22 8 52 0 74" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".5"/>
+    <ellipse cx="64" cy="32" rx="12" ry="7" fill="#fff" opacity=".4" transform="rotate(-20 64 32)"/></svg>\`;},
+  treeBack(){const a='#57A24B', b='#2E5F28';return \`<svg viewBox="0 0 120 132" preserveAspectRatio="xMidYMax meet" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M52 124 C52 108 50 96 46 88 L54 88 L54 62 L66 62 L66 88 L74 88 C70 96 68 108 68 124Z" fill="#8A5A2B" stroke="\${b}" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M60 74 L42 58 M60 68 L80 52" fill="none" stroke="#8A5A2B" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="38" cy="52" r="22" fill="\${a}"/><circle cx="82" cy="50" r="20" fill="\${a}"/>
+    <circle cx="60" cy="34" r="26" fill="\${a}"/><circle cx="58" cy="58" r="22" fill="\${a}"/>
+    <path d="M38 30 A26 26 0 0 1 82 30 A22 22 0 0 1 96 58 A24 24 0 0 1 60 80 A24 24 0 0 1 24 56 A22 22 0 0 1 38 30Z"
+          fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    <circle cx="46" cy="34" r="7" fill="#fff" opacity=".34"/>
+    <path d="M10 126 H110" stroke="#7DBB5E" stroke-width="5" stroke-linecap="round"/></svg>\`;},
+  jarBack(){const a='#E3EFEA', b='#40655B';return \`<svg viewBox="0 0 120 140" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <rect x="36" y="10" width="48" height="14" rx="5" fill="\${b}"/>
+    <rect x="42" y="24" width="36" height="12" fill="\${a}" stroke="\${b}" stroke-width="3.6"/>
+    <path d="M42 36 C42 46 24 50 24 70 V116 C24 126 32 132 42 132 H78 C88 132 96 126 96 116 V70 C96 50 78 46 78 36Z"
+          fill="\${a}" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    <path d="M42 36 C42 46 24 50 24 70 V116 C24 126 32 132 42 132 C36 108 34 62 42 36Z" fill="#000" opacity=".06"/>
+    <ellipse cx="38" cy="62" rx="5" ry="11" fill="#fff" opacity=".55"/></svg>\`;},
+  loco(c){const b=DEEP(c);return \`<svg viewBox="0 0 96 116" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M10 84 V46 C10 40 14 36 20 36 H42 V22 C42 17 46 14 51 14 H68 C73 14 76 17 76 22 V84Z" fill="\${c}" stroke="\${b}" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="48" y="22" width="22" height="18" rx="3" fill="#fff" opacity=".88" stroke="\${b}" stroke-width="2.4"/>
+    <rect x="16" y="18" width="14" height="20" rx="3" fill="\${b}"/>
+    <ellipse cx="23" cy="16" rx="11" ry="5" fill="\${b}"/>
+    <path d="M4 84 H92" stroke="\${b}" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="28" cy="96" r="11" fill="#fff" stroke="\${b}" stroke-width="4"/><circle cx="28" cy="96" r="3.4" fill="\${b}"/>
+    <circle cx="62" cy="96" r="11" fill="#fff" stroke="\${b}" stroke-width="4"/><circle cx="62" cy="96" r="3.4" fill="\${b}"/>
+    <path d="M76 62 H92" stroke="\${b}" stroke-width="5" stroke-linecap="round"/></svg>\`;},
+  wagon(c){const b=DEEP(c);return \`<svg viewBox="0 0 96 116" style="position:absolute;inset:0;width:100%;height:100%">
+    <rect x="8" y="40" width="80" height="44" rx="7" fill="\${c}" stroke="\${b}" stroke-width="4"/>
+    <path d="M8 62 c14-4 66-4 80 0" fill="none" stroke="#000" stroke-width="0" opacity="0"/>
+    <path d="M8 84 H88" stroke="\${b}" stroke-width="0"/>
+    <path d="M2 84 H94" stroke="\${b}" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="28" cy="96" r="11" fill="#fff" stroke="\${b}" stroke-width="4"/><circle cx="28" cy="96" r="3.4" fill="\${b}"/>
+    <circle cx="66" cy="96" r="11" fill="#fff" stroke="\${b}" stroke-width="4"/><circle cx="66" cy="96" r="3.4" fill="\${b}"/>
+    <ellipse cx="22" cy="50" rx="8" ry="4" fill="#fff" opacity=".34"/></svg>\`;},
+  scoop(c){const b=DEEP(c);return \`<svg viewBox="0 0 100 42" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M8 3h84c3 0 5 2 5 5v18c0 4-3 6-6 6-4 0-4 6-9 6s-6-5-11-5-6 4-11 4-6-6-11-6-6 5-11 5-6-4-11-4-5 6-10 6c-4 0-6-3-6-7V8c0-3 2-5 5-5Z"
+      fill="\${c}" stroke="\${b}" stroke-width="3.4" stroke-linejoin="round"/>
+    <ellipse cx="24" cy="11" rx="12" ry="4" fill="#fff" opacity=".42"/></svg>\`;},
+  cone(){return \`<svg viewBox="0 0 100 88" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M6 4h88L54 82c-2 3-6 3-8 0Z" fill="#E0A35C" stroke="#7A4718" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M20 22l50 30M40 10l38 40M12 36l38 34M58 8 24 58M80 12 38 68" stroke="#B87A34" stroke-width="2.6" stroke-linecap="round"/></svg>\`;},
+  cherry(){return \`<svg viewBox="0 0 40 44" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M20 16C22 8 26 4 34 2" fill="none" stroke="#2A7548" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="20" cy="28" r="14" fill="#D63B4B" stroke="#7A1622" stroke-width="3.5"/>
+    <ellipse cx="14" cy="22" rx="5" ry="3.5" fill="#fff" opacity=".45" transform="rotate(-24 14 22)"/></svg>\`;}
 };
 
 const BODY = {
@@ -12715,8 +12717,8 @@ const BODY = {
     const A  = n<=2 ? 150 : n<=4 ? 122 : 104;
     const FS = n<=2 ? 15 : n<=4 ? 12.5 : 11;
     return \`<div class="gs-apples">\${list.map((x,i)=>\`
-      <div style="position:relative;width:\${A}px;height:\${Math.round(A*1.05)}px">\${PSVG.apple(cols[i%cols.length])}
-        <b style="position:absolute;inset:26% 14% 16%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+      <div style="position:relative;width:\${Math.round(A*1.12)}px;height:\${Math.round(A*1.05)}px">\${PSVG.apple(cols[i%cols.length])}
+        <b style="position:absolute;inset:36% 20% 14%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12739,7 +12741,7 @@ const BODY = {
     const FS = n<=2 ? 15 : n<=4 ? 12.5 : 11;
     return \`<div class="gs-hands">\${list.map((x,i)=>\`
       <div style="position:relative;width:\${W}px;height:\${Math.round(W*1.12)}px">\${PSVG.hand(cols[i%cols.length])}
-        <b style="position:absolute;inset:46% 16% 14%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+        <b style="position:absolute;inset:48% 18% 12%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12772,10 +12774,10 @@ const BODY = {
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
     const CW = s.ori==='land' ? 420 : 340;
-    const CH = Math.round(CW*.9);
+    const CH = Math.round(CW*1.0);
     const FS = n<=3 ? 13 : n<=4 ? 12 : 11;
     return \`<div class="gs-tree" style="position:relative;width:\${CW}px;height:\${CH}px;margin-inline:auto">\${PSVG.treeBack()}
-      <div style="position:absolute;inset:9% 12% 40%;display:flex;flex-wrap:wrap;gap:8px;align-content:center;justify-content:center">
+      <div style="position:absolute;inset:15% 14% 42%;display:flex;flex-wrap:wrap;gap:7px;align-content:center;justify-content:center">
         \${list.map((x,i)=>\`<div class="gs-tag" style="--c:\${cols[i%cols.length]};font-size:\${FZ(s,FS)}px;max-width:\${Math.round(CW*.42)}px">\${LT(x)}</div>\`).join('')}
       </div>
     </div>\`;
@@ -13227,12 +13229,12 @@ const BODY = {
     return \`<div class="trn">\${rows.map((row,r)=>\`
       <div class="trn-line">
         <div class="trn-row">
-          \${r===0?\`<div style="position:relative;width:\${Math.round(W*.92)}px;height:\${Math.round(W*.64)}px">\${PSVG.loco(ac)}</div>\`:''}
-          \${row.map(x=>{k++;return \`<div style="position:relative;width:\${W}px;height:\${Math.round(W*.74)}px">\${PSVG.wagon(cols[k%cols.length])}
-            <b style="position:absolute;inset:14% 10% 34%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+          \${r===0?\`<div style="position:relative;width:\${Math.round(W*.95)}px;height:\${Math.round(W*1.14)}px">\${PSVG.loco(ac)}</div>\`:''}
+          \${row.map(x=>{k++;return \`<div style="position:relative;width:\${W}px;height:\${Math.round(W*1.2)}px">\${PSVG.wagon(cols[k%cols.length])}
+            <b style="position:absolute;inset:40% 12% 26%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
           </div>\`;}).join('')}
         </div>
-        <div style="height:8px;margin-top:-4px;border-radius:4px;background:repeating-linear-gradient(90deg,#8A6A4A 0 22px,#5E452D 22px 26px)"></div>
+        
       </div>\`).join('')}</div>\`;
   },
 
