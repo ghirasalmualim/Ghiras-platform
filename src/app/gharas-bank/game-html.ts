@@ -15830,7 +15830,7 @@ function buildSegs(){
   const _mp = (MASCOT[S.f.msub]||{}).poses || {};
   if(!_skipOldPoses) $('#poseSeg').innerHTML = Object.entries(POSES).map(([k,v])=>
     \`<button class="\${(S.f.pose||'stand')===k?'on':''}" data-pose="\${k}">\${v}\${_mp[k]?' ✦':''}</button>\`).join('');
-  $$('#poseSeg button').forEach(b=>b.onclick=()=>{ S.f.pose=b.dataset.pose; S.f.flags.lantern=true; buildToggles(); buildSegs(); draw(); });
+  if(!_skipOldPoses) $$('#poseSeg button').forEach(b=>b.onclick=()=>{ S.f.pose=b.dataset.pose; S.f.flags.lantern=true; buildToggles(); buildSegs(); draw(); });
   $('#lposSeg').innerHTML = Object.entries(LPOS).map(([k,v])=>
     \`<button class="\${(S.f.lpos||'br')===k?'on':''}" data-lp2="\${k}">\${v}</button>\`).join('');
   $$('#lposSeg button').forEach(b=>b.onclick=()=>{ S.f.lpos=b.dataset.lp2; S.f.flags.lantern=true; buildToggles(); buildSegs(); draw(); });
