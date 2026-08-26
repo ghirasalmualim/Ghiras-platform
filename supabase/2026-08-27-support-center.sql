@@ -78,3 +78,11 @@ create policy support_msg_insert_admin on public.support_messages
     and sender_user_id = auth.uid()
     and public.is_admin()
   );
+
+-- بث لحظي: الرسائل تصل فور كتابتها (RLS تسري على البث)
+do $$ begin
+  alter publication supabase_realtime add table public.support_conversations;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.support_messages;
+exception when duplicate_object then null; end $$;

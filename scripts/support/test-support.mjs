@@ -92,5 +92,34 @@ console.log("═══ ٦ · تقييد تحديث المتصفح — الحقو
     /last_sender: 'user'[\s\S]{0,200}/.test(sd) && sd.includes("svc0"));
 }
 
+
+console.log("═══ ٧ · السرعة والشارة العالمية ═══");
+{
+  const u = readFileSync("src/app/support/page.tsx","utf8");
+  check("بث لحظي على رسائل المحادثة المفتوحة", u.includes("postgres_changes") && u.includes("support_messages") && u.includes("conversation_id=eq."));
+  check("فقاعة تفاؤلية فورية لرسالة المستخدمة", u.includes("tmp-") && u.includes("sender_type: 'user'"));
+  check("لا ازدواج: الحقيقية تحل محل التفاؤلية", u.includes("prev.some((x) => x.id === m.id)") && u.includes("x.id.startsWith('tmp-')"));
+  check("تنظيف القناة عند الخروج", u.includes("removeChannel"));
+  check("polling صار احتياطًا (٢٠ث) لا وسيلة أساسية", u.includes("20000") && !u.includes("8000"));
+
+  const a = readFileSync("src/components/AdminSupportInbox.tsx","utf8");
+  check("بث لحظي في صندوق الأدمِن (محادثة + قائمة)", a.includes("support-admin-") && a.includes("support-admin-list") && a.includes("removeChannel"));
+
+  const b = readFileSync("src/components/SupportWaitingBadge.tsx","utf8");
+  check("العدّاد محادثات لا رسائل", b.includes("support_conversations") && b.includes("count: 'exact'") && !b.includes("support_messages'"));
+  check("التعريف: needs_human أو human_handling بآخر رد من المستخدمة",
+    b.includes("status.eq.needs_human") && b.includes("status.eq.human_handling,last_sender.eq.user"));
+  check("صفر يخفي الشارة و99+ يقص", b.includes("if (!count) return null") && b.includes("'99+'"));
+  check("تحديث تلقائي بالبث + تنظيف", b.includes("postgres_changes") && b.includes("removeChannel"));
+
+  const ab = readFileSync("src/components/AccountBar.tsx","utf8");
+  check("الشارة خارج صفحة الدعم: شريط الحساب للأدمِن", ab.includes("SupportWaitingBadge"));
+  const ap = readFileSync("src/components/AdminPanel.tsx","utf8");
+  check("وزر اللوحة يستخدم الشارة الحية", ap.includes("SupportWaitingBadge"));
+
+  const m = readFileSync("supabase/2026-08-27-support-center.sql","utf8");
+  check("الهجرة تنشر الجدولين للبث بأمان التكرار", m.includes("supabase_realtime add table public.support_messages") && m.includes("duplicate_object"));
+}
+
 console.log(`\n  الدعم: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);

@@ -82,12 +82,32 @@ export default function AdminSupportInbox() {
     setMsgs((data as Msg[]) || []);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const supabase = createClient();
+    const ch = supabase
+      .channel('support-admin-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_conversations' }, () => void load())
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [load]);
   useEffect(() => {
     if (!open) return;
     void loadMsgs(open.id);
-    const t = setInterval(() => { void loadMsgs(open.id); }, 8000);
-    return () => clearInterval(t);
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`support-admin-${open.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `conversation_id=eq.${open.id}` },
+        (payload) => {
+          const m = payload.new as Msg;
+          setMsgs((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+        }
+      )
+      .subscribe();
+    const t = setInterval(() => { void loadMsgs(open.id); }, 20000);
+    return () => { clearInterval(t); void supabase.removeChannel(channel); };
   }, [open, loadMsgs]);
   useEffect(() => { bottomRef.current?.scrollIntoView(); }, [msgs]);
 

@@ -70,7 +70,8 @@ export default function SupportPage() {
 
   useEffect(() => { void loadConvos(); }, [loadConvos]);
 
-  // تحديث دوري خفيف للمحادثة المفتوحة
+  // بث لحظي للمحادثة المفتوحة: الرسالة تظهر فور كتابتها في القاعدة،
+  // مع فحص دوري خفيف احتياطًا لو تعثر البث. قناة واحدة تُغلق عند الخروج.
   useEffect(() => {
     if (!open || !open.id) return;
     void loadMsgs(open.id);
@@ -79,8 +80,27 @@ export default function SupportPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: open.id, action: 'seen' }),
     });
-    const t = setInterval(() => { void loadMsgs(open.id); }, 8000);
-    return () => clearInterval(t);
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`support-convo-${open.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `conversation_id=eq.${open.id}` },
+        (payload) => {
+          const m = payload.new as Msg;
+          setMsgs((prev) => {
+            if (prev.some((x) => x.id === m.id)) return prev; // لا ازدواج
+            // الرسالة الحقيقية تحل محل فقاعتها التفاؤلية إن وُجدت
+            const rest = prev.filter(
+              (x) => !(x.id.startsWith('tmp-') && x.sender_type === m.sender_type && x.content === m.content)
+            );
+            return [...rest, m];
+          });
+        }
+      )
+      .subscribe();
+    const t = setInterval(() => { void loadMsgs(open.id); }, 20000);
+    return () => { clearInterval(t); void supabase.removeChannel(channel); };
   }, [open, loadMsgs]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
@@ -89,6 +109,9 @@ export default function SupportPage() {
     const content = text.trim();
     if (!content || busy) return;
     setBusy(true);
+    const tmp: Msg = { id: `tmp-${Date.now()}`, sender_type: 'user', content, created_at: new Date().toISOString() };
+    setMsgs((prev) => [...prev, tmp]);
+    setText('');
     try {
       const res = await fetch('/api/support/send', {
         method: 'POST',
@@ -97,15 +120,16 @@ export default function SupportPage() {
       });
       const j = await res.json();
       if (res.ok && j.conversation_id) {
-        setText('');
         if (!open || !open.id) {
           await loadConvos();
           setOpen({ id: j.conversation_id, title: content.slice(0, 60), status: 'open', last_sender: 'user', user_seen_at: '', last_message_at: '' });
         } else {
           await loadMsgs(open.id);
         }
-      } else if (j.message) {
-        alert(j.message);
+      } else {
+        setMsgs((prev) => prev.filter((m) => m.id !== tmp.id));
+        setText(content);
+        if (j.message) alert(j.message);
       }
     } finally {
       setBusy(false);

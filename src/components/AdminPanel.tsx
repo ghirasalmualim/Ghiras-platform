@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { createClient } from '@/lib/supabase/client';
+import SupportWaitingBadge from '@/components/SupportWaitingBadge';
 
 type Row = {
   id: string;
@@ -274,18 +275,6 @@ export default function AdminPanel() {
   // ── كلمة مرور مؤقتة ──
   // الدخول برقم الجوال ببريد داخلي وهمي، فلا استعادة ذاتية بالبريد.
   // تُعرض مرة واحدة هنا لتُرسل للمعلمة، ولا تُخزَّن في أي مكان.
-  // عدّاد صندوق الدعم — محادثات تنتظر الإدارة
-  const [supportCount, setSupportCount] = useState(0);
-  useEffect(() => {
-    const supabase = createClient();
-    void supabase
-      .from('support_conversations')
-      .select('id', { count: 'exact', head: true })
-      .neq('status', 'closed')
-      .or('status.eq.needs_human,last_sender.eq.user')
-      .then(({ count }) => setSupportCount(count ?? 0));
-  }, []);
-
   const [tempPw, setTempPw] = useState<{ name: string; password: string } | null>(null);
 
   // ── إنشاء حساب من اللوحة ──
@@ -698,7 +687,8 @@ export default function AdminPanel() {
         <div>
           <h1 className="text-2xl font-black text-sage-deep">لوحة التحكم</h1>
           <a href="/admin/support" className="inline-flex items-center gap-1.5 rounded-xl border border-sage/40 bg-white text-sage-deep font-extrabold text-sm px-4 py-2 hover:border-sage transition">
-            📥 رسائل الدعم{supportCount > 0 ? ` (${supportCount})` : ''}
+            📥 رسائل الدعم
+            <SupportWaitingBadge />
           </a>
           <p className="text-sm text-ink/55">إدارة المشتركين والتفعيل المجاني</p>
         </div>

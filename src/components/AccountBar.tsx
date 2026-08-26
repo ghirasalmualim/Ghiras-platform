@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import SupportWaitingBadge from '@/components/SupportWaitingBadge';
 import LogoutButton from './LogoutButton';
 
 /**
@@ -195,6 +196,13 @@ export default function AccountBar() {
             className="rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-extrabold text-sm px-4 py-2 transition-all"
           >
             لوحة التحكم
+          </Link>
+          <Link
+            href="/admin/support"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-extrabold text-sm px-4 py-2 transition-all"
+          >
+            📥 الدعم
+            <SupportWaitingBadge />
           </Link>
         </>
       ) : date ? (
