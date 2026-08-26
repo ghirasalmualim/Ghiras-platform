@@ -47,9 +47,9 @@ console.log("═══ ٤ · حسابي ولوحة الأدمِن — الاست
 {
   const e = readFileSync("src/lib/entitlements.ts", "utf8");
   const tools = [...e.matchAll(/'(\w+_until)',/g)].map((m) => m[1]);
-  check("TOOL_COLS ثمانية أعمدة", tools.length === 8 && tools.includes("clock_until"));
+  check("TOOL_COLS تسعة أعمدة", tools.length === 9 && tools.includes("clock_until") && tools.includes("gharas_bank_until"));
   const names = [...e.matchAll(/^\s{2}(\w+): '/gm)].map((m) => m[1]);
-  check("تسعة منتجات مسماة (sub_end + ٨ أدوات)", names.length === 9 && names.includes("clock_until") && names[0] === "sub_end");
+  check("عشرة منتجات مسماة (sub_end + ٩ أدوات)", names.length === 10 && names.includes("gharas_bank_until") && names[0] === "sub_end");
   check("الاسم «الساعة التفاعلية»", e.includes("clock_until: 'الساعة التفاعلية'"));
   const a = readFileSync("src/components/AdminPanel.tsx", "utf8");
   check("اللوحة: clock_until في TOOL_COLS", a.includes("'clock_until',"));

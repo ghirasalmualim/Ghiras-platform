@@ -6,9 +6,9 @@ import { BANK_HTML } from './game-html';
  * «بنك غراس» — أوراق عمل ووسائل تعليمية جاهزة وقابلة للتخصيص.
  * دمج رقيق بنمط الساعة/جدول الضرب: HTML مضمّن يُقدَّم عبر جلسة غراس.
  *
- * ⚠️ نموذج الوصول في هذه المرحلة قرارٌ صريح من صاحبة المنصة:
- * كل مسجلة نشطة تدخل — لا عمود استحقاق ولا تسعير قبل قرار البيع.
- * suspended ممنوعة، والأدمِن مسموح، وأي حالة غير مثبتة fail closed.
+ * منتج مدفوع باعتماد صاحبة المنصة: اشتراك ٦ أشهر بثمانية دنانير —
+ * الوصول بعمود gharas_bank_until (أو الأدمِن)، suspended ممنوعة،
+ * وأي حالة غير مثبتة fail closed إلى صفحة الاشتراك.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,16 +24,20 @@ export async function GET(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, status')
+    .select('role, status, gharas_bank_until')
     .eq('id', user.id)
     .single();
 
-  const p = profile as { role?: string; status?: string } | null;
+  const p = profile as
+    | { role?: string; status?: string; gharas_bank_until?: string | null }
+    | null;
   const isAdmin = p?.role === 'admin';
-  const active = isAdmin || (!!p && p.status === 'active');
+  const until = p?.gharas_bank_until ?? null;
+  const active =
+    isAdmin || (p?.status !== 'suspended' && !!until && new Date(until) > new Date());
 
   if (!active) {
-    return NextResponse.redirect(new URL('/', req.url));
+    return NextResponse.redirect(new URL('/gharas-bank-locked', req.url));
   }
 
   return new NextResponse(BANK_HTML, {

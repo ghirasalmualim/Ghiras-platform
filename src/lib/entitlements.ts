@@ -19,6 +19,7 @@ export const TOOL_COLS = [
   'multiplication_until',
   'workshops_until',
   'clock_until',
+  'gharas_bank_until',
 ] as const;
 
 export type ToolCol = (typeof TOOL_COLS)[number];
@@ -39,6 +40,7 @@ export const ENTITLEMENT_NAMES: Record<string, string> = {
   multiplication_until: 'جدول الضرب التفاعلي',
   workshops_until: 'الورش التعليمية',
   clock_until: 'الساعة التفاعلية',
+  gharas_bank_until: 'بنك غراس',
 };
 
 /** كل الأعمدة التي تحمل تاريخ انتهاء — `sub_end` ثم الأدوات. */

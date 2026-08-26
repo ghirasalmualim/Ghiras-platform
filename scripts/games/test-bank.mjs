@@ -6,8 +6,22 @@ const check=(n,c)=>{ if(c) passed++; else { failed++; console.error(`  ❌ ${n}`
 
 const r = readFileSync("src/app/gharas-bank/route.ts","utf8");
 check("جلسة غراس لا Auth مستقل", r.includes("createServerSupabase") && r.includes("login?next=/gharas-bank"));
-check("suspended ممنوعة — active أو أدمِن فقط", r.includes("p.status === 'active'") && r.includes("isAdmin"));
-check("لا استحقاق ولا تسعير في هذه المرحلة", !r.includes("_until") && !r.includes("game_credits"));
+check("منتج مدفوع: عمود gharas_bank_until والأدمِن معفى وsuspended ممنوعة",
+  r.includes("gharas_bank_until") && r.includes("isAdmin") && r.includes("suspended"));
+check("غير المشتركة → صفحة الاشتراك", r.includes("/gharas-bank-locked"));
+check("Model B: لا sub_end في حارس البنك", !r.replace(/\/\*[\s\S]*?\*\//g,"").includes("sub_end"));
+check("لا رصيد ألعاب في حارس البنك", !r.includes("game_credits"));
+const lk = readFileSync("src/app/gharas-bank-locked/page.tsx","utf8");
+check("صفحة الاشتراك: ٨ دنانير · ٦ أشهر", lk.includes("٨") && lk.includes("دنانير") && lk.includes("٦ أشهر"));
+const mg = readFileSync("supabase/2026-08-26-gharas-bank-tool.sql","utf8");
+check("الهجرة: عمود + حالة gharas_bank في الدالة الحرفية",
+  mg.includes("add column if not exists gharas_bank_until") &&
+  mg.includes("when 'gharas_bank'    then 'gharas_bank_until'") &&
+  mg.includes("when 'clock'          then 'clock_until'"));
+const e2 = readFileSync("src/lib/entitlements.ts","utf8");
+check("الاستحقاق باسمه في حسابي", e2.includes("gharas_bank_until: 'بنك غراس'"));
+const a2 = readFileSync("src/components/AdminPanel.tsx","utf8");
+check("صلاحية الأدمِن: زر 🌱 بنك غراس", a2.includes("key: 'gharas_bank'") && a2.includes("'gharas_bank_until'"));
 
 const h = readFileSync("src/app/gharas-bank/game-html.ts","utf8");
 check("لا مسارات محلية متبقية للشخصيات", !h.includes("assets/gharas"));

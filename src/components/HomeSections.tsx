@@ -207,7 +207,10 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
                 🌱
               </span>
               <span>
-                <b>بنك غراس</b>
+                <b>
+                  بنك غراس
+                  <span className="tag paid">مستقل · ٨ د.ك / ٦ أشهر</span>
+                </b>
                 <small>أوراق عمل ووسائل تعليمية جاهزة وقابلة للتخصيص</small>
               </span>
             </Link>
