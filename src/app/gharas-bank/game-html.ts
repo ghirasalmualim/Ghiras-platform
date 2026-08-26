@@ -1,4 +1,4 @@
-// بنك غراس مضمّن كنص محمي — يُقدَّم للمسجلات النشطات عبر /gharas-bank (route.ts)
+// بنك غراس مضمّن كنص محمي — يُقدَّم للمشتركات عبر /gharas-bank (route.ts)
 /* eslint-disable */
 export const BANK_HTML = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -1737,6 +1737,11 @@ table.d-tbl td{padding:9px 5px;text-align:center;border-bottom:1px solid rgba(0,
     overflow:hidden
   }
   .print-page:last-child{page-break-after:auto;break-after:auto}
+  /* في ٢×/٤× يتقلص المقياس فتندمج الزخارف الخلفية الدقيقة (أرابيسك/نقاط)
+     غسلةً رمادية عند الطباعة — تُخفى في صفحات النسخ المتعددة وحدها،
+     والنسخة الكاملة ١× تبقى بزخرفتها */
+  .print-page.nup .design .pat,
+  .print-page.nup .design .bgfx{display:none!important}
   .pscale{position:relative;overflow:visible;flex:0 0 auto}
   .pscale>.design{
     transform-origin:top right;
