@@ -12533,12 +12533,15 @@ const PSVG={
     <path d="M22 52V22c0-5 4-8 8-8s8 3 8 8v22-32c0-5 4-8 8-8s8 3 8 8v32-26c0-5 4-8 8-8s8 3 8 8v30-18c0-5 4-8 8-8s8 3 8 8v42c0 22-14 38-36 38H38C22 108 8 96 8 78v-8c0-6 4-9 8-9 3 0 5 1 6 3Z"
       fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
     <ellipse cx="34" cy="76" rx="7" ry="11" fill="#fff" opacity=".32" transform="rotate(14 34 76)"/></svg>\`;},
-  cloud(c){const b=DEEP(c);return \`<svg viewBox="0 0 200 96" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
-    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25 13 0 24 7 29 17 4-3 9-4 14-4 14 0 24 10 26 21 12 1 21 10 21 21 0 12-11 19-24 19Z" fill="\${c}"/>
-    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25-8 24-10 50-4 74Z" fill="#000" opacity=".08"/>
-    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25 13 0 24 7 29 17 4-3 9-4 14-4 14 0 24 10 26 21 12 1 21 10 21 21 0 12-11 19-24 19Z"
-      fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
-    <ellipse cx="58" cy="32" rx="15" ry="7" fill="#fff" opacity=".42" transform="rotate(-10 58 32)"/></svg>\`;},
+  cloud(c){const b=DEEP(c);const i=PID();const P="M46 86C26 86 12 74 12 59c0-12 9-21 20-23 2-15 15-26 31-26 12 0 22 6 27 15 5-6 12-9 20-9 13 0 23 9 25 20 13 1 23 10 23 22 0 15-13 28-30 28Z";
+    return \`<svg viewBox="0 0 200 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <defs><clipPath id="\${i}"><path d="\${P}"/></clipPath></defs>
+    <path d="\${P}" fill="\${c}"/>
+    <path d="M8 64c26 12 156 12 186-6v40H8Z" fill="#000" opacity=".10" clip-path="url(#\${i})"/>
+    <path d="\${P}" fill="none" stroke="\${b}" stroke-width="4.5" stroke-linejoin="round"/>
+    <ellipse cx="56" cy="30" rx="14" ry="6" fill="#fff" opacity=".45" transform="rotate(-10 56 30)"/>
+    <circle cx="132" cy="26" r="5" fill="#fff" opacity=".35"/></svg>\`;
+  },
   candy(c){const b=DEEP(c);return \`<svg viewBox="0 0 170 110" style="position:absolute;inset:0;width:100%;height:100%">
     <path d="M32 55 6 30c8-2 12-6 14-12 6 8 12 10 18 10Zm0 0L6 80c8 2 12 6 14 12 6-8 12-10 18-10Z" fill="\${c}" stroke="\${b}" stroke-width="4" stroke-linejoin="round"/>
     <path d="M138 55l26-25c-8-2-12-6-14-12-6 8-12 10-18 10Zm0 0 26 25c-8 2-12 6-14 12-6-8-12-10-18-10Z" fill="\${c}" stroke="\${b}" stroke-width="4" stroke-linejoin="round"/>
@@ -12831,7 +12834,7 @@ const BODY = {
     const FS = n<=2 ? 14.5 : n<=4 ? 12 : 10.5;
     return \`<div class="gs-clouds">\${list.map((x,i)=>\`
       <div style="position:relative;width:\${W}px;height:\${Math.round(W*.48)}px">\${PSVG.cloud(cols[i%cols.length])}
-        <b style="position:absolute;inset:34% 14% 18%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+        <b style="position:absolute;inset:32% 15% 16%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,fitFS(x, FS, 12, .62))}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
