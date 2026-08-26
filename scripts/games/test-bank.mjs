@@ -10,13 +10,13 @@ check("suspended ممنوعة — active أو أدمِن فقط", r.includes("p.
 check("لا استحقاق ولا تسعير في هذه المرحلة", !r.includes("_until") && !r.includes("game_credits"));
 
 const h = readFileSync("src/app/gharas-bank/game-html.ts","utf8");
-check("لا مسارات محلية متبقية", !h.includes("/gharas-characters/".replace("/gharas-","assets/gharas-")) && !h.includes("assets/gharas"));
-check("الأصول من public", h.includes("/gharas-bank/img-01.webp") && h.includes("/gharas-bank/characters/"));
-check("القوالب كلها حاضرة", (h.match(/\n  T\(/g)||[]).length >= 8058);
-check("المفضلة والسجل والنسخ المحفوظة باقية", h.includes("gheras:bank:v1") && h.includes("gheras:tcopy:v"));
+check("لا مسارات محلية متبقية للشخصيات", !h.includes("assets/gharas"));
+check("أصول الشخصيات من public", h.includes("/gharas-bank/characters/"));
+check("قوالب القاعدة الجديدة كلها حاضرة (٧٤٨٠)", (h.match(/\n  T\(/g)||[]).length >= 7480);
+check("نسخ المعلم المحفوظة (TC) باقية — وثبات المفضلة دفعة لاحقة", h.includes("gheras:tcopy:v"));
 check("شخصيات غراس الخمس", ["الفانوس الذكي","الحكيم اللغوي","البوصلة الذكية","الكابتن اللغوي","الريبورت الذكي"].every(n=>h.includes(n)));
 check("زر العودة للمنصة", h.includes("← منصة غراس"));
-check("طباعة A4 وحارس الانقسام باقيان", h.includes("size:A4 portrait") && h.includes("break-inside:avoid"));
+check("طباعة A4 وتخطيط ١×/٢×/٤×", h.includes("size:A4 portrait") && h.includes("nupSeg"));
 
 const home = readFileSync("src/components/HomeSections.tsx","utf8");
 const iStudio=home.indexOf("ستوديو الحصة الذكية"), iBank=home.indexOf("بنك غراس");
