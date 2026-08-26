@@ -70,6 +70,10 @@ console.log("═══ ٥ · المعرفة: أرقام معتمدة فقط ═�
   const k = readFileSync("src/lib/supportKnowledge.ts","utf8");
   check("أقسام المعرفة الأساسية", ["ACCOUNT","GAMES","GAME_CREDITS","SAVED_GAMES","GHARAS_BANK","SMART_STUDIO","CLOCK","PAYMENTS","TECHNICAL_HELP"].every(x=>k.includes(`[${x}`)));
   check("أسعار مطابقة للمنتجات المعتمدة", k.includes("٦ أشهر بثمانية دنانير") && k.includes("بدينارين"));
+  check("أسعار المواد المعتمدة: ٢٠ للمادة و٥٠ للمرحلة بلا مدة مخترعة",
+    k.includes("٢٠ د.ك") && k.includes("٥٠ د.ك") && k.includes("[MATERIALS") && !/المادة الواحدة[^\n]*أشهر/.test(k));
+  check("سجل الحضور بسعره المنشور والإضافي ٤", k.includes("٨ د.ك لستة أشهر") && k.includes("٤ د.ك"));
+  check("ما لا سعر له معلن → الإدارة", k.includes("بلا سعر معلن"));
   check("قائمة التحويل الفوري", k.includes("ESCALATE_HINTS") && k.includes("استرجاع"));
 }
 
