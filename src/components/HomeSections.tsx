@@ -201,6 +201,18 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
             </a>
           </div>
 
+          <div className="row one">
+            <Link className="tile" href="/gharas-bank">
+              <span className="em" aria-hidden="true">
+                🌱
+              </span>
+              <span>
+                <b>بنك غراس</b>
+                <small>أوراق عمل ووسائل تعليمية جاهزة وقابلة للتخصيص</small>
+              </span>
+            </Link>
+          </div>
+
           <div className="grouplbl">المتابعة الصفية</div>
           <div className="row two">
             <Link className="tile" href="/attendance">
