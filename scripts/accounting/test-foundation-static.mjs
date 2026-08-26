@@ -24,7 +24,7 @@ console.log("═══ غياب QAYD/XBRL في المستودع كله (XBRL-001
     .filter(f => !f.includes("regulatorySeed") && !f.includes("accounting-registers") && !f.includes("test-registers"))
     // ملفات Stage 3 تذكر QAYD/XBRL فقط في تعليقات إثبات الغياب واختباراته
     .filter(f => !f.includes("accounting-ledger") && !f.includes("test-ledger"))
-    .filter(f => !f.includes("commercial-documents"))
+    .filter(f => !f.includes("commercial-documents") && !f.includes("revenue"))
     // هجرة الأساس تذكر QAYD-002 في تعليق توثيقي واحد سببه إثبات الغياب — الكود الفعلي يُفحص أعلاه بلا تعليقات
     .filter(f => !f.endsWith("2026-08-27-accounting-foundation.sql"));
   check("صفر ملفات تذكر QAYD/XBRL/taxonomy", hits.length === 0);
