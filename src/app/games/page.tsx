@@ -68,19 +68,6 @@ export default async function GamesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/games');
 
-  // قسم الألعاب صار استحقاقًا يمنحه الأدمِن — لا يكفي تسجيل الدخول.
-  // رصيد التوليد شيء آخر: هذا بابُ القسم، وذاك وقودُ المولّدات.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, status, interactive_games_until')
-    .eq('id', user.id)
-    .single();
-  const p = profile as { role?: string; status?: string; interactive_games_until?: string | null } | null;
-  const isAdmin = p?.role === 'admin';
-  if (!isAdmin && p?.status === 'suspended') redirect('/');
-  const igUntil = p?.interactive_games_until ?? null;
-  if (!isAdmin && !(igUntil && new Date(igUntil) > new Date())) redirect('/games-locked');
-
   return (
     <main className="min-h-dvh flex flex-col">
       {/* شريط علوي: رجوع للمنصة */}

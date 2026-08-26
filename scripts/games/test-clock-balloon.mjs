@@ -47,9 +47,9 @@ console.log("═══ ٤ · حسابي ولوحة الأدمِن — الاست
 {
   const e = readFileSync("src/lib/entitlements.ts", "utf8");
   const tools = [...e.matchAll(/'(\w+_until)',/g)].map((m) => m[1]);
-  check("TOOL_COLS تسعة أعمدة", tools.length === 9 && tools.includes("clock_until"));
+  check("TOOL_COLS ثمانية أعمدة", tools.length === 8 && tools.includes("clock_until"));
   const names = [...e.matchAll(/^\s{2}(\w+): '/gm)].map((m) => m[1]);
-  check("عشرة منتجات مسماة (sub_end + ٩ أدوات)", names.length === 10 && names.includes("clock_until") && names[0] === "sub_end");
+  check("تسعة منتجات مسماة (sub_end + ٨ أدوات)", names.length === 9 && names.includes("clock_until") && names[0] === "sub_end");
   check("الاسم «الساعة التفاعلية»", e.includes("clock_until: 'الساعة التفاعلية'"));
   const a = readFileSync("src/components/AdminPanel.tsx", "utf8");
   check("اللوحة: clock_until في TOOL_COLS", a.includes("'clock_until',"));
@@ -159,34 +159,29 @@ console.log("═══ مسار الحفظ كاملًا — القيد كان ف
 }
 
 
-console.log("═══ استحقاق قسم الألعاب — 🎮 ألعاب غراس التفاعلية ═══");
+console.log("═══ 🎮 رصيد ألعاب غراس التفاعلية — رصيد دائم لا اشتراك مدة ═══");
 {
-  const g = readFileSync("src/app/games/page.tsx", "utf8");
-  check("بوابة القسم: العمود الجديد لا sub_end ولا رصيد",
-    g.includes("interactive_games_until") && !g.includes("sub_end") && !g.includes("game_credits"));
-  check("الأدمِن معفى والموقوف ممنوع", g.includes("isAdmin") && g.includes("'suspended'"));
-  check("غير المستحِق → صفحة القفل", g.includes("redirect('/games-locked')"));
-  for (const n of ["millionaire","snake","xo","sinjim","balloons"]) {
-    const s = readFileSync(`src/app/${n}/page.tsx`, "utf8");
-    check(`${n}: محروسة بالاستحقاق وعقد الرصيد باقٍ`,
-      s.includes("interactive_games_until") && s.includes("redirect('/games-locked')") && s.includes("game_credits"));
-  }
-  const lk = readFileSync("src/app/games-locked/page.tsx", "utf8");
-  check("قفل القسم بلا سعر مخترع", !/د\.ك|دينار/.test(lk) && lk.includes("تواصل مع إدارة غراس"));
-  const e = readFileSync("src/lib/entitlements.ts", "utf8");
-  check("الاستحقاق العاشر باسمه", e.includes("interactive_games_until: 'ألعاب غراس التفاعلية'"));
+  const files = ["src/app/games/page.tsx","src/app/millionaire/page.tsx","src/app/balloons/page.tsx",
+                 "src/lib/entitlements.ts","src/components/AdminPanel.tsx"].map(f=>readFileSync(f,"utf8")).join("\n");
+  check("لا أثر لنموذج المدة الخاطئ interactive_games_until", !files.includes("interactive_games_until"));
+  check("قسم الألعاب مفتوح للمسجل — لا بوابة games-locked", !readFileSync("src/app/games/page.tsx","utf8").includes("games-locked"));
+
   const a = readFileSync("src/components/AdminPanel.tsx", "utf8");
-  check("زر اللوحة 🎮 بمفتاح interactive_games",
-    a.includes("key: 'interactive_games'") && a.includes("'interactive_games_until'"));
-  const m = readFileSync("supabase/2026-08-26-interactive-games-tool.sql", "utf8");
-  check("الهجرة: عمود + حالة واحدة في الدالة الحرفية",
-    m.includes("add column if not exists interactive_games_until") &&
-    m.includes("when 'interactive_games' then 'interactive_games_until'") &&
-    m.includes("when 'clock'          then 'clock_until'"));
-  check("منح القسم لا يلمس game_credits — في SQL الفعلي لا التعليقات",
-    !m.split("\n").filter(l=>!l.trim().startsWith("--")).join("\n").includes("game_credits"));
-  const cl = readFileSync("src/app/clock/route.ts", "utf8");
-  check("الساعة خارج بوابة القسم — مستقلة كما هي", !cl.includes("interactive_games"));
+  check("اللوحة تعرض الرصيد الحالي وتضيف عبر RPC",
+    a.includes("رصيد ألعاب غراس التفاعلية") && a.includes("admin_add_game_credits") && a.includes("＋ إضافة رصيد"));
+  check("الإضافة جمعية فوق القائم لا استبدال", a.includes("current + n"));
+
+  const m = readFileSync("supabase/2026-08-26-admin-add-game-credits.sql", "utf8");
+  const sql = m.split("\n").filter(l=>!l.trim().startsWith("--")).join("\n");
+  check("RPC جمعي: coalesce + إضافة", sql.includes("coalesce(game_credits, 0) + p_count"));
+  check("حارس الأدمِن وSECURITY DEFINER وsearch_path", sql.includes("is_admin()") && sql.includes("SECURITY DEFINER") && sql.includes("search_path"));
+  check("حدود العدد ١..١٠٠", sql.includes("p_count < 1 or p_count > 100"));
+  check("لا تاريخ انتهاء للرصيد ولا للمحفوظات", !sql.includes("until") && !sql.includes("expires"));
+  check("anon ممنوعة — REVOKE/GRANT صريحان", /REVOKE EXECUTE[\s\S]*anon/.test(sql) && /GRANT  EXECUTE[\s\S]*authenticated/.test(sql));
+  check("الخصم لم يُمس — لا لمس لـconsume_game_credit", !sql.includes("consume_game_credit"));
+
+  const sg = readFileSync("src/app/api/saved-games/route.ts", "utf8");
+  check("المحفوظات ملكية دائمة: لا expiry في مسارها", !sg.includes("expires") && !sg.includes("_until"));
 }
 
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);

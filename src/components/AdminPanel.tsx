@@ -51,7 +51,6 @@ const TOOL_COLS = [
   'multiplication_until',
   'workshops_until',
   'clock_until',
-  'interactive_games_until',
 ] as const;
 
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
@@ -103,7 +102,7 @@ export default function AdminPanel() {
     // فشلها لا يعطّل اللوحة: تظهر الحسابات بلا شارات الأدوات فقط.
     const { data: tdata } = await supabase
       .from('profiles')
-      .select(['id', ...TOOL_COLS].join(','));
+      .select(['id', 'game_credits', ...TOOL_COLS].join(','));
     if (tdata) {
       const map: Record<string, ToolState> = {};
       for (const rec of tdata as unknown as (ToolState & { id: string })[]) {
@@ -237,8 +236,24 @@ export default function AdminPanel() {
     { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
     { key: 'workshops', label: 'الورش التعليمية', emoji: '🎓' },
     { key: 'clock', label: 'الساعة التفاعلية', emoji: '🕐' },
-    { key: 'interactive_games', label: 'ألعاب غراس التفاعلية', emoji: '🎮' },
   ];
+
+  // ── رصيد ألعاب غراس التفاعلية ──
+  // رصيدُ عددٍ دائم لا مدة له: الإضافة جمعية فوق القائم، والخصم يبقى
+  // حصرًا عند تثبيت لعبة جديدة. منتجٌ مستقل عن كل أعمدة _until.
+  const addGameCredits = (id: string, current: number) => {
+    const raw = prompt(`الرصيد الحالي: ${current} — كم لعبة تضيف؟`, '3');
+    if (raw === null) return;
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 100) { alert('أدخل عددًا من ١ إلى ١٠٠'); return; }
+    if (!confirm(`إضافة ${n} إلى الرصيد؟ يصبح ${current + n}`)) return;
+    const supabase = createClient();
+    act(
+      id,
+      () => supabase.rpc('admin_add_game_credits', { p_user: id, p_count: n }),
+      `تمت إضافة ${n} — الرصيد الآن ${current + n} 🎮`
+    );
+  };
 
   const setTool = (id: string, tool: string, label: string, months: number) => {
     const q =
@@ -906,6 +921,24 @@ export default function AdminPanel() {
                     </span>
                     );
                   })}
+                  {(() => {
+                    const gc = Number((tools[r.id] as Record<string, unknown> | undefined)?.game_credits ?? 0) || 0;
+                    return (
+                    <span className={`inline-flex items-center rounded-lg border overflow-hidden ${gc > 0 ? 'border-sage/50 bg-sage-light/40' : 'border-sage/25 bg-white'}`}>
+                      <span className="px-2.5 py-1.5 text-sm font-bold text-ink/75">
+                        🎮 رصيد ألعاب غراس التفاعلية
+                        <span className={`ms-1.5 text-xs font-extrabold ${gc > 0 ? 'text-sage-deep' : 'text-ink/40'}`}>
+                          {gc} {gc === 1 ? 'لعبة' : 'ألعاب'}
+                        </span>
+                      </span>
+                      <button disabled={isBusy} onClick={() => addGameCredits(r.id, gc)}
+                        title="إضافة رصيد ألعاب (جمعي فوق القائم)"
+                        className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        ＋ إضافة رصيد
+                      </button>
+                    </span>
+                    );
+                  })()}
                 </div>
               </div>
 

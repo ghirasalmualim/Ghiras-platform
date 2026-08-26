@@ -23,15 +23,13 @@ export default async function SinjimPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, status, game_credits, interactive_games_until')
+    .select('role, status, game_credits')
     .eq('id', user.id)
     .single();
 
   const isAdmin = profile?.role === 'admin';
   const credits = profile?.game_credits ?? 0;
   if (!isAdmin && profile?.status === 'suspended') redirect('/');
-  const igu = (profile as { interactive_games_until?: string | null } | null)?.interactive_games_until ?? null;
-  if (!isAdmin && !(igu && new Date(igu) > new Date())) redirect('/games-locked');
 
   const boot = `window.__IS_ADMIN=${isAdmin ? 'true' : 'false'};window.__GAME_CREDITS=${isAdmin ? 9999 : credits};`;
 
