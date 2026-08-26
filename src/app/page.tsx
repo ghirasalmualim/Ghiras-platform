@@ -51,7 +51,8 @@ export default async function HomePage() {
       </section>
 
       <footer className="py-6 text-center text-sm text-ink/45">
-        غراس المعلم © ١٤٤٧هـ — جميع الحقوق محفوظة
+        غراس المعلم © ١٤٤٧هـ — جميع الحقوق محفوظة{' · '}
+        <Link href="/support" className="underline hover:text-sage-deep">💬 تواصل معنا</Link>
       </footer>
     </main>
   );

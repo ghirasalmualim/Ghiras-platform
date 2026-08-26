@@ -186,6 +186,14 @@ export default async function AccountPage() {
         </Link>
         <h1 className="mt-5 text-2xl font-black text-sage-deep">حسابي</h1>
 
+        <Link
+          href="/support"
+          className="card-3d mt-5 p-5 flex items-center justify-between hover:border-sage transition-all"
+        >
+          <span className="font-extrabold text-ink">💬 تواصل معنا</span>
+          <span className="text-xs font-bold text-ink/50">أسئلتك ومشاكلك — نرد عليك هنا</span>
+        </Link>
+
         {/* ── معلومات الحساب ── */}
         <Card title="معلومات الحساب">
           <dl className="flex flex-col gap-3 text-sm">
