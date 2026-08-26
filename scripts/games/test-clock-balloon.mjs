@@ -62,8 +62,8 @@ console.log("═══ ٥ · البالون — الرصيد المشترك ═�
   const b = readFileSync("src/app/balloons/page.tsx", "utf8");
   // ⚠️ GAME_JS سطر واحد مهرَّب — يُفحص عدد الاستدعاءات وموضعها لا حدود الدوال
   check("A) المعاينة لا تخصم: استدعاء consumeCredit واحد فقط", (b.match(/await consumeCredit\(\)/g) || []).length === 1);
-  check("A) وذلك الاستدعاء داخل openGame وحده", /async function openGame\(\)[\s\S]{0,400}await consumeCredit\(\)/.test(b));
-  check("B) الخصم عند التشغيل وحده عبر المسار القائم", b.includes("game-consume") && /async function openGame\(\)[\s\S]{0,400}consumeCredit\(\)/.test(b));
+  check("A) وذلك الاستدعاء داخل openGame وحده", /async function openGame\(preview\)[\s\S]{0,600}await consumeCredit\(\)/.test(b));
+  check("B) الخصم عند التشغيل وحده عبر المسار القائم", b.includes("game-consume") && /!PREVIEWING && !COMMITTED[\s\S]{0,300}consumeCredit\(\)/.test(b.replace(/\\n/g,"\n")));
   check("C) الأدمِن بلا خصم", b.includes("if(IS_ADMIN) return {ok:true,unlimited:true}"));
   check("D) صفر رصيد → نافذة الشراء القائمة (402/no_credit)", b.includes("showBuy()"));
   check("لا استحقاق مستقلًا للبالون", !b.includes("balloon_until"));
@@ -116,7 +116,7 @@ console.log("═══ دفعة إصلاحات QA — الحفظ والصوت و
   const b = readFileSync("src/app/balloons/page.tsx", "utf8");
   check("الحفظ بنفس عقد المكتبة: TYPE balloons", b.includes("TYPE='balloons'"));
   check("commitSave عند التشغيل الأول فقط (داخل حارس COMMITTED)",
-    /if\(!COMMITTED\)\{[\s\S]{0,400}GHLib\.commitSave/.test(b.replace(/\\n/g,"\n")));
+    /if\(!PREVIEWING && !COMMITTED\)\{[\s\S]{0,400}GHLib\.commitSave/.test(b.replace(/\\n/g,"\n")));
   check("فتح المحفوظة يستعيد COMMITTED — لا خصم ثانٍ", b.includes("COMMITTED=!!d.committed"));
   check("مؤثرات: إطلاق وإصابة وخطأ وفوز", ["SFX.launch()","SFX.correct()","SFX.wrong()","SFX.win()"].every(x=>b.includes(x)));
   check("الصوت كسول بعد لمسة — لا تشغيل تلقائي", b.includes("createOscillator") && !b.includes("autoplay"));
@@ -182,6 +182,23 @@ console.log("═══ 🎮 رصيد ألعاب غراس التفاعلية — 
 
   const sg = readFileSync("src/app/api/saved-games/route.ts", "utf8");
   check("المحفوظات ملكية دائمة: لا expiry في مسارها", !sg.includes("expires") && !sg.includes("_until"));
+}
+
+
+console.log("═══ دفعة UX: esc المليون + معاينة البالون ═══");
+{
+  const m = readFileSync("src/app/millionaire/page.tsx", "utf8");
+  const top = m.split("GHIRAS-LIBRARY")[0];
+  check("المليون: esc معرفة أعلى النطاق حيث تُستدعى", /function esc\(s\)/.test(top.replace(/\\n/g,"\n")));
+  const b = readFileSync("src/app/balloons/page.tsx", "utf8");
+  check("البالون: زر معاينة صريح بلا خصم", b.includes("openGame(true)") && b.includes("معاينة اللعبة"));
+  check("المعاينة تتجاوز الخصم والتثبيت معًا", b.includes("!PREVIEWING && !COMMITTED"));
+  check("شارة المعاينة ظاهرة داخل اللعبة", b.includes("معاينة تجريبية — بلا خصم وبلا حفظ"));
+  check("زر التثبيت النهائي واضح", b.includes("تشغيل / إنشاء اللعبة"));
+  for (const n of ["snake","xo","sinjim"]) {
+    const g = readFileSync(`src/app/${n}/page.tsx`, "utf8");
+    check(`${n}: زر الأسئلة اليدوية قائم بلا لمس`, g.includes("manUseBtn"));
+  }
 }
 
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
