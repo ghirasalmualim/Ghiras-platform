@@ -19,6 +19,9 @@ console.log("═══ غياب QAYD/XBRL في المستودع كله (XBRL-001
   const hits = execSync("grep -rli 'xbrl\\|taxonomy\\|qayd' src/lib src/app supabase/ scripts/ --exclude-dir=gharas-bank 2>/dev/null || true", {encoding:"utf8"})
     .split("\n").filter(Boolean)
     .filter(f => !f.includes("test-foundation-static"))
+    // ملفات سجل Stage 2 تذكر QAYD/XBRL كقاعدة مسجلة (REG-KW-003/004) — معرفة لا تنفيذًا؛
+    // غياب التنفيذ يُفحص على DDL في test-registers.mjs §9
+    .filter(f => !f.includes("regulatorySeed") && !f.includes("accounting-registers") && !f.includes("test-registers"))
     // هجرة الأساس تذكر QAYD-002 في تعليق توثيقي واحد سببه إثبات الغياب — الكود الفعلي يُفحص أعلاه بلا تعليقات
     .filter(f => !f.endsWith("2026-08-27-accounting-foundation.sql"));
   check("صفر ملفات تذكر QAYD/XBRL/taxonomy", hits.length === 0);
