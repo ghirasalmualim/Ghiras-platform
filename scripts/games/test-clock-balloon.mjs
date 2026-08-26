@@ -76,7 +76,8 @@ console.log("═══ ٦ · البالون — أمان السؤال والخل
   const b = readFileSync("src/app/balloons/page.tsx", "utf8");
   check("E) نص السؤال بـtextContent لا innerHTML", b.includes("getElementById('bqtext').textContent=q.q"));
   check("E) لا innerHTML على عنصر السؤال", !b.includes("getElementById('bqtext').innerHTML"));
-  check("H) لا أسئلة تجريبية: لا QUESTIONS ولا demoPlay", !b.includes("const QUESTIONS") && !b.includes("demoPlay"));
+  check("H) أسئلة العرض معاينة صرف: demoPlay يمر بـopenGame(true) ويصون أسئلة المعلمة",
+    /function demoPlay\(\)\{[\s\S]{0,300}openGame\(true\)/.test(b.replace(/\\n/g,"\n")) && b.includes("demoKeep"));
   check("F) فيشر–ييتس يخلط كائنات {text,correct} كاملة", b.includes("correct:i===q.correct") && /fshuffle=a=>\{for\(let i=a\.length-1;i>0;i--\)/.test(b));
   check("F) الإصابة تُحكم بوسم الكائن لا بموقعه", b.includes("if(b.correct){"));
   check("المعاينة والقوائم تُهرَّب بـesc", b.includes("esc(q.q)"));
