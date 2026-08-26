@@ -201,5 +201,14 @@ console.log("═══ دفعة UX: esc المليون + معاينة البال
   }
 }
 
+
+console.log("═══ البالون: سؤال يدوي واحد يكمل الرحلة فورًا ═══");
+{
+  const b = readFileSync("src/app/balloons/page.tsx", "utf8").replace(/\\n/g,"\n");
+  check("addManualQ يبني المعاينة تلقائيًا فيظهر الزران",
+    /hideErr\(\); renderManList\(\);[\s\S]{0,400}renderPreview\(\);\n\}/.test(b));
+  check("التلقائي لا يثبت اللعبة — COMMITTED=false", /MANUAL=true; COMMITTED=false;[\s\S]{0,120}renderPreview/.test(b));
+}
+
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
