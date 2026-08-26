@@ -192,7 +192,8 @@ console.log("═══ دفعة UX: esc المليون + معاينة البال
   const top = m.split("GHIRAS-LIBRARY")[0];
   check("المليون: esc معرفة أعلى النطاق حيث تُستدعى", /function esc\(s\)/.test(top.replace(/\\n/g,"\n")));
   const b = readFileSync("src/app/balloons/page.tsx", "utf8");
-  check("البالون: زر معاينة صريح بلا خصم", b.includes("openGame(true)") && b.includes("معاينة اللعبة"));
+  check("البالون: المعاينة التجريبية وحدها — زر معاينة الأسئلة الحقيقية أُزيل بقرار",
+    b.includes("معاينة شكل اللعبة") && !b.includes("معاينة اللعبة — بلا خصم"));
   check("المعاينة تتجاوز الخصم والتثبيت معًا", b.includes("!PREVIEWING && !COMMITTED"));
   check("شارة المعاينة ظاهرة داخل اللعبة", b.includes("معاينة تجريبية — بلا خصم وبلا حفظ"));
   check("زر التثبيت النهائي واضح", b.includes("تشغيل / إنشاء اللعبة"));
