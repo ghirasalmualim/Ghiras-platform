@@ -2094,7 +2094,8 @@ table.d-tbl td{padding:9px 5px;text-align:center;border-bottom:1px solid rgba(0,
           <div class="fld">
             <label>🏮 الفانوس الذكي <small style="font-weight:600;color:var(--muted)">— شخصية غراس</small></label>
             <div class="toggles"><div class="tg" data-flag="lantern"><span>إظهار الفانوس على الوسيلة</span><div class="sw-box"></div></div></div>
-            <div class="seg" id="poseSeg" style="margin-top:8px"></div>
+            <div class="seg" id="charSeg" style="margin-top:8px;flex-wrap:wrap"></div>
+            <div class="seg" id="poseSeg" style="margin-top:8px;flex-wrap:wrap"></div>
             <label style="margin-top:11px">موضع الفانوس على الوسيلة</label>
             <div class="seg" id="lposSeg"></div>
             <label style="margin-top:11px">حجم الفانوس</label>
@@ -2163,6 +2164,13 @@ table.d-tbl td{padding:9px 5px;text-align:center;border-bottom:1px solid rgba(0,
           <div class="fld"><label>الاتجاه</label>
             <div class="seg" id="oriSeg">
               <button data-ori="port" class="on">عمودي</button><button data-ori="land">أفقي</button>
+            </div>
+          </div>
+          <div class="fld"><label>تخطيط A4</label>
+            <div class="seg" id="nupSeg">
+              <button data-nup="1" class="on">١× ورقة واحدة</button>
+              <button data-nup="2">٢× في الصفحة</button>
+              <button data-nup="4">٤× في الصفحة</button>
             </div>
           </div>
           <div class="fld"><label>عدد النسخ</label>
@@ -11339,7 +11347,7 @@ function stateFor(t){
       : ['tf','tfl'].indexOf(t.type)>=0 ? 'truefalse'
       : ['qwheel','wheel','path','bingo','match'].indexOf(t.type)>=0 ? 'celebrate'
       : ['keyw','qalist','sheet'].indexOf(t.type)>=0 ? 'point' : 'stand')), lpos:(t.lpos||'br'), lsize:(t.lsize||'m'), msub:(t.subject||''), vp:(t.vp||null), fig:(t.fig||null), proc:(t.proc||null), lsn:(t.lsn||''), ic:(t.ic || (t.noic ? 'off' : 'auto')), wpal:(t.wpal||'auto'), bx:(t.bx||'m'), fsx:(t.fsx||'m'), hint:gx(t.hint||''), shape:(t.shape||'tree'),
-    size:'A4', ori:(t.ori||'port'), copies:1, mode:(t.mode||'auto'), noic:!!t.noic, img:(t.img||null),
+    size:'A4', ori:(t.ori||'port'), copies:1, nup:1, mode:(t.mode||'auto'), noic:!!t.noic, img:(t.img||null),
     flags:{logo:true, teacher:true, date:false, qr:true, cut:false, brand:true, lantern:!!t.lantern, sol:!!t.sol},
     teacher:gx(t.teacher || ''),          /* لا اسمَ مثبَّتًا — يكتبُه المعلّمُ بنفسِه */
     tset:(t.tset||'legacy'), pairId:(t.pairId||null), qh:(t.qh||null), hw:!!t.hw, rub:!!t.rub, needsReview:false,
@@ -11491,20 +11499,20 @@ const MANIP = {
     </div>\`;
   },
   icecream:(it,s,th,ac)=>{
-    const cols=['#FDD835','#42A5F5','#EF5350','#66BB6A','#AB47BC','#FF7043'];
+    const cols=wheelCols(s, th, ac);
     const three = it.slice(0,3), loose = it.slice(0,3);
+    const coneW=(txt,ci)=>\`<div style="display:flex;flex-direction:column;align-items:center">
+        <div style="position:relative;width:96px;height:34px;z-index:3">\${PSVG.scoop(cols[ci%cols.length])}
+          \${txt?\`<b style="position:absolute;inset:10% 12% 22%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.3)">\${txt}</b>\`:''}
+        </div>
+        <div style="position:relative;width:76px;height:30px;margin-top:-5px;z-index:2">\${PSVG.scoop(cols[(ci+1)%cols.length])}</div>
+        <div style="position:relative;width:62px;height:52px;margin-top:-4px">\${PSVG.cone()}</div>
+      </div>\`;
     return \`<div class="mwrap">
-      <div class="icerow">
-        \${three.map((x,i)=>\`<div class="cone-wrap">
-          <span class="scoop top" style="background:\${cols[i%6]}"><b>\${x}</b></span>
-          <span class="scoop lf" style="background:\${cols[(i+1)%6]}"></span>
-          <span class="scoop rt" style="background:\${cols[(i+2)%6]}"></span>
-          <span class="cone"></span></div>\`).join('')}
-      </div>
-      <div class="icerow">
-        <div class="cone-wrap"><span class="scoop top empty"></span><span class="scoop lf empty"></span>
-          <span class="scoop rt empty"></span><span class="cone"></span></div>
-        <div class="mpieces">\${loose.map((x,i)=>\`<span class="ball cut" style="background:\${cols[i%6]}"><b>\${x}</b></span>\`).join('')}</div>
+      <div class="icerow" style="display:flex;gap:18px;justify-content:center">\${three.map((x,i)=>coneW(x,i)).join('')}</div>
+      <div class="icerow" style="display:flex;gap:18px;justify-content:center;align-items:center;margin-top:10px">
+        \${coneW('',4)}
+        <div class="mpieces">\${loose.map((x,i)=>\`<span class="ball cut" style="background:\${cols[i%cols.length]}"><b>\${x}</b></span>\`).join('')}</div>
       </div>
       \${CUTNOTE('قصّ الكرات وركّبها على الكون بالترتيب الصحيح')}
     </div>\`;
@@ -11583,9 +11591,10 @@ const MANIP = {
   tree:(it,s,th,ac)=>{
     const on = it.slice(0,16), loose = it.slice(0,6);
     return \`<div class="mwrap">
-      <div class="mtree">
-        <div class="canopy">\${on.map(x=>\`<span class="apple">\${x}</span>\`).join('')}</div>
-        <div class="trunk"></div>
+      <div style="position:relative;width:330px;height:290px;margin-inline:auto">\${PSVG.treeBack()}
+        <div style="position:absolute;inset:8% 12% 36%;display:flex;flex-wrap:wrap;gap:6px;align-content:center;justify-content:center">
+          \${on.map(x=>\`<span class="apple" style="position:static">\${x}</span>\`).join('')}
+        </div>
       </div>
       \${CUTNOTE('قصّ التفاحات وطابقها على الشجرة')}
       <div class="mpieces">\${loose.map(x=>\`<span class="apple cut">\${x}</span>\`).join('')}</div>
@@ -11594,8 +11603,11 @@ const MANIP = {
   jar:(it,s,th,ac)=>{
     const on = it.slice(0,9), loose = it.slice(0,5);
     return \`<div class="mwrap">
-      <div class="jar-lid" style="background:\${ac}"></div>
-      <div class="jar">\${on.map(x=>\`<span class="candy" style="--c:\${ac}"><i>\${x}</i></span>\`).join('')}</div>
+      <div style="position:relative;width:300px;height:262px;margin-inline:auto">\${PSVG.jarBack()}
+        <div style="position:absolute;inset:26% 12% 8%;display:flex;flex-wrap:wrap;gap:6px;align-content:center;justify-content:center">
+          \${on.map(x=>\`<span class="candy" style="position:static;--c:\${ac}"><i>\${x}</i></span>\`).join('')}
+        </div>
+      </div>
       \${CUTNOTE('قصّ الحلوى وضعها في الجرة')}
       <div class="mpieces">\${loose.map(x=>\`<span class="candy cut" style="--c:\${th.gold}"><i>\${x}</i></span>\`).join('')}</div>
     </div>\`;
@@ -11632,12 +11644,14 @@ const MANIP = {
     </div>\`;
   },
   train:(it,s,th,ac)=>{
-    const cols=['#E53935','#FB8C00','#FDD835','#43A047','#1E88E5','#8E24AA'];
+    const cols=wheelCols(s, th, ac);
     const C = it.slice(0,6);
     return \`<div class="mwrap">
-      <div class="train">
-        <span class="engine">🚂</span>
-        \${C.map((x,i)=>\`<span class="wagon" style="background:\${cols[i%6]}"><b>\${x}</b><i></i><i></i></span>\`).join('')}
+      <div class="train" style="display:flex;align-items:flex-end;gap:6px;justify-content:center;flex-wrap:wrap">
+        <div style="position:relative;width:96px;height:66px">\${PSVG.loco(ac)}</div>
+        \${C.map((x,i)=>\`<div style="position:relative;width:88px;height:64px">\${PSVG.wagon(cols[i%cols.length])}
+          <b style="position:absolute;inset:12% 10% 34%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;font-size:12px;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3)">\${x}</b>
+        </div>\`).join('')}
       </div>
       <div class="trail"></div>
       \${CUTNOTE('قصّ العربات ورتّبها خلف القاطرة')}
@@ -12481,6 +12495,102 @@ function b1install(){
 }
 
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   PSVG — مكتبة الأشكال الفاخرة: SVG نقي قابل للتحجيم بلا فقد،
+   بلا نقاط raster ولا روابط خارجية ولا سكربتات. كل شكل دالة تأخذ
+   لون العنصر وتشتق درجاته، فيتلون مع لوحة الوسيلة نفسها.
+   ══════════════════════════════════════════════════════════════════════ */
+function shade(hex,p){
+  const n=parseInt(String(hex).replace('#',''),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const t=p<0?0:255, a=Math.abs(p);
+  r=Math.round(r+(t-r)*a); g=Math.round(g+(t-g)*a); b=Math.round(b+(t-b)*a);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+let _pid=0; const PID=()=>'pg'+(++_pid);
+const PSVG={
+  apple(c){const i=PID();return \`<svg viewBox="0 0 120 126" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <radialGradient id="\${i}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="\${shade(c,.5)}"/><stop offset=".55" stop-color="\${c}"/><stop offset="1" stop-color="\${shade(c,-.22)}"/></radialGradient>
+    <linearGradient id="\${i}l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CC576"/><stop offset="1" stop-color="#3F8F3C"/></linearGradient></defs>
+    <ellipse cx="60" cy="121" rx="34" ry="5" fill="rgba(0,0,0,.10)"/>
+    <path d="M60 26C42 8 8 18 8 56c0 34 26 64 44 64 4 0 6-2 8-2s4 2 8 2c18 0 44-30 44-64C112 18 78 8 60 26Z" fill="url(#\${i})"/>
+    <path d="M60 26c-2-10-1-16 4-22" fill="none" stroke="#7A4A21" stroke-width="6" stroke-linecap="round"/>
+    <path d="M64 12c14-9 26-5 30 4-10 6-24 5-30-4Z" fill="url(#\${i}l)"/>
+    <ellipse cx="38" cy="46" rx="12" ry="20" fill="rgba(255,255,255,.35)" transform="rotate(-18 38 46)"/></svg>\`;},
+  cookie(){const i=PID();return \`<svg viewBox="0 0 120 120" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <radialGradient id="\${i}" cx="38%" cy="32%" r="85%"><stop offset="0" stop-color="#F0C486"/><stop offset=".6" stop-color="#D79A55"/><stop offset="1" stop-color="#B57A3A"/></radialGradient></defs>
+    <path d="M60 4c8 0 12 6 20 7s14-3 21 3 3 13 8 20 9 9 9 18-6 12-7 20 3 14-3 21-13 3-20 8-9 9-18 9-12-6-20-7-14 3-21-3-3-13-8-20-9-9-9-18 6-12 7-20-3-14 3-21 13-3 20-8 9-9 18-9Z" fill="url(#\${i})" stroke="#9E6427" stroke-width="2.5"/>
+    \${[[36,32,-15],[78,26,20],[27,68,8],[63,60,-24],[86,74,14],[46,92,-8]].map(([x,y,r])=>\`<rect x="\${x}" y="\${y}" width="13" height="10" rx="4" fill="#5B3418" transform="rotate(\${r} \${x} \${y})"/><rect x="\${x+1.5}" y="\${y+1.5}" width="5" height="3" rx="1.5" fill="rgba(255,255,255,.28)" transform="rotate(\${r} \${x} \${y})"/>\`).join('')}
+    <ellipse cx="42" cy="30" rx="16" ry="9" fill="rgba(255,255,255,.22)" transform="rotate(-16 42 30)"/></svg>\`;},
+  hand(c){const i=PID();return \`<svg viewBox="0 0 100 112" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.32)}"/><stop offset="1" stop-color="\${shade(c,-.15)}"/></linearGradient></defs>
+    <path d="M22 52V22c0-5 4-8 8-8s8 3 8 8v22-32c0-5 4-8 8-8s8 3 8 8v32-26c0-5 4-8 8-8s8 3 8 8v30-18c0-5 4-8 8-8s8 3 8 8v42c0 22-14 38-36 38H38C22 108 8 96 8 78v-8c0-6 4-9 8-9 3 0 5 1 6 3Z"
+      fill="url(#\${i})" stroke="\${shade(c,-.32)}" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M30 66c14 6 30 6 44 0" fill="none" stroke="\${shade(c,-.25)}" stroke-width="2" stroke-linecap="round" opacity=".6"/></svg>\`;},
+  cloud(c){const i=PID();return \`<svg viewBox="0 0 200 96" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.55)}"/><stop offset=".55" stop-color="\${shade(c,.18)}"/><stop offset="1" stop-color="\${c}"/></linearGradient></defs>
+    <ellipse cx="100" cy="90" rx="72" ry="5" fill="rgba(0,0,0,.08)"/>
+    <path d="M44 84C24 84 12 72 12 58c0-13 10-22 22-23 3-14 16-25 32-25 13 0 24 7 29 17 4-3 9-4 14-4 14 0 24 10 26 21 12 1 21 10 21 21 0 12-11 19-24 19Z"
+      fill="url(#\${i})" stroke="\${shade(c,-.18)}" stroke-width="2"/>
+    <ellipse cx="55" cy="34" rx="18" ry="8" fill="rgba(255,255,255,.55)" transform="rotate(-10 55 34)"/></svg>\`;},
+  candy(c){const i=PID();return \`<svg viewBox="0 0 170 110" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <radialGradient id="\${i}" cx="38%" cy="32%" r="85%"><stop offset="0" stop-color="\${shade(c,.45)}"/><stop offset=".6" stop-color="\${c}"/><stop offset="1" stop-color="\${shade(c,-.2)}"/></radialGradient></defs>
+    <path d="M32 55 6 30c8-2 12-6 14-12 6 8 12 10 18 10Zm0 0L6 80c8 2 12 6 14 12 6-8 12-10 18-10Z" fill="\${shade(c,-.12)}" stroke="\${shade(c,-.3)}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M138 55l26-25c-8-2-12-6-14-12-6 8-12 10-18 10Zm0 0 26 25c-8 2-12 6-14 12-6-8-12-10-18-10Z" fill="\${shade(c,-.12)}" stroke="\${shade(c,-.3)}" stroke-width="2" stroke-linejoin="round"/>
+    <ellipse cx="85" cy="55" rx="52" ry="42" fill="url(#\${i})" stroke="\${shade(c,-.3)}" stroke-width="2.5"/>
+    <path d="M62 18c-8 22-8 52 0 74M108 18c8 22 8 52 0 74" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="66" cy="34" rx="14" ry="8" fill="rgba(255,255,255,.4)" transform="rotate(-20 66 34)"/></svg>\`;},
+  treeBack(){const i=PID();return \`<svg viewBox="0 0 340 310" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <radialGradient id="\${i}a" cx="38%" cy="28%" r="90%"><stop offset="0" stop-color="#93CE6F"/><stop offset=".55" stop-color="#5CA24E"/><stop offset="1" stop-color="#3E7C3A"/></radialGradient>
+    <linearGradient id="\${i}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8A5A30"/><stop offset=".5" stop-color="#6E441F"/><stop offset="1" stop-color="#5A3517"/></linearGradient></defs>
+    <path d="M20 302c0-10 60-16 150-16s150 6 150 16-60 8-150 8-150 2-150-8Z" fill="#7DBB5E"/>
+    <path d="M170 292c-11 0-18-16-18-40l4-76c0-10 6-16 14-16s14 6 14 16l4 76c0 24-7 40-18 40Z" fill="url(#\${i}t)"/>
+    <path d="M156 200c-12-8-20-20-22-34M184 190c10-6 16-14 20-26" fill="none" stroke="#6E441F" stroke-width="8" stroke-linecap="round"/>
+    <path d="M170 10c-30 0-52 14-60 34-26 2-46 20-46 44 0 16 8 30 22 38-2 6-3 11-3 16 0 30 38 48 87 48s87-18 87-48c0-5-1-10-3-16 14-8 22-22 22-38 0-24-20-42-46-44-8-20-30-34-60-34Z"
+      fill="url(#\${i}a)" stroke="#39702F" stroke-width="3"/>
+    <ellipse cx="112" cy="52" rx="30" ry="13" fill="rgba(255,255,255,.25)" transform="rotate(-12 112 52)"/>
+    \${[[76,118],[252,96],[214,148],[128,86],[268,140]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="4.5" fill="rgba(255,255,255,.28)"/>\`).join('')}</svg>\`;
+  },
+  jarBack(){const i=PID();return \`<svg viewBox="0 0 300 270" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="rgba(190,214,232,.55)"/><stop offset=".18" stop-color="rgba(240,248,255,.28)"/><stop offset=".5" stop-color="rgba(224,238,248,.18)"/><stop offset=".82" stop-color="rgba(240,248,255,.28)"/><stop offset="1" stop-color="rgba(170,198,220,.55)"/></linearGradient>
+    <linearGradient id="\${i}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8CC8C"/><stop offset=".5" stop-color="#C99441"/><stop offset="1" stop-color="#A87628"/></linearGradient></defs>
+    <rect x="86" y="4" width="128" height="26" rx="12" fill="url(#\${i}m)" stroke="#8E6220" stroke-width="2"/>
+    <rect x="98" y="30" width="104" height="12" rx="5" fill="#B0C6D8"/>
+    <path d="M70 46c-16 10-26 26-26 48v118c0 30 24 52 54 52h104c30 0 54-22 54-52V94c0-22-10-38-26-48Z"
+      fill="url(#\${i}g)" stroke="#8FA9BE" stroke-width="3"/>
+    <path d="M64 78c-6 34-6 96 0 138" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="10" stroke-linecap="round"/></svg>\`;},
+  loco(c){const i=PID();return \`<svg viewBox="0 0 150 104" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.35)}"/><stop offset="1" stop-color="\${shade(c,-.2)}"/></linearGradient></defs>
+    <circle cx="120" cy="16" r="7" fill="rgba(160,170,180,.5)"/><circle cx="132" cy="8" r="5" fill="rgba(160,170,180,.35)"/>
+    <rect x="108" y="14" width="16" height="22" rx="3" fill="\${shade(c,-.35)}"/>
+    <rect x="70" y="30" width="66" height="34" rx="12" fill="url(#\${i})" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
+    <rect x="16" y="12" width="52" height="52" rx="8" fill="\${shade(c,-.1)}" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
+    <rect x="26" y="20" width="30" height="20" rx="4" fill="#DCEBF5" stroke="\${shade(c,-.35)}" stroke-width="2"/>
+    <rect x="8" y="60" width="136" height="12" rx="6" fill="\${shade(c,-.3)}"/>
+    <path d="M140 72l8 16h-22Z" fill="\${shade(c,-.3)}"/>
+    \${[[36,86],[86,86],[118,86]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="13" fill="#3A3F45" stroke="#20242A" stroke-width="3"/><circle cx="\${x}" cy="\${y}" r="4.5" fill="#C9D2DA"/><path d="M\${x-9} \${y}h18M\${x} \${y-9}v18" stroke="#C9D2DA" stroke-width="2"/>\`).join('')}</svg>\`;},
+  wagon(c){const i=PID();return \`<svg viewBox="0 0 130 96" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.32)}"/><stop offset="1" stop-color="\${shade(c,-.18)}"/></linearGradient></defs>
+    <rect x="6" y="10" width="118" height="56" rx="10" fill="url(#\${i})" stroke="\${shade(c,-.35)}" stroke-width="2.5"/>
+    <path d="M6 30h118M6 48h118" stroke="\${shade(c,-.25)}" stroke-width="1.6" opacity=".55"/>
+    <rect x="2" y="62" width="126" height="9" rx="4.5" fill="\${shade(c,-.35)}"/>
+    \${[[34,82],[96,82]].map(([x,y])=>\`<circle cx="\${x}" cy="\${y}" r="11" fill="#3A3F45" stroke="#20242A" stroke-width="3"/><circle cx="\${x}" cy="\${y}" r="3.8" fill="#C9D2DA"/>\`).join('')}</svg>\`;},
+  scoop(c){const i=PID();return \`<svg viewBox="0 0 100 42" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="\${shade(c,.42)}"/><stop offset="1" stop-color="\${shade(c,-.08)}"/></linearGradient></defs>
+    <path d="M6 2h88c3 0 4 2 4 5v22c0 4-3 6-6 6-4 0-4 5-9 5s-6-4-11-4-6 3-11 3-6-5-11-5-6 4-11 4-6-3-11-3-5 5-10 5c-4 0-6-3-6-7V7c0-3 1-5 4-5Z"
+      fill="url(#\${i})" stroke="\${shade(c,-.28)}" stroke-width="2"/>
+    <ellipse cx="24" cy="10" rx="13" ry="4" fill="rgba(255,255,255,.4)"/></svg>\`;},
+  cone(){const i=PID();return \`<svg viewBox="0 0 100 88" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>
+    <linearGradient id="\${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9BB77"/><stop offset="1" stop-color="#B0793A"/></linearGradient></defs>
+    <path d="M4 4h92L54 84c-2 3-6 3-8 0Z" fill="url(#\${i})" stroke="#8E5F2A" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M14 20l60 34M32 8l46 44M4 34l44 40M52 6l-36 52M78 8 30 66" stroke="#8E5F2A" stroke-width="1.6" opacity=".55"/></svg>\`;},
+  cherry(){const i=PID();return \`<svg viewBox="0 0 40 44" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M20 16C22 8 26 4 34 2" fill="none" stroke="#4E7C33" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="20" cy="28" r="14" fill="#D63B4B" stroke="#A52534" stroke-width="2"/>
+    <ellipse cx="14" cy="22" rx="5" ry="3.5" fill="rgba(255,255,255,.5)" transform="rotate(-24 14 22)"/></svg>\`;}
+};
+
 const BODY = {
 
   /* 🌀 متاهة — طريقٌ من البداية إلى النهاية مع محطّاتٍ تعليمية */
@@ -12605,9 +12715,8 @@ const BODY = {
     const A  = n<=2 ? 150 : n<=4 ? 122 : 104;
     const FS = n<=2 ? 15 : n<=4 ? 12.5 : 11;
     return \`<div class="gs-apples">\${list.map((x,i)=>\`
-      <div class="gs-apple" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};width:\${A}px;height:\${A}px">
-        <i class="stem"></i><i class="leaf"></i>
-        <b style="font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+      <div style="position:relative;width:\${A}px;height:\${Math.round(A*1.05)}px">\${PSVG.apple(cols[i%cols.length])}
+        <b style="position:absolute;inset:26% 14% 16%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12616,11 +12725,9 @@ const BODY = {
     const list = it.slice(0,6), n = list.length || 1;
     const C  = n<=2 ? 152 : n<=4 ? 124 : 106;
     const FS = n<=2 ? 14 : n<=4 ? 12 : 10.5;
-    const chip = (a,b)=>\`<i class="gs-chip" style="width:\${Math.max(5,Math.round(C*.075))}px;height:\${Math.max(5,Math.round(C*.075))}px;top:\${a}%;inset-inline-start:\${b}%"></i>\`;
     return \`<div class="gs-cookies">\${list.map(x=>\`
-      <div class="gs-cookie" style="width:\${C}px;height:\${C}px">
-        \${chip(12,16)}\${chip(72,14)}\${chip(14,72)}\${chip(76,68)}\${chip(44,6)}\${chip(48,86)}
-        <b style="font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+      <div style="position:relative;width:\${C}px;height:\${C}px">\${PSVG.cookie()}
+        <b style="position:absolute;inset:24% 20%;display:flex;align-items:center;justify-content:center;text-align:center;color:#42280F;font-weight:900;line-height:1.3;font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12628,17 +12735,11 @@ const BODY = {
   hand:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const W  = n<=2 ? 128 : n<=4 ? 102 : 86;
-    const H  = Math.round(W*.92);
-    const FW = Math.round(W*.17), FH = Math.round(W*.40);
+    const W  = n<=2 ? 132 : n<=4 ? 106 : 90;
     const FS = n<=2 ? 15 : n<=4 ? 12.5 : 11;
     return \`<div class="gs-hands">\${list.map((x,i)=>\`
-      <div class="gs-hand" style="--c:\${cols[i%cols.length]};width:\${W}px">
-        \${[0,1,2,3].map(k=>\`<i class="gs-fing" style="background-color:\${cols[i%cols.length]};width:\${FW}px;height:\${FH+(k===1||k===2?7:0)}px;
-          inset-inline-start:\${Math.round(W*0.075 + k*W*0.215)}px;top:\${-(FH-9)+(k===1||k===2?-7:0)}px"></i>\`).join('')}
-        <i class="gs-thumb" style="background-color:\${cols[i%cols.length]};width:\${Math.round(FW*1.05)}px;height:\${Math.round(FH*.72)}px;
-          inset-inline-end:\${-Math.round(W*0.09)}px;top:\${Math.round(H*0.20)}px;transform:rotate(-32deg)"></i>
-        <div class="gs-palm" style="background-color:\${cols[i%cols.length]};height:\${H}px"><b style="font-size:\${FZ(s,FS)}px">\${LT(x)}</b></div>
+      <div style="position:relative;width:\${W}px;height:\${Math.round(W*1.12)}px">\${PSVG.hand(cols[i%cols.length])}
+        <b style="position:absolute;inset:46% 16% 14%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12646,12 +12747,11 @@ const BODY = {
   candy:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const W  = n<=2 ? 162 : n<=4 ? 126 : 104;
+    const W  = n<=2 ? 168 : n<=4 ? 132 : 110;
     const FS = n<=2 ? 15.5 : n<=4 ? 13 : 11.5;
     return \`<div class="gs-cands">\${list.map((x,i)=>\`
-      <div class="gs-cand" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};width:\${W}px;height:\${Math.round(W*.78)}px">
-        <i class="wrp l"></i><i class="wrp r"></i>
-        <b style="font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
+      <div style="position:relative;width:\${W}px;height:\${Math.round(W*.65)}px">\${PSVG.candy(cols[i%cols.length])}
+        <b style="position:absolute;inset:22% 26%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.3;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12659,12 +12759,11 @@ const BODY = {
   cloud:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const W  = n<=2 ? 190 : n<=4 ? 146 : 122;
+    const W  = n<=2 ? 196 : n<=4 ? 152 : 126;
     const FS = n<=2 ? 14.5 : n<=4 ? 12 : 10.5;
     return \`<div class="gs-clouds">\${list.map((x,i)=>\`
-      <div class="gs-cloud" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};width:\${W}px;height:\${Math.round(W*.42)}px">
-        <i class="pf p1" style="background-color:\${cols[i%cols.length]}"></i><i class="pf p2" style="background-color:\${cols[i%cols.length]}"></i><i class="pf p3" style="background-color:\${cols[i%cols.length]}"></i>
-        <b style="font-size:\${FZ(s,FS)}px">\${LT(x)}</b><i class="pf drop"></i>
+      <div style="position:relative;width:\${W}px;height:\${Math.round(W*.48)}px">\${PSVG.cloud(cols[i%cols.length])}
+        <b style="position:absolute;inset:34% 14% 18%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.25);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
       </div>\`).join('')}</div>\`;
   },
 
@@ -12672,14 +12771,13 @@ const BODY = {
   tree:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const CW = s.ori==='land' ? 400 : 330;
+    const CW = s.ori==='land' ? 420 : 340;
+    const CH = Math.round(CW*.9);
     const FS = n<=3 ? 13 : n<=4 ? 12 : 11;
-    return \`<div class="gs-tree">
-      <div class="gs-canopy" style="width:\${CW}px;min-height:\${Math.round(CW*.68)}px">
-        \${list.map((x,i)=>\`<div class="gs-tag" style="--c:\${cols[i%cols.length]};font-size:\${FZ(s,FS)}px;max-width:\${Math.round(CW*.44)}px">\${LT(x)}</div>\`).join('')}
+    return \`<div class="gs-tree" style="position:relative;width:\${CW}px;height:\${CH}px;margin-inline:auto">\${PSVG.treeBack()}
+      <div style="position:absolute;inset:9% 12% 40%;display:flex;flex-wrap:wrap;gap:8px;align-content:center;justify-content:center">
+        \${list.map((x,i)=>\`<div class="gs-tag" style="--c:\${cols[i%cols.length]};font-size:\${FZ(s,FS)}px;max-width:\${Math.round(CW*.42)}px">\${LT(x)}</div>\`).join('')}
       </div>
-      <div class="gs-trunk" style="height:\${s.ori==='land'?46:64}px"></div>
-      <div class="gs-grass"></div>
     </div>\`;
   },
 
@@ -12687,13 +12785,12 @@ const BODY = {
   jar:(it,s,th,ac)=>{
     const list = it.slice(0,6), n = list.length || 1;
     const cols = wheelCols(s, th, ac);
-    const JW = s.ori==='land' ? 350 : 296;
+    const JW = s.ori==='land' ? 360 : 300;
+    const JH = Math.round(JW*.9);
     const FS = n<=3 ? 13 : n<=4 ? 12 : 11;
-    return \`<div class="gs-jar">
-      <div class="gs-lid" style="width:\${Math.round(JW*.56)}px;height:\${Math.round(JW*.062)}px"></div>
-      <div class="gs-neck" style="width:\${Math.round(JW*.44)}px;height:\${Math.round(JW*.035)}px"></div>
-      <div class="gs-body" style="width:\${JW}px;min-height:\${Math.round(JW*.78)}px">
-        \${list.map((x,i)=>\`<div class="gs-slip" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};font-size:\${FZ(s,FS)}px;max-width:\${Math.round(JW*.80)}px">\${LT(x)}</div>\`).join('')}
+    return \`<div class="gs-jar" style="position:relative;width:\${JW}px;height:\${JH}px;margin-inline:auto">\${PSVG.jarBack()}
+      <div style="position:absolute;inset:26% 12% 8%;display:flex;flex-wrap:wrap;gap:7px;align-content:center;justify-content:center">
+        \${list.map((x,i)=>\`<div class="gs-slip" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};font-size:\${FZ(s,FS)}px;max-width:\${Math.round(JW*.4)}px">\${LT(x)}</div>\`).join('')}
       </div>
     </div>\`;
   },
@@ -13124,23 +13221,18 @@ const BODY = {
     const cols = wheelCols(s, th, ac);
     const per  = s.ori==='land' ? 4 : 3;
     const rows = []; for(let i=0;i<list.length;i+=per) rows.push(list.slice(i,i+per));
-    const W  = per===4 ? 116 : 96;
+    const W  = per===4 ? 120 : 100;
     const FS = per===4 ? 12.5 : 11.5;
     let k = -1;
     return \`<div class="trn">\${rows.map((row,r)=>\`
       <div class="trn-line">
         <div class="trn-row">
-          \${r===0?\`<div class="tloco" style="--c:\${ac};background-color:\${ac};width:\${Math.round(W*.72)}px">
-            <span class="puff">💨</span><i class="chim"></i>
-            <b>🚂</b><span>\${gx('انطلقي')}</span><i class="w"></i><i class="w"></i>
-          </div>\`:''}
-          \${row.map(x=>{ k++; return \`<div class="tcar" style="--c:\${cols[k%cols.length]};background-color:\${cols[k%cols.length]};width:\${W}px">
-            <span class="n">\${AR(k+1)}</span>
-            <b style="font-size:\${FZ(s,fitFS(x, FS, per===4?16:14, .55))}px">\${LT(x)}</b>
-            <i class="w"></i><i class="w"></i>
+          \${r===0?\`<div style="position:relative;width:\${Math.round(W*.92)}px;height:\${Math.round(W*.64)}px">\${PSVG.loco(ac)}</div>\`:''}
+          \${row.map(x=>{k++;return \`<div style="position:relative;width:\${W}px;height:\${Math.round(W*.74)}px">\${PSVG.wagon(cols[k%cols.length])}
+            <b style="position:absolute;inset:14% 10% 34%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.3);font-size:\${FZ(s,FS)}px">\${LT(x)}</b>
           </div>\`;}).join('')}
         </div>
-        <div class="trail"></div>
+        <div style="height:8px;margin-top:-4px;border-radius:4px;background:repeating-linear-gradient(90deg,#8A6A4A 0 22px,#5E452D 22px 26px)"></div>
       </div>\`).join('')}</div>\`;
   },
 
@@ -13151,14 +13243,14 @@ const BODY = {
     const FS = n<=3 ? 15 : n<=5 ? 13.5 : 12.5;
     const SW = s.ori==='land' ? 300 : 268;
     const CW = n>=5 ? 96 : 108;
-    return \`<div class="ice">
-      <div class="cherry"></div><div class="stick"></div>
+    return \`<div class="ice" style="display:flex;flex-direction:column;align-items:center">
+      <div style="position:relative;width:34px;height:36px;margin-bottom:-8px;z-index:20">\${PSVG.cherry()}</div>
       \${list.map((x,i)=>\`
-        <div class="icb" style="--c:\${cols[i%cols.length]};background-color:\${cols[i%cols.length]};width:\${SW - i*10}px;z-index:\${9-i}">
-          <span class="n">\${AR(i+1)}</span>
-          <b style="font-size:\${FZ(s,fitFS(x, FS, 14, .5))}px">\${LT(x)}</b>
+        <div style="position:relative;width:\${SW - i*10}px;height:44px;margin-top:-6px;z-index:\${9-i}">\${PSVG.scoop(cols[i%cols.length])}
+          <span style="position:absolute;top:6px;inset-inline-start:10px;background:rgba(255,255,255,.85);color:#333;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;font-size:11px;font-weight:900">\${AR(i+1)}</span>
+          <b style="position:absolute;inset:12% 16% 22%;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-weight:900;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.3);font-size:\${FZ(s,fitFS(x, FS, 14, .5))}px">\${LT(x)}</b>
         </div>\`).join('')}
-      <div class="icone" style="width:\${CW}px;height:\${Math.round(CW*.82)}px"></div>
+      <div style="position:relative;width:\${CW}px;height:\${Math.round(CW*.85)}px;margin-top:-4px">\${PSVG.cone()}</div>
     </div>\`;
   },
 
@@ -14243,7 +14335,7 @@ function openEditor(id){
   $('#edSub').textContent = [...new Set([t.subject, t.grade==='عام'?null:'الصف '+t.grade])].filter(Boolean)
     .concat([\`\${AR(t.pages)} صفحة\`, t.locked?'صورة جاهزة — تُطبع وتُحمّل كما هي':'قابل للتعديل بالكامل']).join('، ');
   if (S.charPick && !t.locked) {
-    S.f.charImg = S.charPick.src; S.f.flags.lantern = true;
+    S.f.charImg = S.charPick.src; S.f.charName = S.charPick.name; S.f.charPose = S.charPick.pose; S.f.flags.lantern = true;
     toast('🌱', S.charPick.name+' انضمت للوسيلة — بدّل وضعيتها من قسم الشخصيات');
   }
   $('#edFav').textContent = S.favs.has(id)?'❤️ محفوظة':'♡ حفظ';
@@ -14256,7 +14348,7 @@ function openEditor(id){
   $('#i-font').value=S.f.font;
 
   buildThemes(); buildSwatches(); buildDecors(); buildSegs(); buildBStyle(); buildShape(); buildToggles(); buildRate(); buildSimilar(); syncSchool();
-  syncSeg('#sizeSeg','size','A4'); syncSeg('#oriSeg','ori','port'); syncSeg('#copySeg','copy','1');
+  syncSeg('#sizeSeg','size','A4'); syncSeg('#oriSeg','ori','port'); syncSeg('#copySeg','copy','1'); syncSeg('#nupSeg','nup', S.f && S.f.nup || 1);
   switchPane('txt');
   $('#editor').classList.add('on'); document.body.style.overflow='hidden';
   TC.badge();
@@ -14437,8 +14529,27 @@ function buildSegs(){
   $('#bgSeg').innerHTML = Object.entries(BGS).map(([k,v])=>
     \`<button class="\${(S.f.bg||'white')===k?'on':''}" data-bg2="\${k}">\${v}</button>\`).join('');
   $$('#bgSeg button').forEach(b=>b.onclick=()=>{ S.f.bg=b.dataset.bg2; buildSegs(); draw(); });
+  /* شخصيات غراس داخل المحرر: نفس فتحة العرض، الاختيار يضبط charImg */
+  const _cs=$('#charSeg');
+  if(_cs){
+    _cs.innerHTML = \`<button data-ch="" class="\${!S.f.charName?'on':''}">🏮 الرسم الأصلي</button>\`
+      + GCHARS.map((c,i)=>\`<button data-ch="\${i}" class="\${S.f.charName===c.n?'on':''}">\${c.n}</button>\`).join('');
+    _cs.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+      if(b.dataset.ch===''){ S.f.charName=null; S.f.charImg=null; }
+      else { const c=GCHARS[+b.dataset.ch]; S.f.charName=c.n; S.f.charImg=c.poses[0].src; S.f.charPose=c.poses[0].pose; }
+      S.f.flags.lantern=true; buildToggles(); buildSegs(); draw();
+    });
+  }
+  if(S.f.charName){
+    const c=GCHARS.find(x=>x.n===S.f.charName);
+    if(c){ $('#poseSeg').innerHTML = c.poses.map((p,i)=>\`<button data-cp="\${i}" class="\${S.f.charImg===p.src?'on':''}">\${p.pose}</button>\`).join('');
+      $$('#poseSeg button').forEach(b=>b.onclick=()=>{ const p=c.poses[+b.dataset.cp]; S.f.charImg=p.src; S.f.charPose=p.pose; S.f.flags.lantern=true; buildToggles(); buildSegs(); draw(); });
+      const _mp0={}; // مسار الفانوس القديم لا يُبنى مع شخصية مختارة
+      var _skipOldPoses=true;
+    }
+  }
   const _mp = (MASCOT[S.f.msub]||{}).poses || {};
-  $('#poseSeg').innerHTML = Object.entries(POSES).map(([k,v])=>
+  if(typeof _skipOldPoses==='undefined') $('#poseSeg').innerHTML = Object.entries(POSES).map(([k,v])=>
     \`<button class="\${(S.f.pose||'stand')===k?'on':''}" data-pose="\${k}">\${v}\${_mp[k]?' ✦':''}</button>\`).join('');
   $$('#poseSeg button').forEach(b=>b.onclick=()=>{ S.f.pose=b.dataset.pose; S.f.flags.lantern=true; buildToggles(); buildSegs(); draw(); });
   $('#lposSeg').innerHTML = Object.entries(LPOS).map(([k,v])=>
@@ -14492,13 +14603,14 @@ function bindToggles(sel){
 }
 function syncSeg(sel,key,val){
   $$(sel+' button').forEach(b=>{
-    const v = b.dataset.pat||b.dataset.size||b.dataset.ori||b.dataset.copy;
+    const v = b.dataset.pat||b.dataset.size||b.dataset.ori||b.dataset.copy||b.dataset.nup;
     b.classList.toggle('on', v===String(val));
     b.onclick=()=>{
       if(b.dataset.pat) S.f.pat=b.dataset.pat;
       if(b.dataset.size) S.f.size=b.dataset.size;
       if(b.dataset.ori) S.f.ori=b.dataset.ori;
       if(b.dataset.copy) S.f.copies=+b.dataset.copy;
+      if(b.dataset.nup) S.f.nup=+b.dataset.nup;
       $$(sel+' button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); draw();
     };
   });
@@ -14617,6 +14729,20 @@ function withScale(html, k){
 }
 
 function printPage(t, s){
+  /* nup: نسختان أو أربع من نفس الورقة داخل A4 واحدة — للقص والتوزيع */
+  const NUP = (s.size==='A4' && !(t && t.type==='img') && (s.nup===2||s.nup===4)) ? s.nup : 1;
+  if (NUP > 1) {
+    const base = SIZES.A4; let w=base[0], h=base[1];
+    if (s.ori==='land') { const x=w; w=h; h=x; }
+    const GAP = 12;
+    let cw, ch, cols;
+    if (NUP===2){ cols=1; cw=PRINT_PW; ch=(PRINT_PH-GAP)/2; }
+    else        { cols=2; cw=(PRINT_PW-GAP)/2; ch=(PRINT_PH-GAP)/2; }
+    const k = Math.min(cw/w, ch/h);
+    const one = '<div class="pscale" style="width:'+(w*k)+'px;height:'+(h*k)+'px">'+withScale(designHTML(t,s),k)+'</div>';
+    return '<div class="print-page nup" style="display:grid;grid-template-columns:repeat('+cols+',1fr);justify-items:center;align-content:space-evenly;gap:'+GAP+'px">'
+         + Array.from({length:NUP},()=>one).join('') + '</div>';
+  }
   const base = (s.size==='sq') ? SIZES.sq : SIZES.A4;
   let w = base[0], h = base[1];
   const isImg = t && t.type === 'img';
@@ -14739,7 +14865,7 @@ function syncEditorInputs(){
   set('i-teacher', S.f.teacher); set('i-subject', S.f.subject); set('i-grade', S.f.grade);
   set('i-font', S.f.font);
   buildThemes(); buildSwatches(); buildDecors(); buildSegs(); buildBStyle(); buildShape(); buildToggles(); syncSchool();
-  syncSeg('#sizeSeg','size','A4'); syncSeg('#oriSeg','ori','port'); syncSeg('#copySeg','copy','1');
+  syncSeg('#sizeSeg','size','A4'); syncSeg('#oriSeg','ori','port'); syncSeg('#copySeg','copy','1'); syncSeg('#nupSeg','nup', S.f && S.f.nup || 1);
 }
 function undo(){
   if (!HIST.length) return toast('↩','ما فيه خطوة سابقة');
