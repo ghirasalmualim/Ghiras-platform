@@ -44,9 +44,17 @@ create policy support_convo_select on public.support_conversations
   for select using (user_id = auth.uid() or public.is_admin());
 create policy support_convo_insert on public.support_conversations
   for insert with check (user_id = auth.uid());
+-- التحديث من المتصفح مقيَّد عمودًا واحدًا: مؤشر «قرأتُ» لا غير.
+-- الحقول الإدارية (status/handling_mode/last_sender/last_message_at)
+-- تُكتب حصرًا من مسارات الخادم بمفتاح الخدمة بعد تحقق الدور —
+-- فلا تستطيع مستخدمة (ولا حتى جلسة أدمِن من العميل) قلب حالة التحويل.
 create policy support_convo_update on public.support_conversations
   for update using (user_id = auth.uid() or public.is_admin())
   with check (user_id = auth.uid() or public.is_admin());
+
+revoke update, delete on public.support_conversations from anon, authenticated;
+grant  update (user_seen_at) on public.support_conversations to authenticated;
+revoke update, delete on public.support_messages from anon, authenticated;
 
 -- الرسائل: القراءة لمن يرى المحادثة؛ والكتابة من المتصفح للمستخدمة
 -- باسمها داخل محادثتها فقط، وللأدمِن بصفته — ai/system من الخادم فقط

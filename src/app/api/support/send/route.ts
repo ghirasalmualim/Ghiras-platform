@@ -154,10 +154,16 @@ export async function POST(req: NextRequest) {
   if (msgErr) return NextResponse.json({ error: 'SAVE_FAILED' }, { status: 500 });
 
   const now = new Date().toISOString();
-  await supabase
-    .from('support_conversations')
-    .update({ last_message_at: now, last_sender: 'user', user_seen_at: now })
-    .eq('id', convoId);
+  {
+    // الحقول الإدارية تُكتب بمفتاح الخدمة — صلاحية المتصفح user_seen_at فقط
+    const svc0 = serviceClient();
+    if (svc0) {
+      await svc0
+        .from('support_conversations')
+        .update({ last_message_at: now, last_sender: 'user', user_seen_at: now })
+        .eq('id', convoId);
+    }
+  }
 
   // ٢) هل يرد الذكاء؟ — بعد استلام الإدارة لا يرد أبدًا
   const aiAllowed = convo!.handling_mode === 'ai' && convo!.status !== 'human_handling';
@@ -175,12 +181,8 @@ export async function POST(req: NextRequest) {
         .from('support_conversations')
         .update({ status: 'needs_human', last_message_at: new Date().toISOString(), last_sender: 'system' })
         .eq('id', convoId);
-    } else {
-      await supabase
-        .from('support_conversations')
-        .update({ status: 'needs_human' })
-        .eq('id', convoId);
     }
+    // بلا مفتاح خدمة: الرسالة محفوظة والأدمِن يراها — التحويل الصريح يتعذر فقط
     return NextResponse.json({ ok: true, conversation_id: convoId, escalated: true });
   };
 

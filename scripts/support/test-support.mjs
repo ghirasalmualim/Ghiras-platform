@@ -73,5 +73,24 @@ console.log("═══ ٥ · المعرفة: أرقام معتمدة فقط ═�
   check("قائمة التحويل الفوري", k.includes("ESCALATE_HINTS") && k.includes("استرجاع"));
 }
 
+
+console.log("═══ ٦ · تقييد تحديث المتصفح — الحقول الإدارية للخادم وحده ═══");
+{
+  const m = readFileSync("supabase/2026-08-27-support-center.sql","utf8");
+  check("سحب UPDATE/DELETE من المتصفح ومنح user_seen_at وحده",
+    m.includes("revoke update, delete on public.support_conversations from anon, authenticated") &&
+    m.includes("grant  update (user_seen_at) on public.support_conversations to authenticated"));
+  check("رسائل لا تُعدل ولا تُحذف من المتصفح",
+    m.includes("revoke update, delete on public.support_messages from anon, authenticated"));
+  const st = readFileSync("src/app/api/support/state/route.ts","utf8");
+  check("الإغلاق: إثبات بالقراءة ثم كتابة بمفتاح الخدمة",
+    /action === 'close'[\s\S]*?\.single\(\)[\s\S]*?serviceClient\(\)/.test(st));
+  check("takeover/reactivate عبر مفتاح الخدمة بعد ADMIN_ONLY",
+    st.indexOf("ADMIN_ONLY") < st.indexOf("svcA") && /takeover[\s\S]*?svcA/.test(st));
+  const sd = readFileSync("src/app/api/support/send/route.ts","utf8");
+  check("تحديث المحادثة بعد رسالة المستخدمة بمفتاح الخدمة",
+    /last_sender: 'user'[\s\S]{0,200}/.test(sd) && sd.includes("svc0"));
+}
+
 console.log(`\n  الدعم: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);

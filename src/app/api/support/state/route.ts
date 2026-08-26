@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
- * أفعال حالة المحادثة — RLS هي الحارس الفعلي، وهنا نضبط الحقول فقط.
+ * أفعال حالة المحادثة.
  *
- * المستخدمة على محادثتها: seen · close
- * الأدمِن على أي محادثة:  takeover (استلام — يسكت الذكاء) ·
- *                         reactivate_ai · close · reply
+ * صلاحية UPDATE من المتصفح مقصورة على user_seen_at وحده — فكل تغيير
+ * حالةٍ هنا يمر بمفتاح الخدمة بعد إثبات الحق: الإغلاق لمن تُثبت RLS
+ * أنها ترى المحادثة (صاحبتها أو الأدمِن)، والاستلام/الإعادة/الرد
+ * للأدمِن وحده بعد فحص الدور.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+function serviceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export async function POST(req: NextRequest) {
   const supabase = createServerSupabase();
@@ -43,7 +52,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'close') {
-    const { error } = await supabase
+    // إثبات الحق بقراءة RLS (صاحبتها أو الأدمِن) ثم الكتابة بمفتاح الخدمة
+    const { data: can } = await supabase
+      .from('support_conversations')
+      .select('id')
+      .eq('id', id)
+      .single();
+    if (!can) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    const svc = serviceClient();
+    if (!svc) return NextResponse.json({ error: 'FAILED' }, { status: 500 });
+    const { error } = await svc
       .from('support_conversations')
       .update({ status: 'closed' })
       .eq('id', id);
@@ -54,8 +72,11 @@ export async function POST(req: NextRequest) {
   // ── ما يلي أفعال إدارة صرفة ──
   if (!isAdmin) return NextResponse.json({ error: 'ADMIN_ONLY' }, { status: 403 });
 
+  const svcA = serviceClient();
+  if (!svcA) return NextResponse.json({ error: 'FAILED' }, { status: 500 });
+
   if (action === 'takeover') {
-    const { error } = await supabase
+    const { error } = await svcA
       .from('support_conversations')
       .update({ handling_mode: 'human', status: 'human_handling' })
       .eq('id', id);
@@ -64,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'reactivate_ai') {
-    const { error } = await supabase
+    const { error } = await svcA
       .from('support_conversations')
       .update({ handling_mode: 'ai', status: 'open' })
       .eq('id', id);
@@ -83,7 +104,7 @@ export async function POST(req: NextRequest) {
       content,
     });
     if (error) return NextResponse.json({ error: 'FAILED' }, { status: 500 });
-    await supabase
+    await svcA
       .from('support_conversations')
       .update({
         last_message_at: now,
