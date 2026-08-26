@@ -51,6 +51,7 @@ const TOOL_COLS = [
   'multiplication_until',
   'workshops_until',
   'clock_until',
+  'interactive_games_until',
 ] as const;
 
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
@@ -236,6 +237,7 @@ export default function AdminPanel() {
     { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
     { key: 'workshops', label: 'الورش التعليمية', emoji: '🎓' },
     { key: 'clock', label: 'الساعة التفاعلية', emoji: '🕐' },
+    { key: 'interactive_games', label: 'ألعاب غراس التفاعلية', emoji: '🎮' },
   ];
 
   const setTool = (id: string, tool: string, label: string, months: number) => {

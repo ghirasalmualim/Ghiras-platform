@@ -9,7 +9,7 @@
  * كما هما هناك حرفًا، فلا تفترق اللوحةُ عن صفحة المشترك في وصف حسابه.
  */
 
-/** أعمدة الأدوات المدفوعة — ثمانيةٌ حُصرت بحثًا في الكود كلّه. */
+/** أعمدة الأدوات المدفوعة — تسعةٌ حُصرت بحثًا في الكود كلّه. */
 export const TOOL_COLS = [
   'studio_until',
   'gradebook_until',
@@ -19,6 +19,7 @@ export const TOOL_COLS = [
   'multiplication_until',
   'workshops_until',
   'clock_until',
+  'interactive_games_until',
 ] as const;
 
 export type ToolCol = (typeof TOOL_COLS)[number];
@@ -39,6 +40,7 @@ export const ENTITLEMENT_NAMES: Record<string, string> = {
   multiplication_until: 'جدول الضرب التفاعلي',
   workshops_until: 'الورش التعليمية',
   clock_until: 'الساعة التفاعلية',
+  interactive_games_until: 'ألعاب غراس التفاعلية',
 };
 
 /** كل الأعمدة التي تحمل تاريخ انتهاء — `sub_end` ثم الأدوات. */

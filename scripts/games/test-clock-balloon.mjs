@@ -158,5 +158,35 @@ console.log("═══ مسار الحفظ كاملًا — القيد كان ف
   check("لا معاملة خاصة للأدمِن في الحفظ — يحفظ كالجميع", !api.includes("is_admin") && !api.includes("role"));
 }
 
+
+console.log("═══ استحقاق قسم الألعاب — 🎮 ألعاب غراس التفاعلية ═══");
+{
+  const g = readFileSync("src/app/games/page.tsx", "utf8");
+  check("بوابة القسم: العمود الجديد لا sub_end ولا رصيد",
+    g.includes("interactive_games_until") && !g.includes("sub_end") && !g.includes("game_credits"));
+  check("الأدمِن معفى والموقوف ممنوع", g.includes("isAdmin") && g.includes("'suspended'"));
+  check("غير المستحِق → صفحة القفل", g.includes("redirect('/games-locked')"));
+  for (const n of ["millionaire","snake","xo","sinjim","balloons"]) {
+    const s = readFileSync(`src/app/${n}/page.tsx`, "utf8");
+    check(`${n}: محروسة بالاستحقاق وعقد الرصيد باقٍ`,
+      s.includes("interactive_games_until") && s.includes("redirect('/games-locked')") && s.includes("game_credits"));
+  }
+  const lk = readFileSync("src/app/games-locked/page.tsx", "utf8");
+  check("قفل القسم بلا سعر مخترع", !/د\.ك|دينار/.test(lk) && lk.includes("تواصل مع إدارة غراس"));
+  const e = readFileSync("src/lib/entitlements.ts", "utf8");
+  check("الاستحقاق العاشر باسمه", e.includes("interactive_games_until: 'ألعاب غراس التفاعلية'"));
+  const a = readFileSync("src/components/AdminPanel.tsx", "utf8");
+  check("زر اللوحة 🎮 بمفتاح interactive_games",
+    a.includes("key: 'interactive_games'") && a.includes("'interactive_games_until'"));
+  const m = readFileSync("supabase/2026-08-26-interactive-games-tool.sql", "utf8");
+  check("الهجرة: عمود + حالة واحدة في الدالة الحرفية",
+    m.includes("add column if not exists interactive_games_until") &&
+    m.includes("when 'interactive_games' then 'interactive_games_until'") &&
+    m.includes("when 'clock'          then 'clock_until'"));
+  check("منح القسم لا يلمس game_credits", !m.includes("game_credits"));
+  const cl = readFileSync("src/app/clock/route.ts", "utf8");
+  check("الساعة خارج بوابة القسم — مستقلة كما هي", !cl.includes("interactive_games"));
+}
+
 console.log(`\n  الألعاب: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
