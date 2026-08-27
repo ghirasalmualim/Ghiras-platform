@@ -66,14 +66,14 @@ end $$;`;
 console.log('═══ Stage 8: التعريفات الفعّالة (الأساس ثم التصحيحات) صفر تصادم ═══');
 {
   const files = readdirSync('supabase')
-    .filter((f) => /^2026-(08-(29|3\d)|09-\d\d)-accounting-(expenses-documents|bank-import|reconciliation).*\.sql$/.test(f))
+    .filter((f) => /^2026-(08-(29|3\d)|09-\d\d)-accounting-(expenses-documents|bank-import|reconciliation|owner-exceptions).*\.sql$/.test(f))
     .sort();
   check('هجرات الأساس + التصحيح + البنك ضمن المسح', files.length >= 3);
   const effective = new Map();  // آخر تعريف يفوز
   for (const f of files)
     for (const fn of extract(readFileSync(`supabase/${f}`, 'utf8')))
       effective.set(fn.name, { ...fn, file: f });
-  check('كل دوال RETURNS TABLE (9 مصروفات/مستندات + 3 بنك + 3 مطابقة) مغطاة', effective.size === 15);
+  check('كل دوال RETURNS TABLE (9 مصروفات/مستندات + 3 بنك + 3 مطابقة + 2 استثناءات) مغطاة', effective.size === 17);
   let bad = 0;
   for (const fn of effective.values()) {
     const hits = collisions(fn);

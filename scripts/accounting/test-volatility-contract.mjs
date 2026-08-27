@@ -19,7 +19,8 @@ const files = [...["foundation","registers","ledger","commercial-documents","rev
   "supabase/2026-08-30-accounting-expenses-documents-ambiguity.sql",
   "supabase/2026-08-31-accounting-bank-import.sql",
   "supabase/2026-09-01-accounting-reconciliation.sql",
-  "supabase/2026-09-02-accounting-reconciliation-manual-path.sql"]
+  "supabase/2026-09-02-accounting-reconciliation-manual-path.sql",
+  "supabase/2026-09-03-accounting-owner-exceptions.sql"]
   .filter((f) => { try { readFileSync(f); return true; } catch { return false; } });
 
 let violations = 0;

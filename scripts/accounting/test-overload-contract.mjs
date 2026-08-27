@@ -18,7 +18,8 @@ const files = [...order.map((k) => `supabase/2026-08-27-accounting-${k}.sql`),
   "supabase/2026-08-30-accounting-expenses-documents-ambiguity.sql",
   "supabase/2026-08-31-accounting-bank-import.sql",
   "supabase/2026-09-01-accounting-reconciliation.sql",
-  "supabase/2026-09-02-accounting-reconciliation-manual-path.sql"]
+  "supabase/2026-09-02-accounting-reconciliation-manual-path.sql",
+  "supabase/2026-09-03-accounting-owner-exceptions.sql"]
   .filter((f) => { try { readFileSync(f); return true; } catch { return false; } });
 
 // عدد بارامترات كل create-or-replace function عبر توقيعها (نُبسّط: نعدّ

@@ -25,3 +25,7 @@ yarn-error.log*
 # مجلد مؤقت لاختبارات قسم القرآن
 .quran-test
 .acc-test
+
+# مخرجات Playwright المؤقتة (Stage 11 قبول الجوال)
+/test-results
+/playwright-report
