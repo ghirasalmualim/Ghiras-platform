@@ -263,7 +263,9 @@ console.log('═══ ٨ · الترحيل عبر Stage 3 + POSTED بعد قي�
   const { data: polRow, error: polErr } = await svc.rpc('acc_add_policy_version', {
     p_company: coA, p_policy_id: TESTPOL, p_name: 'مصروف فوري (تجهيزة اختبار)', p_ifrs_ref: 'IAS 1',
     p_treatment: 'IMMEDIATE_EXPENSE', p_alternatives: 'لا', p_approval_required: 'ACCOUNTANT_AND_AUDITOR',
-    p_status: 'PROPOSED', p_impact_if_changed: null, p_notes: null, p_actor: ACC.id });
+    p_status: 'PROPOSED',
+    p_impact_if_changed: 'سياسة اختبار فقط — لا أثر إنتاجي؛ تغييرها يؤثر فقط على بيانات الاختبار',
+    p_notes: null, p_actor: ACC.id });
   check('نسخة سياسة الشركة أُنشئت', !polErr && !!polRow, polErr?.message ?? '');
   const pAp1 = await ACC.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'ACCOUNTANT', p_decision: 'APPROVED', p_reason: 'ملائمة' });
   const pAp2 = await AUD.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'AUDITOR', p_decision: 'APPROVED', p_reason: 'ملائمة' });
