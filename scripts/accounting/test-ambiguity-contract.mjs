@@ -22,9 +22,9 @@ const strip = (body) => body
 /** يستخرج دوال RETURNS TABLE من نص هجرة: [{name, outs, body}] */
 function extract(src) {
   const out = [];
-  // الوسائط بلا أقواس داخلية في دوال returns table عندنا — يمنع القفز
-  // الجشع عبر حدود دالة أخرى (returns void بوسيط char(3) لن يطابق)
-  const re = /create (?:or replace )?function public\.(\w+)\s*\(([^()]*)\)\s*returns\s+table\s*\(([^)]*)\)\s*language plpgsql[^$]*\$\$([\s\S]*?)\$\$;/g;
+  // الوسائط بمستوى قوس داخلي واحد كحدّ أقصى (char(3) ونحوه) — يمنع
+  // القفز الجشع عبر حدود دالة أخرى returns void
+  const re = /create (?:or replace )?function public\.(\w+)\s*\(((?:[^()]|\([^()]*\))*)\)\s*returns\s+table\s*\(([^)]*)\)\s*language plpgsql[^$]*\$\$([\s\S]*?)\$\$;/g;
   let m;
   while ((m = re.exec(src)) !== null) {
     const outs = m[3].split(',').map((c) => c.trim().split(/\s+/)[0]).filter(Boolean);
@@ -66,14 +66,14 @@ end $$;`;
 console.log('═══ Stage 8: التعريفات الفعّالة (الأساس ثم التصحيحات) صفر تصادم ═══');
 {
   const files = readdirSync('supabase')
-    .filter((f) => /^2026-08-(29|3\d)-accounting-expenses-documents.*\.sql$/.test(f))
+    .filter((f) => /^2026-08-(29|3\d)-accounting-(expenses-documents|bank-import).*\.sql$/.test(f))
     .sort();
-  check('هجرة الأساس + التصحيح كلاهما ضمن المسح', files.length >= 2);
+  check('هجرات الأساس + التصحيح + البنك ضمن المسح', files.length >= 3);
   const effective = new Map();  // آخر تعريف يفوز
   for (const f of files)
     for (const fn of extract(readFileSync(`supabase/${f}`, 'utf8')))
       effective.set(fn.name, { ...fn, file: f });
-  check('كل دوال RETURNS TABLE التسع مغطاة', effective.size === 9);
+  check('كل دوال RETURNS TABLE (9 مصروفات/مستندات + 3 بنك) مغطاة', effective.size === 12);
   let bad = 0;
   for (const fn of effective.values()) {
     const hits = collisions(fn);
@@ -81,8 +81,11 @@ console.log('═══ Stage 8: التعريفات الفعّالة (الأسا�
     if (hits.length) bad++;
   }
   // الدوال الخمس المصابة يجب أن يكون تعريفها الفعّال من التصحيح
-  for (const n of ['acc_finalize_document','acc_delete_document','acc_submit_expense','acc_approve_expense','acc_classify_expense'])
+  for (const n of ['acc_finalize_document','acc_submit_expense','acc_approve_expense','acc_classify_expense'])
     check(`${n}: التعريف الفعّال من هجرة التصحيح`, effective.get(n)?.file.includes('2026-08-30'));
+  // acc_delete_document أعيد تعريفها (مؤهَّلةً) في هجرة البنك لدعم BANK_IMPORT
+  check('acc_delete_document: التعريف الفعّال من هجرة البنك (مؤهَّل كاملًا)',
+    effective.get('acc_delete_document')?.file.includes('2026-08-31'));
 }
 
 console.log('═══ التصحيح يحفظ العقود (تواقيع/أمن/رسائل) ═══');
