@@ -8,6 +8,11 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceStatusKey } from '@/lib/accounting/owner/queries';
+import {
+  TaxPostureUnresolvedError, buildDraftLines, resolveInvoiceTaxPosture,
+} from '@/lib/accounting/owner/tax';
+import type { DbRuleRow } from '@/lib/accounting/owner/tax';
+import { resolveVatStatus } from '@/lib/accounting/resolvers';
 import { ownerGate } from '../_lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -111,11 +116,37 @@ export async function POST(req: NextRequest) {
         if (!body.customer_id || !body.lines?.length) {
           return NextResponse.json({ error: 'customer_id and lines are required' }, { status: 400 });
         }
+        // الوضع الضريبي سلطة الخادم عبر سجل Stage 2 — لا يقرره
+        // المتصفح ولا يُرمَّز في الكود: انتقال مستقبلي = تحديث سجل.
+        // الغياب = فشل مغلق **قبل** إنشاء أي مسودة (لا رأس فاتورة
+        // بلا أسطر صالحة) — برسالة مالكة آمنة بلا تفاصيل تقنية.
+        const ruleRows = await userClient.from('acc_regulatory_rules')
+          .select('*').eq('rule_id', 'REG-KW-008');
+        if (ruleRows.error) {
+          return NextResponse.json({
+            error: 'invoice not ready', ownerMessageKey: 'INVOICE_TAX_UNRESOLVED',
+          }, { status: 409 });
+        }
+        let lines: Record<string, string>[];
+        try {
+          const posture = resolveInvoiceTaxPosture(
+            (ruleRows.data ?? []) as DbRuleRow[],
+            new Date().toISOString().slice(0, 10),
+            resolveVatStatus);  // سلطة Stage 2 القائمة — تُحقن لا تُعاد كتابتها
+          lines = buildDraftLines(body.lines, posture);
+        } catch (e) {
+          if (e instanceof TaxPostureUnresolvedError) {
+            return NextResponse.json({
+              error: 'invoice not ready', ownerMessageKey: 'INVOICE_TAX_UNRESOLVED',
+            }, { status: 409 });
+          }
+          return NextResponse.json({ error: 'invalid invoice lines' }, { status: 400 });
+        }
         const r = await userClient.rpc('acc_create_invoice_draft', {
           p_company: body.company_id, p_customer: body.customer_id,
           p_currency: body.currency ?? baseCurrency,
           p_due_date: body.due_date ?? null,
-          p_lines: body.lines,
+          p_lines: lines,
         });
         if (r.error) return NextResponse.json({ error: r.error.message }, { status: 403 });
         return NextResponse.json({ status: 'created', invoice_id: r.data });

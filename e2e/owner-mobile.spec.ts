@@ -246,6 +246,26 @@ test.describe('وضع المالكة على 390×844', () => {
     await expect(page.locator('[data-create-form]')).toBeVisible();
   });
 
+  test('الوضع الضريبي سلطة الخادم: عميل المالكة لا يرسله أصلًا', async ({ page }) => {
+    await page.goto('/owner/fawatiri');
+    await page.locator('[data-action="new-invoice"]').click();
+    await page.locator('[data-action="issue-invoice"]').click();
+    await expect.poll(() =>
+      posted.some((p) => p.body.action === 'create_draft')).toBe(true);
+    const draft = posted.find((p) => p.body.action === 'create_draft')!;
+    const lines = draft.body.lines as Record<string, unknown>[];
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      // العميل تجاري صرف: منتج/كمية/سعر/عملة — والوضع القانوني يحله
+      // الخادم من سجل Stage 2 (لا حاجة لأي tax_status من المتصفح)
+      expect(line.tax_status).toBeUndefined();
+      expect(line.tax_rate).toBeUndefined();
+      expect(line.product_id).toBeTruthy();
+      expect(line.quantity).toBeTruthy();
+      expect(line.unit_price_minor).toBeTruthy();
+    }
+  });
+
   test('مستنداتي: «وش قرينا منه» و«وش صار عليه» والتقاط حاضر', async ({ page }) => {
     await page.goto('/owner/mustanadati');
     await expect(page.locator('[data-action="capture"]')).toBeVisible();

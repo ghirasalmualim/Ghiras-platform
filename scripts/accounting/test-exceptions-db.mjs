@@ -16,6 +16,11 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { runIngestion } from '../../src/lib/accounting/exceptions/adapters.ts';
 import { computeDashboard } from '../../src/lib/accounting/owner/queries.ts';
+import { buildDraftLines, resolveInvoiceTaxPosture } from '../../src/lib/accounting/owner/tax.ts';
+import { execSync } from 'node:child_process';
+// محلّل Stage 2 الحقيقي عبر نمط استهلاكه المعتمد (ترجمة .acc-test)
+execSync('npx tsc src/lib/accounting/*.ts --outDir .acc-test --module nodenext --moduleResolution nodenext --target es2022 --strict', { stdio: 'inherit' });
+const { resolveVatStatus } = await import('../../.acc-test/resolvers.js');
 
 const env = Object.fromEntries(readFileSync('.env.local', 'utf8').split('\n')
   .filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
@@ -78,9 +83,12 @@ mustOk(await ACC.client.rpc('acc_add_settlement_line', {
 const cust = must(await OWN.client.rpc('acc_create_customer', { p_company: coA, p_name: `عميلة ${TAG}` }), 'customer');
 const prod = must(await OWN.client.rpc('acc_create_product', {
   p_company: coA, p_name: `اشتراك ${TAG}`, p_price_minor: '100000', p_currency: 'KWD' }), 'product');
+// السطر يطابق عقد Stage 4 المثبت (مرآة test-payments-db حرفيًا):
+// التجهيزة الاصطناعية تسجل وضع الكويت المكوَّن حاليًا صراحةً
 const inv = must(await OWN.client.rpc('acc_create_invoice_draft', {
   p_company: coA, p_customer: cust, p_currency: 'KWD',
-  p_lines: [{ product_id: prod, quantity: '1', unit_price_minor: '100000', currency: 'KWD' }] }), 'invoice draft');
+  p_lines: [{ product_id: prod, quantity: '1', unit_price_minor: '100000', currency: 'KWD',
+    tax_status: 'NO_TAX_REGIME' }] }), 'invoice draft');
 mustOk(await OWN.client.rpc('acc_issue_invoice', { p_invoice: inv, p_issue_date: '2026-09-01' }), 'issue invoice');
 const pay = must(await OWN.client.rpc('acc_record_payment', {
   p_company: coA, p_invoice: inv, p_amount_minor: '100000', p_currency: 'KWD', p_gateway_txn_id: `gw-${TAG}` }), 'payment');
@@ -528,6 +536,47 @@ console.log('═══ ١١ · لوحة المالكة الصادقة + إسنا
     p_value_minor: null, p_value_scalar: null, p_currency: null, p_status: 'UNKNOWN',
     p_query_def: 'OWNER_CASH_TODAY_V1', p_params: {}, p_sources: [] });
   check('تسجيل اللقطات خدمة حصرًا', !!authSnap.error);
+}
+
+console.log('═══ ١١م · فاتورة المالكة حيّة: سلطة سجل Stage 2 لا العميل ═══');
+{
+  // ١ · السجل الحي: REG-KW-008 ACTIVE — «لا نظام VAT قائمًا»
+  const ruleRows = must(await OWN.client.from('acc_regulatory_rules')
+    .select('*').eq('rule_id', 'REG-KW-008'), 'REG-KW-008 rows');
+  check('سجل القواعد مقروء للمالكة المصادَق عليها وREG-KW-008 قائمة',
+    ruleRows.length >= 1 && ruleRows.some((r) => r.status === 'ACTIVE'));
+  // ٢ · مسار المنتج نفسه: resolveInvoiceTaxPosture ثم buildDraftLines
+  const posture = resolveInvoiceTaxPosture(ruleRows, new Date().toISOString().slice(0, 10), resolveVatStatus);
+  check('الحل السلطوي: NO_TAX_REGIME عبر REG-KW-008 (لا ZERO_RATED)',
+    posture.status === 'NO_TAX_REGIME' && posture.ruleId === 'REG-KW-008');
+  check('لا نسبة تُصنَّع — rate = null لا 0', posture.rate === null);
+  // ٣ · اقتراح عميل خبيث يُسقط بنيويًا — الخادم يبني الأسطر
+  const lines = buildDraftLines([{
+    product_id: prod, quantity: '1', unit_price_minor: '25000', currency: 'KWD',
+    tax_status: 'ZERO_RATED', tax_rate: '0',
+  }], posture);
+  check('tax_status العميل (ZERO_RATED) أُسقط والسلطوي خُتم',
+    lines[0].tax_status === 'NO_TAX_REGIME');
+  check('tax_rate العميل (0) أُسقط ولا مفتاح نسبة أصلًا',
+    !('tax_rate' in lines[0]));
+  // ٤ · الإنشاء الحقيقي عبر Stage 4 المحكومة بأسطر الخادم
+  const inv2 = must(await OWN.client.rpc('acc_create_invoice_draft', {
+    p_company: coA, p_customer: cust, p_currency: 'KWD', p_lines: lines }), 'owner invoice draft');
+  const { data: persisted } = await svc.from('acc_invoice_lines')
+    .select('tax_status, tax_rate').eq('invoice_id', inv2);
+  check('السطر المحفوظ: tax_status = NO_TAX_REGIME',
+    persisted?.length === 1 && persisted[0].tax_status === 'NO_TAX_REGIME');
+  check('السطر المحفوظ: tax_rate NULL — لا 0% VAT مصنّعة',
+    persisted?.[0]?.tax_rate === null);
+  // ٥ · الإصدار عبر المسار المحكوم القائم — تدفق جوال المالكة سليم
+  const issued = must(await OWN.client.rpc('acc_issue_invoice', {
+    p_invoice: inv2, p_issue_date: new Date().toISOString().slice(0, 10) }), 'owner invoice issue');
+  check('الفاتورة صدرت برقم عبر Stage 4', String(issued).length > 0);
+  // ٦ · الغياب = فشل مغلق قبل أي مسودة (لا رأس بلا أسطر صالحة)
+  let unresolvedThrew = false;
+  try { resolveInvoiceTaxPosture([], new Date().toISOString().slice(0, 10), resolveVatStatus); }
+  catch (e) { unresolvedThrew = /TAX_POSTURE_UNRESOLVED/.test(e.message); }
+  check('بلا صف سجل ساري: TAX_POSTURE_UNRESOLVED — لا افتراض', unresolvedThrew);
 }
 
 console.log('═══ ١٢ · التغطية الصادقة: شركة بلا استرداد/مطابقة ═══');

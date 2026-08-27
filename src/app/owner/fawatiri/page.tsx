@@ -10,6 +10,7 @@ import {
   EmptyNote, ownerFetch, ownerPost, t, useMoneyFmt, useOwner,
 } from '../owner-client';
 import type { OwnerKey } from '../owner-client';
+import { isOwnerKey } from '@/lib/accounting/owner/vocabulary';
 
 interface InvoiceRow {
   id: string; number: string | null; statusKey: OwnerKey; rawStatus: string;
@@ -60,7 +61,10 @@ export default function FawatiriPage() {
     const res = await ownerPost('invoices', { company_id: company.id, ...body });
     setBusy(false);
     if (!res.ok) {
-      setNote(t('ERROR_GENERIC'));
+      // الرسالة المالكة الآمنة من الخادم إن وُجدت — وإلا العام
+      const failure = await res.json().catch(() => null) as { ownerMessageKey?: string } | null;
+      setNote(failure?.ownerMessageKey && isOwnerKey(failure.ownerMessageKey)
+        ? t(failure.ownerMessageKey) : t('ERROR_GENERIC'));
       return null;
     }
     return res.json();

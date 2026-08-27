@@ -9,6 +9,7 @@
  * بثلاثة مكوّنات (C8)، الصمود يرفض التغطية الناقصة (C10)،
  * الالتزامات لا تدّعي «ما عليك شيء»، والبطاقة ٦ محروسة بالتغطية (C4).
  */
+import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { FORBIDDEN_OWNER_TERMS, OWNER_VOCAB, isOwnerKey, t }
   from '../../src/lib/accounting/owner/vocabulary.ts';
@@ -16,6 +17,8 @@ import {
   buildAttentionCard, buildCashCard, buildInboxItem, buildObligationsCard,
   buildProfitCard, buildRunwayCard, buildTransitCard,
 } from '../../src/lib/accounting/owner/dto.ts';
+import { buildDraftLines, resolveInvoiceTaxPosture }
+  from '../../src/lib/accounting/owner/tax.ts';
 
 let passed = 0, failed = 0;
 const check = (n, c, x = '') => { if (c) passed++; else { failed++; console.error(`  ❌ ${n} ${x}`); } };
@@ -236,6 +239,49 @@ console.log('═══ ٩ · DTO مسلسلًا: صفر مصطلح محرَّم 
   for (const [k, v] of Object.entries(OWNER_VOCAB)) rendered = rendered.split(`"${k}"`).join(`"${v}"`);
   const hit = hasForbidden(everything) ?? hasForbidden(rendered);
   check('التسلسل الكامل (قيم + مفاتيح + النص المترجم) نظيف', !hit, hit ?? '');
+}
+
+console.log('═══ ١٠ · وضع الفاتورة الضريبي: سلطة سجل Stage 2 لا العميل ═══');
+{
+  // محلّل Stage 2 **الحقيقي** عبر نمط استهلاكه المعتمد (ترجمة .acc-test
+  // كما في test-registers) — يُحقن في مساعد Stage 11، لا محرك ثانيًا
+  execSync(
+    'npx tsc src/lib/accounting/*.ts --outDir .acc-test --module nodenext --moduleResolution nodenext --target es2022 --strict',
+    { stdio: 'inherit' });
+  const { resolveVatStatus } = await import('../../.acc-test/resolvers.js');
+  const KW_RULE = {
+    rule_id: 'REG-KW-008', version: 1, jurisdiction: 'Kuwait', regulator: null,
+    requirement: 'No VAT regime exists', effective_from_text: '—', effective_to_text: '—',
+    effective_from_precision: 'NONE', effective_from: null, effective_from_year: null,
+    effective_to_precision: 'NONE', effective_to: null, effective_to_year: null,
+    source: 'test', status: 'ACTIVE', confidence: '🟢', system_impact: 'VAT status = NO_TAX_REGIME',
+  };
+  const posture = resolveInvoiceTaxPosture([KW_RULE], '2026-09-03', resolveVatStatus);
+  check('القاعدة السارية → NO_TAX_REGIME بنسخة السجل',
+    posture.status === 'NO_TAX_REGIME' && posture.ruleId === 'REG-KW-008' && posture.ruleVersion === 1);
+  check('لا نسبة تُصنَّع أبدًا (rate = null، ليست "0")', posture.rate === null);
+  check('بلا صفوف سجل → فشل مغلق TAX_POSTURE_UNRESOLVED', (() => {
+    try { resolveInvoiceTaxPosture([], '2026-09-03', resolveVatStatus); return false; }
+    catch (e) { return /TAX_POSTURE_UNRESOLVED/.test(e.message); }
+  })());
+  check('قاعدة DRAFT (جاهزية فقط) → فشل مغلق لا سريان', (() => {
+    try { resolveInvoiceTaxPosture([{ ...KW_RULE, status: 'DRAFT' }], '2026-09-03', resolveVatStatus); return false; }
+    catch (e) { return /TAX_POSTURE_UNRESOLVED/.test(e.message); }
+  })());
+  const lines = buildDraftLines([
+    { product_id: 'p1', quantity: '2', unit_price_minor: '4500', currency: 'KWD',
+      tax_status: 'TAXABLE', tax_rate: '0', evil: 'x' },
+    { product_id: 'p2', quantity: '1', unit_price_minor: '1000', currency: 'KWD',
+      tax_status: 'ZERO_RATED' },
+  ], posture);
+  check('اقتراح العميل الضريبي يُسقط بنيويًا وكل سطر يُختم سلطويًا',
+    lines.length === 2 && lines.every((l) => l.tax_status === 'NO_TAX_REGIME'));
+  check('لا tax_rate ولا حقول دخيلة تمر (قائمة بيضاء)',
+    lines.every((l) => !('tax_rate' in l) && !('evil' in l)));
+  check('سطر ناقص الحقول التجارية يُرفض قبل Stage 4', (() => {
+    try { buildDraftLines([{ quantity: '1' }], posture); return false; }
+    catch { return true; }
+  })());
 }
 
 console.log(`\n  مفردات وDTO المالكة: ${passed} نجح · ${failed} فشل`);

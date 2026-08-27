@@ -105,6 +105,7 @@ export const OWNER_VOCAB = {
   INVOICE_NEW: 'فاتورة جديدة',
   INVOICE_OUTSTANDING: 'المتبقي',
   INVOICE_DELIVERY_PENDING: 'الإرسال التلقائي والتذكير ينضافان لما تجهز قناة إرسال فعلية',
+  INVOICE_TAX_UNRESOLVED: 'ما نقدر ننشئ الفاتورة الآن — الإعداد النظامي لبلدك يحتاج تحديثًا من محاسبك',
 
   // ── مستنداتي ──
   DOCS_WHAT_READ: 'وش قرينا منه',

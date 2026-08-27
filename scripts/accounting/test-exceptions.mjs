@@ -291,5 +291,52 @@ console.log('═══ ١١ · بنية المالكة الحرفية + خريط
   الحزم الساكنة وحزمة القاعدة، وليست نصوص Blueprint حرفية.`);
 }
 
+console.log('═══ ١٢ · وضع الفاتورة الضريبي: سلطة السجل لا ترميز ولا عميل ═══');
+{
+  // كل مصدر منتج المالكة: صفر ترميز NO_TAX_REGIME غير مشروط — القيمة
+  // تصل من محلّل Stage 2 حصرًا (التجهيزات الاختبارية وحدها تُصرّح بها)
+  const productFiles = [];
+  const walkP = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = `${dir}/${e.name}`;
+    if (e.isDirectory()) walkP(p); else if (/\.(ts|tsx)$/.test(e.name)) productFiles.push(p);
+  } };
+  walkP('src/app/api/accounting/owner'); walkP('src/app/owner'); walkP('src/lib/accounting/owner');
+  let hardcoded = 0, zeroRate = 0;
+  for (const f of productFiles) {
+    const s = readFileSync(f, 'utf8');
+    if (/tax_status:\s*['"]NO_TAX_REGIME['"]/.test(s)) { hardcoded++; console.error(`    ترميز صلب في ${f}`); }
+    if (/tax_rate:\s*['"]?0(\.0+)?['"]?\s*[,}]/.test(s)) { zeroRate++; console.error(`    نسبة 0 مصنّعة في ${f}`); }
+  }
+  check('صفر tax_status مرمّزة في منتج المالكة (السلطة للسجل)', hardcoded === 0);
+  check('صفر tax_rate: 0 مصنّعة في منتج المالكة', zeroRate === 0);
+  // نفي اصطناعي: الماسحان يصطادان الزرع
+  check('النفي الاصطناعي: الترميز الصلب يُصطاد',
+    /tax_status:\s*['"]NO_TAX_REGIME['"]/.test(`tax_status: 'NO_TAX_REGIME'`));
+  check('النفي الاصطناعي: النسبة الصفرية تُصطاد',
+    /tax_rate:\s*['"]?0(\.0+)?['"]?\s*[,}]/.test(`tax_rate: '0',`));
+  // سلسلة السلطة: مسار المالكة → محلّل Stage 2 → أسطر خادمية → Stage 4
+  const taxSrc = readFileSync('src/lib/accounting/owner/tax.ts', 'utf8');
+  check('مساعد Stage 11 يستقبل محلّل Stage 2 حقنًا ولا يحسب وضعًا بنفسه',
+    taxSrc.includes('export type VatResolver')
+    && taxSrc.includes(`resolveVat(mapDbRuleRows(rows), 'KW', asOfIso)`)
+    && !taxSrc.includes(`'NO_TAX_REGIME'`));  // لا محرك ضريبة ثانيًا — القيمة من الحل حصرًا
+  check('الغياب فشل مغلق قبل أي مسودة', taxSrc.includes('TAX_POSTURE_UNRESOLVED'));
+  const routeSrc = readFileSync('src/app/api/accounting/owner/invoices/route.ts', 'utf8');
+  check('المسار يحقن resolveVatStatus القائمة من Stage 2 (لا إعادة كتابة)',
+    routeSrc.includes(`import { resolveVatStatus } from '@/lib/accounting/resolvers'`)
+    && /resolveInvoiceTaxPosture\([\s\S]{0,200}?resolveVatStatus\)/.test(routeSrc));
+  check('المسار يقرأ سجل REG-KW-008 ويحل خادميًا ويبني الأسطر بنفسه',
+    routeSrc.includes(`eq('rule_id', 'REG-KW-008')`)
+    && routeSrc.includes('resolveInvoiceTaxPosture(')
+    && routeSrc.includes('buildDraftLines(body.lines, posture)')
+    && routeSrc.includes('p_lines: lines'));
+  check('أسطر العميل لا تمر مباشرة إلى Stage 4', !routeSrc.includes('p_lines: body.lines'));
+  check('خطأ الغياب مالكي آمن (مفتاح مفردات، لا SQL/أسماء داخلية)',
+    routeSrc.includes(`ownerMessageKey: 'INVOICE_TAX_UNRESOLVED'`)
+    && 'INVOICE_TAX_UNRESOLVED' in OWNER_VOCAB);
+  const pageSrc = readFileSync('src/app/owner/fawatiri/page.tsx', 'utf8');
+  check('واجهة المالكة لا ترسل ولا تقرر وضعًا ضريبيًا', !/tax_status|tax_rate/.test(pageSrc));
+}
+
 console.log(`\n  عقود Stage 11 الساكنة: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
