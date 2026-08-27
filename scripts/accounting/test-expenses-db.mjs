@@ -31,7 +31,26 @@ const { data: coA } = await OWN.client.rpc('acc_create_company', { p_legal_name:
 const { data: coB } = await OWN_B.client.rpc('acc_create_company', { p_legal_name: `شركة مصروفات باء ${TAG}` });
 for (const [u, r] of [[ACC, 'ACCOUNTANT'], [FM, 'FINANCE_MANAGER'], [EMP, 'EMPLOYEE'], [AUD, 'AUDITOR']])
   await OWN.client.from('acc_company_members').insert({ company_id: coA, user_id: u.id, role: r, created_by: OWN.id });
-const { data: vend } = await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ${TAG}`, p_contact: {}, p_currency: 'KWD', p_is_non_resident: false, p_withholding_status: null });
+// عقد عزل التجهيزات: Staging append-only، فكل سيناريو مستقل يأخذ مورده
+// الفريد؛ مشاركة الحقائق حصرية لاختبارات التكرار المتعمدة (§٦).
+async function newVendor(label) {
+  const { data } = await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ${label} ${TAG}`, p_contact: {}, p_currency: 'KWD', p_is_non_resident: false, p_withholding_status: null });
+  return data;
+}
+// كشف إعادة استخدام عرَضية لثلاثية (مورد، تاريخ، إجمالي) خارج اختبارات
+// التكرار — يفشل مبكرًا بدل أن يفاجئنا كاشف التكرار الشرعي في القاعدة
+const usedFacts = new Set();
+function assertFreshFacts(vendorId, date, totalMinor, allowShared = false) {
+  const k = `${vendorId}|${date}|${totalMinor}`;
+  if (!allowShared && usedFacts.has(k))
+    throw new Error(`fixture-isolation contract: الحقائق (${k}) مستعملة في سيناريو سابق — أعطِ السيناريو مورده/تاريخه الفريد`);
+  usedFacts.add(k);
+}
+const vend = await newVendor('تكرار');   // حصري لاختبارات التكرار §٦
+const vMoney = await newVendor('مال'), vSrc = await newVendor('مصدر'),
+      vApp = await newVendor('اعتماد'), vAmb = await newVendor('غموض'),
+      vPost = await newVendor('ترحيل'), vSm = await newVendor('حالات'),
+      vIso = await newVendor('عزل');
 
 const sha = async (s) => { const { createHash } = await import('node:crypto'); return createHash('sha256').update(s).digest('hex'); };
 async function madeDoc(actor = OWN.id, content = Math.random().toString()) {
@@ -46,7 +65,9 @@ async function madeDoc(actor = OWN.id, content = Math.random().toString()) {
 }
 const KWD_LINE = (minor = '12345', cat = 'OFFICE') =>
   [{ amount_minor: minor, currency: 'KWD', base_amount_minor: minor, tax_status: 'NO_TAX_REGIME', category_key: cat }];
-async function draft(u, key, { lines = KWD_LINE(), source = 'RECEIPT', just = null, vendor = vend, vref = null, date = '2026-09-01' } = {}) {
+async function draft(u, key, { lines = KWD_LINE(), source = 'RECEIPT', just = null, vendor = vend, vref = null, date = '2026-09-01', allowShared = false } = {}) {
+  const total = lines.reduce((a, l) => a + BigInt(l.base_amount_minor), 0n);
+  assertFreshFacts(vendor, date, total, allowShared);
   const r = await u.client.rpc('acc_create_expense_draft', {
     p_company: coA, p_submission_key: key, p_vendor: vendor, p_expense_date: date,
     p_vendor_reference: vref, p_description: 'م', p_source_kind: source, p_manual_justification: just, p_lines: lines });
@@ -56,30 +77,30 @@ async function draft(u, key, { lines = KWD_LINE(), source = 'RECEIPT', just = nu
 
 console.log('\n═══ ١ · ACC-T-041..044: المال والدقة وFX التاريخي ═══');
 {
-  const kwd = await draft(OWN, `k-${TAG}`, { lines: KWD_LINE('12345') });   // 12.345 KWD
+  const kwd = await draft(OWN, `k-${TAG}`, { vendor: vMoney, lines: KWD_LINE('12345') });   // 12.345 KWD
   const { data: l } = await svc.from('acc_expense_lines').select('amount_minor, base_amount_minor').eq('expense_id', kwd.expense_id);
   check('ACC-T-041: KWD ثلاث منازل بوحدات صغرى تامة', String(l[0].amount_minor) === '12345');
   const usd = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `u-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
+    p_vendor: vMoney, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
     p_lines: [{ amount_minor: '10000', currency: 'USD', base_amount_minor: '3070', base_currency: 'KWD',
       tax_status: 'NO_TAX_REGIME', category_key: 'TRAVEL', fx_rate: '0.3070', fx_rate_date: '2026-09-01', fx_rate_source: 'CBK' }] });
   check('ACC-T-042: USD بأساس تاريخي + أدلة السعر الثلاثة', !usd.error);
   const usdBad = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `ub-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
+    p_vendor: vMoney, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
     p_lines: [{ amount_minor: '10000', currency: 'USD', base_amount_minor: '3070', base_currency: 'KWD', tax_status: 'NO_TAX_REGIME', category_key: 'TRAVEL' }] });
   check('عملة أجنبية بلا أدلة سعر مرفوضة (CHECK)', !!usdBad.error);
   const jpy = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `j-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
+    p_vendor: vMoney, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
     p_lines: [{ amount_minor: '5000', currency: 'JPY', base_amount_minor: '1015', base_currency: 'KWD',
       tax_status: 'NO_TAX_REGIME', category_key: 'TRAVEL', fx_rate: '0.2030', fx_rate_date: '2026-09-01', fx_rate_source: 'CBK' }] });
   check('ACC-T-043: JPY صفر منازل بوحدات صغرى', !jpy.error);
   // ACC-T-044 (الدقة الزائدة) عقد تحويل العميل — مثبت محليًا في test-expenses.mjs
   const noTax = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `t-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
+    p_vendor: vMoney, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
     p_lines: [{ amount_minor: '1000', currency: 'KWD', base_amount_minor: '1000', category_key: 'OFFICE' }] });
   check('ACC-T-045: سطر بلا tax_status مرفوض', !!noTax.error);
   const zeroRate = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `z-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
+    p_vendor: vMoney, p_expense_date: '2026-09-01', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null,
     p_lines: [{ amount_minor: '1000', currency: 'KWD', base_amount_minor: '1000', tax_status: 'NO_TAX_REGIME', tax_rate: '0', category_key: 'OFFICE' }] });
   check('ACC-T-046: نسبة على NO_TAX_REGIME مرفوضة — ليست صفر٪', !!zeroRate.error);
 }
@@ -87,9 +108,9 @@ console.log('\n═══ ١ · ACC-T-041..044: المال والدقة وFX ال
 console.log('═══ ٢ · idempotency الإرسال (CORRECTION 5-A) ═══');
 {
   const a = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `idem-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-03', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null, p_lines: KWD_LINE() });
+    p_vendor: vMoney, p_expense_date: '2026-09-03', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null, p_lines: KWD_LINE() });
   const b = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `idem-${TAG}`,
-    p_vendor: vend, p_expense_date: '2026-09-03', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null, p_lines: KWD_LINE() });
+    p_vendor: vMoney, p_expense_date: '2026-09-03', p_vendor_reference: null, p_description: 'م', p_source_kind: 'RECEIPT', p_manual_justification: null, p_lines: KWD_LINE() });
   check('نفس مفتاح الإرسال = IDEMPOTENT_DUPLICATE بنفس المصروف',
     a.data[0].outcome === 'CREATED' && b.data[0].outcome === 'IDEMPOTENT_DUPLICATE' && a.data[0].expense_id === b.data[0].expense_id);
   const c = await OWN.client.rpc('acc_create_expense_draft', { p_company: coA, p_submission_key: `idem-${TAG}`,
@@ -99,13 +120,13 @@ console.log('═══ ٢ · idempotency الإرسال (CORRECTION 5-A) ══�
 
 console.log('═══ ٣ · ACC-T-047: قاعدة المصدر ═══');
 {
-  const e = await draft(EMP, `src-${TAG}`, {});
+  const e = await draft(EMP, `src-${TAG}`, { vendor: vSrc });
   const noSrc = await EMP.client.rpc('acc_submit_expense', { p_expense: e.expense_id, p_mark_uncertain: false });
   check('بلا دليل FINALIZED: الإرسال مرفوض', !!noSrc.error && /FINALIZED linked source/.test(noSrc.error.message));
-  const m = await draft(EMP, `man-${TAG}`, { source: 'MANUAL', just: null });
+  const m = await draft(EMP, `man-${TAG}`, { vendor: vSrc, source: 'MANUAL', just: null, date: '2026-09-02' });
   const noJust = await EMP.client.rpc('acc_submit_expense', { p_expense: m.expense_id, p_mark_uncertain: false });
   check('يدوي بلا تبرير مرفوض (اليدوي ليس بلا مصدر)', !!noJust.error && /justification/.test(noJust.error.message));
-  const m2 = await draft(EMP, `man2-${TAG}`, { source: 'MANUAL', just: 'اشتراك شهري معروف بلا إيصال' });
+  const m2 = await draft(EMP, `man2-${TAG}`, { vendor: vSrc, source: 'MANUAL', just: 'اشتراك شهري معروف بلا إيصال', date: '2026-09-03' });
   const okMan = await EMP.client.rpc('acc_submit_expense', { p_expense: m2.expense_id, p_mark_uncertain: false });
   check('يدوي بتبرير كتابي يُرسل', !okMan.error && okMan.data[0].outcome === 'SUBMITTED');
 }
@@ -113,9 +134,10 @@ console.log('═══ ٣ · ACC-T-047: قاعدة المصدر ═══');
 console.log('═══ ٤ · ACC-T-048..051: الاعتماد والأدوار ═══');
 {
   const doc = await madeDoc(EMP.id);
-  const e = await draft(EMP, `app-${TAG}`, {});
+  const e = await draft(EMP, `app-${TAG}`, { vendor: vApp, lines: KWD_LINE('11111'), date: '2026-09-04' });
   await EMP.client.rpc('acc_link_document', { p_document: doc, p_target_kind: 'EXPENSE', p_target: e.expense_id, p_link_role: 'SOURCE' });
-  await EMP.client.rpc('acc_submit_expense', { p_expense: e.expense_id, p_mark_uncertain: false });
+  const sub4 = await EMP.client.rpc('acc_submit_expense', { p_expense: e.expense_id, p_mark_uncertain: false });
+  check('عزل تجهيزة §٤: الإرسال SUBMITTED بلا أي إشارة تكرار', !sub4.error && sub4.data[0].outcome === 'SUBMITTED');
   const empApprove = await EMP.client.rpc('acc_approve_expense', { p_expense: e.expense_id, p_reason: 'x' });
   check('ACC-T-048: الموظفة لا تعتمد', !!empApprove.error);
   const audApprove = await AUD.client.rpc('acc_approve_expense', { p_expense: e.expense_id, p_reason: 'x' });
@@ -130,7 +152,7 @@ console.log('═══ ٤ · ACC-T-048..051: الاعتماد والأدوار �
     p_max_file_bytes: null, p_retention_years: 10, p_reason: 'حد اعتماد المدير المالي' });
   check('ضبط الحدّ فعل المالكة المدقَّق', !setL.error);
   const doc2 = await madeDoc(EMP.id);
-  const e2 = await draft(EMP, `app2-${TAG}`, { lines: KWD_LINE('40000', 'OFFICE'), date: '2026-09-04' });
+  const e2 = await draft(EMP, `app2-${TAG}`, { vendor: vApp, lines: KWD_LINE('40000', 'OFFICE'), date: '2026-09-05' });
   await EMP.client.rpc('acc_link_document', { p_document: doc2, p_target_kind: 'EXPENSE', p_target: e2.expense_id, p_link_role: 'SOURCE' });
   await EMP.client.rpc('acc_submit_expense', { p_expense: e2.expense_id, p_mark_uncertain: false });
   const fm2 = await FM.client.rpc('acc_approve_expense', { p_expense: e2.expense_id, p_reason: 'ضمن حدّي' });
@@ -140,21 +162,21 @@ console.log('═══ ٤ · ACC-T-048..051: الاعتماد والأدوار �
     String(snap.limit_base_minor) === '50000' && snap.base_currency === 'KWD' && String(snap.tested_base_amount_minor) === '40000');
   // فوق الحدّ
   const doc3 = await madeDoc(EMP.id);
-  const e3 = await draft(EMP, `app3-${TAG}`, { lines: KWD_LINE('90000', 'OFFICE'), date: '2026-09-05' });
+  const e3 = await draft(EMP, `app3-${TAG}`, { vendor: vApp, lines: KWD_LINE('90000', 'OFFICE'), date: '2026-09-06' });
   await EMP.client.rpc('acc_link_document', { p_document: doc3, p_target_kind: 'EXPENSE', p_target: e3.expense_id, p_link_role: 'SOURCE' });
   await EMP.client.rpc('acc_submit_expense', { p_expense: e3.expense_id, p_mark_uncertain: false });
   const fm3 = await FM.client.rpc('acc_approve_expense', { p_expense: e3.expense_id, p_reason: 'فوق حدّي' });
   check('ACC-T-050: فوق الحدّ = تصعيد للمالكة', fm3.data[0].outcome === 'OWNER_APPROVAL_REQUIRED');
   // FM لا يعتمد إرساله
   const fmDoc = await madeDoc(OWN.id);
-  const eFm = await draft(FM, `fmself-${TAG}`, { date: '2026-09-06' });
+  const eFm = await draft(FM, `fmself-${TAG}`, { vendor: vApp, lines: KWD_LINE('22222'), date: '2026-09-07' });
   await FM.client.rpc('acc_link_document', { p_document: fmDoc, p_target_kind: 'EXPENSE', p_target: eFm.expense_id, p_link_role: 'SOURCE' });
   await FM.client.rpc('acc_submit_expense', { p_expense: eFm.expense_id, p_mark_uncertain: false });
   const fmSelf = await FM.client.rpc('acc_approve_expense', { p_expense: eFm.expense_id, p_reason: 'x' });
   check('FM لا يعتمد إرساله', !!fmSelf.error && /own submission/.test(fmSelf.error.message));
   // المالكة على مصروفها: تصديق ذاتي موثَّق
   const ownDoc = await madeDoc(OWN.id);
-  const eOwn = await draft(OWN, `ownself-${TAG}`, { date: '2026-09-07' });
+  const eOwn = await draft(OWN, `ownself-${TAG}`, { vendor: vApp, lines: KWD_LINE('33333'), date: '2026-09-08' });
   await OWN.client.rpc('acc_link_document', { p_document: ownDoc, p_target_kind: 'EXPENSE', p_target: eOwn.expense_id, p_link_role: 'SOURCE' });
   await OWN.client.rpc('acc_submit_expense', { p_expense: eOwn.expense_id, p_mark_uncertain: false });
   const ownSelf = await OWN.client.rpc('acc_approve_expense', { p_expense: eOwn.expense_id, p_reason: 'مصروفي — تصديق عمل' });
@@ -168,7 +190,7 @@ console.log('═══ ٤ · ACC-T-048..051: الاعتماد والأدوار �
 console.log('═══ ٥ · ACC-T-052: الغموض شخصي/تجاري ═══');
 {
   const d = await madeDoc(EMP.id);
-  const e = await draft(EMP, `amb-${TAG}`, { date: '2026-09-08' });
+  const e = await draft(EMP, `amb-${TAG}`, { vendor: vAmb, date: '2026-09-09' });
   await EMP.client.rpc('acc_link_document', { p_document: d, p_target_kind: 'EXPENSE', p_target: e.expense_id, p_link_role: 'SOURCE' });
   const sub = await EMP.client.rpc('acc_submit_expense', { p_expense: e.expense_id, p_mark_uncertain: true });
   check('غير متأكدة → NEEDS_REVIEW بلا أثر', sub.data[0].outcome === 'NEEDS_REVIEW');
@@ -183,12 +205,12 @@ console.log('═══ ٥ · ACC-T-052: الغموض شخصي/تجاري ══�
 console.log('═══ ٦ · ACC-T-055: تكرار فاتورة المورد ═══');
 {
   const d1 = await madeDoc(OWN.id);
-  const e1 = await draft(OWN, `dupA-${TAG}`, { vref: `INV-${TAG}-77`, date: '2026-09-09' });
+  const e1 = await draft(OWN, `dupA-${TAG}`, { vref: `INV-${TAG}-77`, date: '2026-09-10', allowShared: true });
   await OWN.client.rpc('acc_link_document', { p_document: d1, p_target_kind: 'EXPENSE', p_target: e1.expense_id, p_link_role: 'SOURCE' });
   await OWN.client.rpc('acc_submit_expense', { p_expense: e1.expense_id, p_mark_uncertain: false });
   // نفس المورد + نفس المرجع = مرشح تكرار عالي الثقة → مراجعة
   const d2 = await madeDoc(OWN.id);
-  const e2 = await draft(OWN, `dupB-${TAG}`, { vref: ` inv-${TAG}-77 `, date: '2026-09-10' });
+  const e2 = await draft(OWN, `dupB-${TAG}`, { vref: ` inv-${TAG}-77 `, date: '2026-09-11', allowShared: true });
   await OWN.client.rpc('acc_link_document', { p_document: d2, p_target_kind: 'EXPENSE', p_target: e2.expense_id, p_link_role: 'SOURCE' });
   const s2 = await OWN.client.rpc('acc_submit_expense', { p_expense: e2.expense_id, p_mark_uncertain: false });
   const { data: r2 } = await svc.from('acc_expenses').select('review_reason').eq('id', e2.expense_id).single();
@@ -196,13 +218,13 @@ console.log('═══ ٦ · ACC-T-055: تكرار فاتورة المورد ═
     s2.data[0].outcome === 'NEEDS_REVIEW' && r2.review_reason === 'VENDOR_REFERENCE_DUPLICATE');
   // تشابه غامض: مورد+تاريخ+مبلغ بلا مرجع
   const d3 = await madeDoc(OWN.id);
-  const e3 = await draft(OWN, `dupC-${TAG}`, { date: '2026-09-09' });
+  const e3 = await draft(OWN, `dupC-${TAG}`, { date: '2026-09-10', allowShared: true });  // نفس مورد/تاريخ/إجمالي e1 عمدًا
   await OWN.client.rpc('acc_link_document', { p_document: d3, p_target_kind: 'EXPENSE', p_target: e3.expense_id, p_link_role: 'SOURCE' });
   const s3 = await OWN.client.rpc('acc_submit_expense', { p_expense: e3.expense_id, p_mark_uncertain: false });
   const { data: r3 } = await svc.from('acc_expenses').select('review_reason').eq('id', e3.expense_id).single();
   check('تشابه غامض → SUSPECTED_DUPLICATE للمراجعة', s3.data[0].outcome === 'NEEDS_REVIEW' && r3.review_reason === 'SUSPECTED_DUPLICATE');
   // نفس دليل المصدر في مصروف نشط آخر
-  const e4 = await draft(OWN, `dupD-${TAG}`, { lines: KWD_LINE('777', 'OFFICE'), date: '2026-09-11' });
+  const e4 = await draft(OWN, `dupD-${TAG}`, { lines: KWD_LINE('777', 'OFFICE'), date: '2026-09-12', allowShared: true });
   await OWN.client.rpc('acc_link_document', { p_document: d1, p_target_kind: 'EXPENSE', p_target: e4.expense_id, p_link_role: 'SOURCE' });
   const s4 = await OWN.client.rpc('acc_submit_expense', { p_expense: e4.expense_id, p_mark_uncertain: false });
   const { data: r4 } = await svc.from('acc_expenses').select('review_reason').eq('id', e4.expense_id).single();
@@ -216,27 +238,40 @@ console.log('═══ ٨ · الترحيل عبر Stage 3 + POSTED بعد قي�
 {
   // مصروف معتمد جاهز للتصنيف
   const doc = await madeDoc(EMP.id);
-  const e = await draft(EMP, `post-${TAG}`, { lines: KWD_LINE('30000', 'OFFICE'), date: '2026-09-12' });
+  const e = await draft(EMP, `post-${TAG}`, { vendor: vPost, lines: KWD_LINE('30000', 'OFFICE'), date: '2026-09-13' });
   const expId = e.expense_id;
   await EMP.client.rpc('acc_link_document', { p_document: doc, p_target_kind: 'EXPENSE', p_target: expId, p_link_role: 'SOURCE' });
   await EMP.client.rpc('acc_submit_expense', { p_expense: expId, p_mark_uncertain: false });
   await FM.client.rpc('acc_approve_expense', { p_expense: expId, p_reason: 'ضمن الحدّ' });
+  // سياسة اختبار من النطاق العالي POL-9xx: تُختار وقت التشغيل بعد إثبات
+  // خلوّها فعليًا في Staging (قالب عالمي أو شركة) — لا POL-020/021 المحجوزتين
+  let TESTPOL = null;
+  for (let n = 999; n >= 900; n--) {
+    const cand = `POL-${n}`;
+    const { count } = await svc.from('acc_policy_register').select('id', { count: 'exact', head: true }).eq('policy_id', cand);
+    if (count === 0) { TESTPOL = cand; break; }
+  }
+  check('سياسة الاختبار مثبتة الخلو قبل الإدراج (نطاق POL-9xx)', TESTPOL !== null);
+  console.log(`  TESTPOL = ${TESTPOL}`);
   // غير المحاسبة لا تصنّف
-  const fmCls = await FM.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: 'POL-020', p_as_of: '2026-09-12' });
+  const fmCls = await FM.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: TESTPOL, p_as_of: '2026-09-13' });
   check('التصنيف للمحاسبة حصرًا', !!fmCls.error);
-  // سياسة غير معتمدة → provisional
-  const cls0 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: 'POL-020', p_as_of: '2026-09-12' });
+  // قبل إنشاء السياسة: لا سياسة سارية → provisional (لا اعتماد على قالب عالمي)
+  const cls0 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: TESTPOL, p_as_of: '2026-09-13' });
   check('بلا سياسة سارية = POLICY_NOT_APPROVED (provisional)', !cls0.error && /POLICY_NOT_APPROVED|NO_POLICY/.test(cls0.data[0].outcome));
   // أنشئ سياسة شركة IMMEDIATE_EXPENSE واعتمدها وفعّلها (Stage 2 ceremony)
-  const { data: polRow } = await svc.rpc('acc_add_policy_version', {
-    p_company: coA, p_policy_id: 'POL-020', p_name: 'مصروف فوري', p_ifrs_ref: 'IAS 1',
-    p_treatment: 'IMMEDIATE_EXPENSE', p_alternatives: 'لا', p_approval_required: 'ACCOUNTANT+AUDITOR',
+  const { data: polRow, error: polErr } = await svc.rpc('acc_add_policy_version', {
+    p_company: coA, p_policy_id: TESTPOL, p_name: 'مصروف فوري (تجهيزة اختبار)', p_ifrs_ref: 'IAS 1',
+    p_treatment: 'IMMEDIATE_EXPENSE', p_alternatives: 'لا', p_approval_required: 'ACCOUNTANT_AND_AUDITOR',
     p_status: 'PROPOSED', p_impact_if_changed: null, p_notes: null, p_actor: ACC.id });
-  await ACC.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'ACCOUNTANT', p_decision: 'APPROVED', p_reason: 'ملائمة' });
-  await AUD.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'AUDITOR', p_decision: 'APPROVED', p_reason: 'ملائمة' });
-  await ACC.client.rpc('acc_activate_policy', { p_policy_row: polRow, p_effective_from: '2026-01-01' });
+  check('نسخة سياسة الشركة أُنشئت', !polErr && !!polRow, polErr?.message ?? '');
+  const pAp1 = await ACC.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'ACCOUNTANT', p_decision: 'APPROVED', p_reason: 'ملائمة' });
+  const pAp2 = await AUD.client.rpc('acc_record_policy_approval', { p_policy_row: polRow, p_approval_role: 'AUDITOR', p_decision: 'APPROVED', p_reason: 'ملائمة' });
+  const pAct = await ACC.client.rpc('acc_activate_policy', { p_policy_row: polRow, p_effective_from: '2026-01-01' });
+  check('اعتمادا المحاسبة والمدقّق ثم التفعيل', !pAp1.error && !pAp2.error && !pAct.error,
+    pAp1.error?.message ?? pAp2.error?.message ?? pAct.error?.message ?? '');
   // سياسة معتمدة لكن بلا خرائط حسابات → فشل مغلق
-  const cls1 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: 'POL-020', p_as_of: '2026-09-12' });
+  const cls1 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: TESTPOL, p_as_of: '2026-09-13' });
   check('ACC-T-053: بلا ربط معتمد = AUTHORITATIVE_MAPPING_REQUIRED',
     !cls1.error && /^AUTHORITATIVE_MAPPING_REQUIRED:/.test(cls1.data[0].outcome));
   // المحاسبة تعيّن الحسابات (بشرية — لا اختراع)
@@ -244,7 +279,7 @@ console.log('═══ ٨ · الترحيل عبر Stage 3 + POSTED بعد قي�
   const { data: acctPay } = await ACC.client.rpc('acc_create_account', { p_company: coA, p_code: `2100-${TAG}`, p_name: 'ذمم دائنة', p_type: 'LIABILITY', p_parent: null, p_postable: true, p_is_contra: false, p_statement_mapping: null });
   await ACC.client.rpc('acc_link_gl_account', { p_company: coA, p_purpose: 'EXPENSE_ACCOUNT', p_account: acctExp, p_scope: 'OFFICE' });
   await ACC.client.rpc('acc_link_gl_account', { p_company: coA, p_purpose: 'EXPENSE_PAYABLE', p_account: acctPay, p_scope: '' });
-  const cls2 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: 'POL-020', p_as_of: '2026-09-12' });
+  const cls2 = await ACC.client.rpc('acc_classify_expense', { p_expense: expId, p_policy_id: TESTPOL, p_as_of: '2026-09-13' });
   check('بعد التعيين البشري → READY_TO_POST', !cls2.error && cls2.data[0].outcome === 'READY_TO_POST');
 
   // فترة مفتوحة ثم تجهيز القيد
@@ -306,13 +341,13 @@ console.log('═══ ٨ · الترحيل عبر Stage 3 + POSTED بعد قي�
 console.log('═══ ٩ · آلة الحالات: انتقالات محظورة + رفض/إعادة عمل/إلغاء ═══');
 {
   const d = await madeDoc(EMP.id);
-  const e = await draft(EMP, `sm-${TAG}`, { date: '2026-09-13' });
+  const e = await draft(EMP, `sm-${TAG}`, { vendor: vSm, date: '2026-09-14' });
   await EMP.client.rpc('acc_link_document', { p_document: d, p_target_kind: 'EXPENSE', p_target: e.expense_id, p_link_role: 'SOURCE' });
   // تغيير حالة مباشر بلا توقيع (حتى service) يُرفض
   const raw = await svc.from('acc_expenses').update({ state: 'APPROVED' }).eq('id', e.expense_id);
   check('تغيير حالة بلا توقيع مرفوض (حتى بمفتاح الخدمة)', !!raw.error && /signed expense operations/.test(raw.error.message));
   await EMP.client.rpc('acc_submit_expense', { p_expense: e.expense_id, p_mark_uncertain: false });
-  const edit = await EMP.client.rpc('acc_update_expense_draft', { p_expense: e.expense_id, p_vendor: vend, p_expense_date: '2026-09-13', p_vendor_reference: null, p_description: 'تعديل', p_manual_justification: null, p_lines: null });
+  const edit = await EMP.client.rpc('acc_update_expense_draft', { p_expense: e.expense_id, p_vendor: vSm, p_expense_date: '2026-09-14', p_vendor_reference: null, p_description: 'تعديل', p_manual_justification: null, p_lines: null });
   check('لا تعديل حقائق بعد الإرسال', !!edit.error);
   const rej = await FM.client.rpc('acc_reject_expense', { p_expense: e.expense_id, p_reason: 'إيصال غير واضح' });
   check('الرفض المسبَّب يعمل', !rej.error);
@@ -326,7 +361,7 @@ console.log('═══ ٩ · آلة الحالات: انتقالات محظور�
 
 console.log('═══ ١٠ · العزل: باء لا ترى ولا تعتمد ═══');
 {
-  const e = await draft(OWN, `iso-${TAG}`, { date: '2026-09-14' });
+  const e = await draft(OWN, `iso-${TAG}`, { vendor: vIso, date: '2026-09-15' });
   const { data: bSees } = await OWN_B.client.from('acc_expenses').select('id').eq('company_id', coA);
   check('باء صفر رؤية لمصروفات ألف', (bSees ?? []).length === 0);
   const bApr = await OWN_B.client.rpc('acc_approve_expense', { p_expense: e.expense_id, p_reason: 'x' });
