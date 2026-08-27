@@ -244,7 +244,7 @@ console.log('═══ ٣ · الاتجاه والعملة والسعة (C2 + ا
   const selfApprove = await FM.client.rpc('acc_recon_approve_reversal', { p_reversal: revReq });
   check('غير المحاسبة لا يوافق', !!selfApprove.error);
   const accSame = await ACC.client.rpc('acc_recon_request_reversal', { p_reconciliation: recDet, p_reason: 'اختبار ذاتي' });
-  const sameApprove = await ACC.client.rpc('acc_recon_approve_reversal', { p_reversal: accSame });
+  const sameApprove = await ACC.client.rpc('acc_recon_approve_reversal', { p_reversal: accSame.data });
   check('الموافق ≠ الطالب (بنيويًا)', !!sameApprove.error && /differ from the requester/.test(sameApprove.error.message));
   const approve = await ACC2.client.rpc('acc_recon_approve_reversal', { p_reversal: revReq });
   check('موافقة محاسبة مغايرة تمرّ', !approve.error);
