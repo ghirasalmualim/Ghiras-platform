@@ -94,7 +94,16 @@ await OWN.client.rpc('acc_set_payment_status', { p_payment: payS, p_new_status: 
 await OWN.client.rpc('acc_set_payment_status', { p_payment: payS, p_new_status: 'SUCCESS' });
 const DEPREF = `DEP-${TAG}`;
 const { data: settle } = await ACC.client.rpc('acc_record_settlement', { p_company: coA, p_provider: 'MYFATOORAH', p_settlement_ref: DEPREF, p_settled_at: '2026-09-05' });
-await ACC.client.rpc('acc_add_settlement_line', { p_settlement: settle, p_payment: payS, p_gross_minor: '100000', p_fee_minor: '2500', p_net_minor: '97500', p_currency: 'KWD' });
+const slAdd = await ACC.client.rpc('acc_add_settlement_line', { p_settlement: settle, p_payment: payS, p_gross: '100000', p_fee: '2500', p_net: '97500', p_currency: 'KWD' });
+if (slAdd.error) { console.error('❌ settlement line fixture:', slAdd.error.message); process.exit(1); }
+// عقد التجهيزة: توقيع Stage 6 الفعلي p_gross/p_fee/p_net — لا لواحق _minor
+{
+  const self = readFileSync('scripts/accounting/test-recon-db.mjs', 'utf8');
+  const callBlock = self.slice(self.indexOf("acc_add_settlement_line"), self.indexOf("acc_add_settlement_line") + 300);
+  check('عقد التجهيزة: توقيع سطر التسوية الفعلي (p_gross/p_fee/p_net بلا لاحقة)',
+    /p_gross:/.test(callBlock) && /p_fee:/.test(callBlock) && /p_net:/.test(callBlock)
+    && !/_minor:/.test(callBlock.match(/p_(gross|fee|net)[^,]*/g)?.join(',') ?? ''));
+}
 
 console.log('\n═══ ١ · REC-003: مراسم التهيئة — نافذة صريحة، نسخ مجمّدة ═══');
 const WEIGHTS = { EXACT_AMOUNT: 3500, EXPLICIT_REFERENCE: 2500, DATE_PROXIMITY: 1500,
