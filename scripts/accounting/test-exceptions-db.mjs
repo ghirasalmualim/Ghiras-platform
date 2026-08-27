@@ -45,116 +45,135 @@ async function mintUser(t) {
   await client.auth.verifyOtp({ type: 'magiclink', token_hash: link.properties.hashed_token });
   return { id: created.user.id, client };
 }
+// تصلب التجهيزة: رفض RPC المحكوم يُبلَّغ بنصه الحقيقي — لا TypeError
+// صامت بعد قراءة data[0] عمياء (درس إعادة تشغيل Stage 11 الأولى)
+const must = (r, what) => {
+  if (r.error) throw new Error(`fixture ${what}: ${r.error.message}`);
+  if (r.data === null || r.data === undefined
+      || (Array.isArray(r.data) && r.data.length === 0)) {
+    throw new Error(`fixture ${what}: empty result — setup cannot continue`);
+  }
+  return r.data;
+};
+const mustOk = (r, what) => {
+  if (r.error) throw new Error(`fixture ${what}: ${r.error.message}`);
+  return r.data;
+};
+
 const OWN = await mintUser('own'), ACC = await mintUser('acc'), FM = await mintUser('fm'),
       AUD = await mintUser('aud'), OWN_B = await mintUser('ownb');
-const { data: coA } = await OWN.client.rpc('acc_create_company', { p_legal_name: `شركة استثناءات ${TAG}` });
-const { data: coB } = await OWN_B.client.rpc('acc_create_company', { p_legal_name: `شركة استثناءات باء ${TAG}` });
+const coA = must(await OWN.client.rpc('acc_create_company', { p_legal_name: `شركة استثناءات ${TAG}` }), 'company A');
+const coB = must(await OWN_B.client.rpc('acc_create_company', { p_legal_name: `شركة استثناءات باء ${TAG}` }), 'company B');
 for (const [u, r] of [[ACC, 'ACCOUNTANT'], [FM, 'FINANCE_MANAGER'], [AUD, 'AUDITOR']])
   await OWN.client.from('acc_company_members').insert({ company_id: coA, user_id: u.id, role: r, created_by: OWN.id });
 
 // ════════════ التجهيزات: حقيقة مصدرية لكل نوع حي ════════════
 // أ · فرق تسوية: gross−fee−net = +50
-const { data: stlA } = await ACC.client.rpc('acc_record_settlement', {
-  p_company: coA, p_provider: 'MYFATOORAH', p_settlement_ref: `st-${TAG}`, p_settled_at: '2026-09-01' });
-await ACC.client.rpc('acc_add_settlement_line', {
-  p_settlement: stlA, p_payment: null, p_gross: '100000', p_fee: '5000', p_net: '94950', p_currency: 'KWD' });
+const stlA = must(await ACC.client.rpc('acc_record_settlement', {
+  p_company: coA, p_provider: 'MYFATOORAH', p_settlement_ref: `st-${TAG}`, p_settled_at: '2026-09-01' }), 'settlement');
+mustOk(await ACC.client.rpc('acc_add_settlement_line', {
+  p_settlement: stlA, p_payment: null, p_gross: '100000', p_fee: '5000', p_net: '94950', p_currency: 'KWD' }), 'settlement line');
 
 // ب · استرداد فاشل: فاتورة → دفعة ناجحة → استرداد → FAILED
-const { data: cust } = await OWN.client.rpc('acc_create_customer', { p_company: coA, p_name: `عميلة ${TAG}` });
-const { data: prod } = await OWN.client.rpc('acc_create_product', {
-  p_company: coA, p_name: `اشتراك ${TAG}`, p_price_minor: '100000', p_currency: 'KWD' });
-const { data: inv } = await OWN.client.rpc('acc_create_invoice_draft', {
+const cust = must(await OWN.client.rpc('acc_create_customer', { p_company: coA, p_name: `عميلة ${TAG}` }), 'customer');
+const prod = must(await OWN.client.rpc('acc_create_product', {
+  p_company: coA, p_name: `اشتراك ${TAG}`, p_price_minor: '100000', p_currency: 'KWD' }), 'product');
+const inv = must(await OWN.client.rpc('acc_create_invoice_draft', {
   p_company: coA, p_customer: cust, p_currency: 'KWD',
-  p_lines: [{ product_id: prod, quantity: '1', unit_price_minor: '100000', currency: 'KWD' }] });
-await OWN.client.rpc('acc_issue_invoice', { p_invoice: inv, p_issue_date: '2026-09-01' });
-const { data: pay } = await OWN.client.rpc('acc_record_payment', {
-  p_company: coA, p_invoice: inv, p_amount_minor: '100000', p_currency: 'KWD', p_gateway_txn_id: `gw-${TAG}` });
-await OWN.client.rpc('acc_set_payment_status', { p_payment: pay, p_new_status: 'PENDING' });
-await OWN.client.rpc('acc_set_payment_status', { p_payment: pay, p_new_status: 'SUCCESS' });
-const { data: refund } = await ACC.client.rpc('acc_request_refund', {
+  p_lines: [{ product_id: prod, quantity: '1', unit_price_minor: '100000', currency: 'KWD' }] }), 'invoice draft');
+mustOk(await OWN.client.rpc('acc_issue_invoice', { p_invoice: inv, p_issue_date: '2026-09-01' }), 'issue invoice');
+const pay = must(await OWN.client.rpc('acc_record_payment', {
+  p_company: coA, p_invoice: inv, p_amount_minor: '100000', p_currency: 'KWD', p_gateway_txn_id: `gw-${TAG}` }), 'payment');
+mustOk(await OWN.client.rpc('acc_set_payment_status', { p_payment: pay, p_new_status: 'PENDING' }), 'payment PENDING');
+mustOk(await OWN.client.rpc('acc_set_payment_status', { p_payment: pay, p_new_status: 'SUCCESS' }), 'payment SUCCESS');
+const refund = must(await ACC.client.rpc('acc_request_refund', {
   p_payment: pay, p_amount_minor: '40000', p_effective: '2026-09-02', p_policy_id: 'POL-009',
-  p_external_refund_id: `rf-${TAG}` });
-await ACC.client.rpc('acc_set_refund_status', { p_refund: refund, p_new_status: 'PROCESSING' });
-await ACC.client.rpc('acc_set_refund_status', { p_refund: refund, p_new_status: 'FAILED' });
+  p_external_refund_id: `rf-${TAG}` }), 'refund');
+mustOk(await ACC.client.rpc('acc_set_refund_status', { p_refund: refund, p_new_status: 'PROCESSING' }), 'refund PROCESSING');
+mustOk(await ACC.client.rpc('acc_set_refund_status', { p_refund: refund, p_new_status: 'FAILED' }), 'refund FAILED');
 
-// ج · مصروفات يدوية: غموض + توأم مرجع مورد + سليم بلا مستند
-const { data: vend } = await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ${TAG}` });
-const { data: vend2 } = await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ثانٍ ${TAG}` });
-const LINE = (amt) => [{ description: 'بند اختبار', amount_minor: String(amt), currency: 'KWD', base_amount_minor: String(amt) }];
+// ج · مصروفات يدوية: غموض + توأم مرجع مورد + سليم بلا مستند —
+// السطر يطابق عقد Stage 8 المثبت حرفيًا: الوضع الضريبي يُسجَّل
+// صراحةً (NO_TAX_REGIME حالة حقيقية لا إغفال) + category_key إلزامي
+const vend = must(await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ${TAG}` }), 'vendor');
+const vend2 = must(await OWN.client.rpc('acc_create_vendor', { p_company: coA, p_name: `مورد ثانٍ ${TAG}` }), 'vendor 2');
+const LINE = (amt) => [{ description: 'بند اختبار', amount_minor: String(amt), currency: 'KWD',
+  base_amount_minor: String(amt), tax_status: 'NO_TAX_REGIME', category_key: 'GENERAL' }];
 async function manualExpense(key, vendor, date, ref, amt) {
-  const { data } = await OWN.client.rpc('acc_create_expense_draft', {
+  const rows = must(await OWN.client.rpc('acc_create_expense_draft', {
     p_company: coA, p_submission_key: `${key}-${TAG}`, p_vendor: vendor, p_expense_date: date,
     p_vendor_reference: ref, p_description: key, p_source_kind: 'MANUAL',
-    p_manual_justification: 'مصدر يدوي لاختبار مرحلي — التبرير الكتابي حاضر', p_lines: LINE(amt) });
-  return data[0].expense_id;
+    p_manual_justification: 'مصدر يدوي لاختبار مرحلي — التبرير الكتابي حاضر', p_lines: LINE(amt) }),
+    `expense draft ${key}`);
+  return rows[0].expense_id;
 }
 const expAmb = await manualExpense('amb', vend, '2026-09-01', null, 5000);
-await OWN.client.rpc('acc_submit_expense', { p_expense: expAmb, p_mark_uncertain: true });
+mustOk(await OWN.client.rpc('acc_submit_expense', { p_expense: expAmb, p_mark_uncertain: true }), 'submit amb');
 const expDup1 = await manualExpense('dup1', vend2, '2026-09-02', `INV-77-${TAG}`, 7000);
-await OWN.client.rpc('acc_submit_expense', { p_expense: expDup1 });
+mustOk(await OWN.client.rpc('acc_submit_expense', { p_expense: expDup1 }), 'submit dup1');
 const expDup2 = await manualExpense('dup2', vend2, '2026-09-03', `INV-77-${TAG}`, 9000);
-await OWN.client.rpc('acc_submit_expense', { p_expense: expDup2 });
+mustOk(await OWN.client.rpc('acc_submit_expense', { p_expense: expDup2 }), 'submit dup2');
 const expNoDoc = await manualExpense('nodoc', vend, '2026-09-04', null, 3000);
-await OWN.client.rpc('acc_submit_expense', { p_expense: expNoDoc });
+mustOk(await OWN.client.rpc('acc_submit_expense', { p_expense: expNoDoc }), 'submit nodoc');
 
 // د · حدث مزوّد مستردّ بلا معالجة (دليل غياب webhook) + جولة استرداد
-await svc.rpc('acc_mf_record_recovery', {
-  p_company: coA, p_start: '2026-09-01T00:00:00Z', p_end: '2026-09-03T00:00:00Z', p_pages: 1, p_events: 1 });
-const { data: mfRows } = await svc.rpc('acc_mf_record_event', {
+must(await svc.rpc('acc_mf_record_recovery', {
+  p_company: coA, p_start: '2026-09-01T00:00:00Z', p_end: '2026-09-03T00:00:00Z', p_pages: 1, p_events: 1 }), 'recovery run');
+const mfRows = must(await svc.rpc('acc_mf_record_event', {
   p_company: coA, p_event_code: 1, p_event_name: 'TransactionsStatusChanged',
   p_event_reference: `ref-${TAG}`, p_source: 'RECOVERY', p_signature_valid: true,
-  p_payload: { test: TAG }, p_business_key: `bk-${TAG}` });
+  p_payload: { test: TAG }, p_business_key: `bk-${TAG}` }), 'mf event');
 const mfEvent = Array.isArray(mfRows) ? mfRows[0].event_id : mfRows;
 
 // هـ · حركة بنك بلا أصل: جولة Stage 9 مقبولة + جولة مطابقة بحدث UNMATCHED
-const { data: acct } = await OWN.client.rpc('acc_create_bank_account', {
-  p_company: coA, p_bank_label: `بنك ${TAG}`, p_account_identifier: `KW11TEST${TAG}0001`, p_currency: 'KWD' });
+const acct = must(await OWN.client.rpc('acc_create_bank_account', {
+  p_company: coA, p_bank_label: `بنك ${TAG}`, p_account_identifier: `KW11TEST${TAG}0001`, p_currency: 'KWD' }), 'bank account');
 const SPEC = { header: { skip_rows: 1 }, columns: { txn_date: 0, description: 1, amount: 2, balance: 3 },
   amount_semantics: 'SIGNED_AMOUNT', date_format: 'DD/MM/YYYY', currency_mode: 'FIXED',
   fixed_currency: 'KWD', balance_direction: 'AFTER_ROW' };
-const { data: layout } = await ACC.client.rpc('acc_add_bank_layout', {
-  p_company: coA, p_layout_key: `csv-${TAG}`, p_format_family: 'CSV', p_bank_hint: null, p_spec: SPEC });
-await ACC.client.rpc('acc_activate_bank_layout', { p_layout: layout });
+const layout = must(await ACC.client.rpc('acc_add_bank_layout', {
+  p_company: coA, p_layout_key: `csv-${TAG}`, p_format_family: 'CSV', p_bank_hint: null, p_spec: SPEC }), 'layout');
+mustOk(await ACC.client.rpc('acc_activate_bank_layout', { p_layout: layout }), 'activate layout');
 async function bankDoc(content) {
   const cap = `xb-${TAG}-${Math.random().toString(36).slice(2)}`;
-  const { data: d } = await svc.rpc('acc_create_document', { p_company: coA, p_actor: OWN.id, p_capture_id: cap,
-    p_doc_type: 'BANK_STATEMENT', p_source: 'FILE_UPLOAD', p_original_filename: 's.csv', p_mime: 'text/csv', p_expected_pages: 1 });
+  const d = must(await svc.rpc('acc_create_document', { p_company: coA, p_actor: OWN.id, p_capture_id: cap,
+    p_doc_type: 'BANK_STATEMENT', p_source: 'FILE_UPLOAD', p_original_filename: 's.csv', p_mime: 'text/csv', p_expected_pages: 1 }), 'create document');
   const id = d[0].document_id;
-  await svc.rpc('acc_register_document_page', { p_document: id, p_page_no: 1, p_mime: 'text/csv' });
-  await svc.rpc('acc_confirm_document_page', { p_document: id, p_page_no: 1, p_byte_size: 5, p_server_sha256: sha(content) });
-  await svc.rpc('acc_finalize_document', { p_document: id });
+  mustOk(await svc.rpc('acc_register_document_page', { p_document: id, p_page_no: 1, p_mime: 'text/csv' }), 'register page');
+  mustOk(await svc.rpc('acc_confirm_document_page', { p_document: id, p_page_no: 1, p_byte_size: 5, p_server_sha256: sha(content) }), 'confirm page');
+  mustOk(await svc.rpc('acc_finalize_document', { p_document: id }), 'finalize document');
   return id;
 }
 const stDoc = await bankDoc(`stmt-${TAG}`);
-const { data: impRows } = await svc.rpc('acc_create_bank_import', {
-  p_company: coA, p_actor: OWN.id, p_bank_account: acct, p_document: stDoc, p_layout: layout, p_supersedes: null });
+const impRows = must(await svc.rpc('acc_create_bank_import', {
+  p_company: coA, p_actor: OWN.id, p_bank_account: acct, p_document: stDoc, p_layout: layout, p_supersedes: null }), 'bank import');
 const imp = impRows[0].import_id;
-await svc.rpc('acc_begin_bank_parse', { p_import: imp, p_actor: OWN.id });
-await svc.rpc('acc_record_bank_rows', { p_import: imp, p_rows: [{
+mustOk(await svc.rpc('acc_begin_bank_parse', { p_import: imp, p_actor: OWN.id }), 'begin parse');
+mustOk(await svc.rpc('acc_record_bank_rows', { p_import: imp, p_rows: [{
   row_no: 1, txn_date: '2026-09-02', value_date: '2026-09-02', description_raw: `HAWALA ${TAG}`,
   description_canon: `HAWALA ${TAG}`.toUpperCase(), amount_minor: '25000',
-  running_balance_minor: '25000', reference: '', raw: {} }] });
-await svc.rpc('acc_normalize_bank_import', { p_import: imp,
+  running_balance_minor: '25000', reference: '', raw: {} }] }), 'record rows');
+mustOk(await svc.rpc('acc_normalize_bank_import', { p_import: imp,
   p_period_start: '2026-09-01', p_period_end: '2026-09-03',
   p_opening_minor: '0', p_closing_minor: '25000',
   p_assertion_source: 'EXPLICIT_SOURCE', p_assertion_derivation: null,
-  p_freshness: '2026-09-03', p_detected_currency: null, p_detected_account_fp: null });
-await svc.rpc('acc_dedup_bank_import', { p_import: imp });
-await OWN.client.rpc('acc_accept_bank_import', { p_import: imp });
-const bankTxn = (await svc.from('acc_bank_transactions')
-  .select('id').eq('import_id', imp).eq('row_no', 1).single()).data.id;
-const { data: rsettings } = await ACC.client.rpc('acc_recon_add_settings', {
+  p_freshness: '2026-09-03', p_detected_currency: null, p_detected_account_fp: null }), 'normalize');
+mustOk(await svc.rpc('acc_dedup_bank_import', { p_import: imp }), 'dedup');
+mustOk(await OWN.client.rpc('acc_accept_bank_import', { p_import: imp }), 'accept import');
+const bankTxn = must(await svc.from('acc_bank_transactions')
+  .select('id').eq('import_id', imp).eq('row_no', 1).single(), 'bank txn').id;
+const rsettings = must(await ACC.client.rpc('acc_recon_add_settings', {
   p_company: coA, p_auto_bp: 9000, p_review_bp: 7000, p_ask_bp: 5000, p_date_window_days: 3,
   p_weights: { EXACT_AMOUNT: 4000, EXPLICIT_REFERENCE: 2500, DATE_PROXIMITY: 1500,
-    COUNTERPARTY_CANONICAL: 1000, HISTORICAL_CONFIRMED_MAPPING: 500, GROUP_PLAUSIBILITY: 500 } });
-await ACC.client.rpc('acc_recon_activate_settings', { p_settings: rsettings });
-const { data: runRows } = await svc.rpc('acc_recon_begin_run', {
-  p_company: coA, p_actor: ACC.id, p_bank_account: acct });
+    COUNTERPARTY_CANONICAL: 1000, HISTORICAL_CONFIRMED_MAPPING: 500, GROUP_PLAUSIBILITY: 500 } }), 'recon settings');
+mustOk(await ACC.client.rpc('acc_recon_activate_settings', { p_settings: rsettings }), 'activate settings');
+const runRows = must(await svc.rpc('acc_recon_begin_run', {
+  p_company: coA, p_actor: ACC.id, p_bank_account: acct }), 'recon run');
 const rrun = (Array.isArray(runRows) ? runRows[0] : runRows).run_id;
-await svc.rpc('acc_recon_record_event', { p_run: rrun, p_bank_txn: bankTxn,
-  p_condition: 'UNMATCHED_BANK_TRANSACTION', p_blocking: false, p_detail: {} });
-await svc.rpc('acc_recon_complete_run', { p_run: rrun, p_state: 'COMPLETED',
-  p_considered: 1, p_auto: 0, p_suggested: 0, p_unmatched: 1 });
+mustOk(await svc.rpc('acc_recon_record_event', { p_run: rrun, p_bank_txn: bankTxn,
+  p_condition: 'UNMATCHED_BANK_TRANSACTION', p_blocking: false, p_detail: {} }), 'recon event');
+mustOk(await svc.rpc('acc_recon_complete_run', { p_run: rrun, p_state: 'COMPLETED',
+  p_considered: 1, p_auto: 0, p_suggested: 0, p_unmatched: 1 }), 'complete run');
 
 const journalBaseline = (await svc.from('acc_journal_entries')
   .select('id', { count: 'exact', head: true }).eq('company_id', coA)).count ?? 0;
