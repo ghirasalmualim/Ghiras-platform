@@ -33,13 +33,25 @@ function extract(src) {
   return out;
 }
 
-/** أسماء الإخراج المتصادمة: ظهور غير مؤهَّل + معامل مقارنة بعده */
+/**
+ * أسماء الإخراج المتصادمة — صنفان مُثبتان بحادثتين حقيقيتين:
+ *  أ) مقارنة غير مؤهَّلة (حادثة Stage 8): `document_id = ...`
+ *  ب) قائمة استدلال ON CONFLICT (حادثة Stage 11): مرجع عمود عارٍ
+ *     لا يقبل التأهيل بمستعار أصلًا — الحل ON CONSTRAINT.
+ * قائمة أعمدة INSERT ليست غامضة (يحلّها المحلّل عمودًا دائمًا) فتُستثنى.
+ */
 function collisions(fn) {
   const b = strip(fn.body);
   const hits = new Set();
+  // ب · نطاقات ON CONFLICT (...) — تُفحص أولًا ككتل مستقلة
+  const onConflictLists = [...b.matchAll(/on\s+conflict\s*\(([^)]*)\)/gi)].map((m) => m[1]);
   for (const o of fn.outs) {
-    const re = new RegExp('(?<![\\w.])' + o + '\\s*(=|<>|<|>|is\\s+(?:not\\s+)?distinct)', 'g');
-    if (re.test(b)) hits.add(o);
+    // أ · المقارنة غير المؤهَّلة
+    const cmp = new RegExp('(?<![\\w.])' + o + '\\s*(=|<>|<|>|is\\s+(?:not\\s+)?distinct)', 'g');
+    if (cmp.test(b)) hits.add(o);
+    // ب · اسم إخراج داخل قائمة استدلال ON CONFLICT
+    const bare = new RegExp('(?<![\\w.])' + o + '(?![\\w])');
+    if (onConflictLists.some((list) => bare.test(list))) hits.add(o);
   }
   return [...hits];
 }
@@ -63,10 +75,41 @@ end $$;`;
   check('المؤهَّل p.document_id يمرّ', goodFns.length === 1 && collisions(goodFns[0]).length === 0);
 }
 
+console.log('═══ إثبات نفي ٢: قائمة استدلال ON CONFLICT (حادثة Stage 11) ═══');
+{
+  // النص قبل الإصلاح حرفيًا: ON CONFLICT بقائمة أعمدة تحوي اسم إخراج
+  const before = `create or replace function public.synthetic_conflict(p_run uuid)
+returns table (exception_id uuid, outcome text)
+language plpgsql security definer set search_path to 'public' as $$
+begin
+  insert into acc_exception_source_links
+    (company_id, exception_id, source_kind, source_id, source_role)
+  values (null, null, 'EXPENSE', null, 'PRIMARY')
+  on conflict (exception_id, source_kind, source_id, source_role) do nothing;
+end $$;`;
+  const after = before
+    .split('on conflict (exception_id, source_kind, source_id, source_role) do nothing')
+    .join('on conflict on constraint acc_exception_source_links_uniq do nothing');
+  const beforeFns = extract(before);
+  const afterFns = extract(after);
+  check('النص قبل الإصلاح يُصطاد (exception_id في قائمة ON CONFLICT)',
+    beforeFns.length === 1 && collisions(beforeFns[0]).includes('exception_id'));
+  check('النص بعد الإصلاح (ON CONSTRAINT) يمرّ',
+    afterFns.length === 1 && collisions(afterFns[0]).length === 0);
+  check('قائمة أعمدة INSERT وحدها لا تُصطاد (ليست غامضة)',
+    collisions(extract(`create or replace function public.synthetic_insert_cols(p uuid)
+returns table (exception_id uuid, outcome text)
+language plpgsql security definer set search_path to 'public' as $$
+begin
+  insert into acc_exception_events (company_id, exception_id, event)
+  values (null, null, 'SEEN');
+end $$;`)[0]).length === 0);
+}
+
 console.log('═══ Stage 8: التعريفات الفعّالة (الأساس ثم التصحيحات) صفر تصادم ═══');
 {
   const files = readdirSync('supabase')
-    .filter((f) => /^2026-(08-(29|3\d)|09-\d\d)-accounting-(expenses-documents|bank-import|reconciliation|owner-exceptions).*\.sql$/.test(f))
+    .filter((f) => /^2026-(08-(29|3\d)|09-\d\d)-accounting-(expenses-documents|bank-import|reconciliation|owner-exceptions|exceptions-ambiguity).*\.sql$/.test(f))
     .sort();
   check('هجرات الأساس + التصحيح + البنك ضمن المسح', files.length >= 3);
   const effective = new Map();  // آخر تعريف يفوز

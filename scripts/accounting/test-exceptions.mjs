@@ -9,6 +9,7 @@
  * تطابق سجل TS مع دالة الأولوية SQL، مرآة بوابة Stage 10، وصل خطاف
  * ACC-024، صفر مساس بمصادر 1..10، صفر AI/QAYD، وخريطة UX-T الصادقة.
  */
+import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { EXCEPTION_REGISTRY, EXCEPTION_TYPES, PENDING_STAGE_13_TYPES }
   from '../../src/lib/accounting/exceptions/registry.ts';
@@ -336,6 +337,44 @@ console.log('═══ ١٢ · وضع الفاتورة الضريبي: سلطة 
     && 'INVOICE_TAX_UNRESOLVED' in OWNER_VOCAB);
   const pageSrc = readFileSync('src/app/owner/fawatiri/page.tsx', 'utf8');
   check('واجهة المالكة لا ترسل ولا تقرر وضعًا ضريبيًا', !/tax_status|tax_rate/.test(pageSrc));
+}
+
+console.log('═══ ١٣ · تصحيح الغموض 2026-09-04: انضباط الهجرة التصحيحية ═══');
+{
+  const FIX = readFileSync('supabase/2026-09-04-accounting-exceptions-ambiguity.sql', 'utf8');
+  const FIXC = FIX.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  check('دالة واحدة create or replace فقط — لا جداول ولا drop ولا CASCADE',
+    (FIXC.match(/create or replace function/g) || []).length === 1
+    && !/drop function|cascade|create table|drop table/i.test(FIXC));
+  check('التوقيع وعقد table(exception_id, outcome) محفوظان',
+    FIXC.includes('returns table (exception_id uuid, outcome text)')
+    && FIXC.includes('acc_exception_ingest(\n  p_run uuid, p_type text, p_issue_key text,'));
+  check('SECURITY DEFINER + search_path + خدمة فقط كما الأساس',
+    FIXC.includes(`security definer set search_path to 'public'`)
+    && /grant execute on function public\.acc_exception_ingest\([^)]*\) to service_role/.test(FIXC)
+    && FIXC.includes('auth.uid() is not null'));
+  check('الشكل المعتمد ON CONSTRAINT في الموضعين — لا قائمة أعمدة',
+    (FIXC.match(/on conflict on constraint acc_exception_source_links_uniq do nothing/g) || []).length === 2
+    && !/on conflict\s*\(/i.test(FIXC));
+  check('صفر WHERE NOT EXISTS — سلامة التزامن غير مُضعَّفة',
+    !/where not exists/i.test(FIXC));
+  check('تثبيت الاسم بيانات وصفية: rename constraint فقط، بلا إسقاط فهرس',
+    /alter table public\.acc_exception_source_links rename constraint/.test(FIXC)
+    && !/drop constraint|drop index|create unique index/i.test(FIXC));
+  check('غياب القيد الرباعي = فشل مغلق صريح',
+    FIXC.includes('refusing to weaken concurrent idempotency'));
+  check('حرّاس C1/C2/C3 والرسائل الدلالية محفوظة حرفيًا',
+    ['PENDING_STAGE_13', 'is already claimed by type', 'exactly one PRIMARY source fact',
+     'EXCEPTION_RECURRED', 'EXCEPTION_RAISED', 'acc.exception_op',
+     'service-only pipeline'].every((s) => FIX.includes(s)));
+  check('صفر قيود دفترية وصفر AI في التصحيح',
+    !/acc_post_journal/.test(FIXC) && !/openai|anthropic|llm\b|embedding/i.test(FIXC));
+  check('لا مساس بأي جدول خارج Stage 11',
+    [...FIXC.matchAll(/(?:insert into|update|delete from)\s+public\.(acc_\w+)/g)]
+      .every((m) => m[1].startsWith('acc_exception')));
+  check('هجرة 2026-09-03 لم تُمسّ',
+    execSync('git diff 3c3236b -- supabase/2026-09-03-accounting-owner-exceptions.sql',
+      { encoding: 'utf8' }).trim() === '');
 }
 
 console.log(`\n  عقود Stage 11 الساكنة: ${passed} نجح · ${failed} فشل`);
