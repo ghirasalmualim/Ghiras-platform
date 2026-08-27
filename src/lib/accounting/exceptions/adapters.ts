@@ -111,10 +111,13 @@ async function detectMissingWebhook(db: ServiceDb, companyId: string): Promise<A
 // ── ٤ · حركة بنك بلا أصل: حدث UNMATCHED من آخر جولة مطابقة مكتملة
 //     لحسابها، وما زالت بلا مطابقة مؤكدة/مقفلة ولا حسم تكرار ──
 async function detectUnmatchedBank(db: ServiceDb, companyId: string): Promise<AdapterResult> {
+  // حقول Stage 10 الحقيقية: state ∈ RUNNING/COMPLETED/FAILED وfinished_at.
+  // التغطية تُشتق من جولة **مكتملة** حصرًا — جولة فاشلة أو جارية ليست
+  // فحصًا تمّ، فتبقى الحالة «لم نفحص» لا «لا شيء غير مطابق».
   const runs = need<any[]>(await db.from('acc_recon_runs')
-    .select('id, bank_account_id, completed_at').eq('company_id', companyId)
-    .not('completed_at', 'is', null)
-    .order('completed_at', { ascending: false }).limit(200), 'recon runs');
+    .select('id, bank_account_id, finished_at').eq('company_id', companyId)
+    .eq('state', 'COMPLETED').not('finished_at', 'is', null)
+    .order('finished_at', { ascending: false }).limit(200), 'recon runs');
   if (runs.length === 0) return { findings: [], coverage: 'NONE', coverageAsOf: null };
   const latestPerAccount = new Map<string, any>();
   for (const r of runs) {
@@ -127,7 +130,7 @@ async function detectUnmatchedBank(db: ServiceDb, companyId: string): Promise<Ad
     .in('run_id', latestRunIds).limit(SCAN_LIMIT), 'recon events');
   const txnIds = [...new Set(events.map((e) => e.bank_transaction_id).filter(Boolean))];
   if (txnIds.length === 0) {
-    return { findings: [], coverage: 'FULL', coverageAsOf: runs[0].completed_at };
+    return { findings: [], coverage: 'FULL', coverageAsOf: runs[0].finished_at };
   }
   // استبعاد المستهلَك: تخصيصات لمطابقات CONFIRMED/LOCKED
   const allocs = need<any[]>(await db.from('acc_recon_allocations')
@@ -178,7 +181,7 @@ async function detectUnmatchedBank(db: ServiceDb, companyId: string): Promise<Ad
       ],
     });
   }
-  return { findings, coverage: 'FULL', coverageAsOf: runs[0].completed_at };
+  return { findings, coverage: 'FULL', coverageAsOf: runs[0].finished_at };
 }
 
 // ── ٥ · استرداد فاشل ──
