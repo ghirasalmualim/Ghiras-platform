@@ -263,7 +263,7 @@ console.log('═══ ٨ · الترحيل عبر Stage 3 + POSTED بعد قي�
   const { data: polRow, error: polErr } = await svc.rpc('acc_add_policy_version', {
     p_company: coA, p_policy_id: TESTPOL, p_name: 'مصروف فوري (تجهيزة اختبار)', p_ifrs_ref: 'IAS 1',
     p_treatment: 'IMMEDIATE_EXPENSE', p_alternatives: 'لا', p_approval_required: 'ACCOUNTANT_AND_AUDITOR',
-    p_status: 'PROPOSED',
+    p_status: 'NEEDS_AUDITOR_APPROVAL',  // مسار NEEDS_ الصريح (ACC-017) لمسار الاعتماد المزدوج
     p_impact_if_changed: 'سياسة اختبار فقط — لا أثر إنتاجي؛ تغييرها يؤثر فقط على بيانات الاختبار',
     p_notes: null, p_actor: ACC.id });
   check('نسخة سياسة الشركة أُنشئت', !polErr && !!polRow, polErr?.message ?? '');
