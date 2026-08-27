@@ -64,7 +64,9 @@ async function pipeline(acct, doc, layout, rows, opening, closing, opts = {}) {
   const { data: norm } = await svc.rpc('acc_normalize_bank_import', {
     p_import: id, p_period_start: opts.start ?? rows[0]?.txn_date ?? '2026-09-01',
     p_period_end: opts.end ?? rows[rows.length - 1]?.txn_date ?? '2026-09-01',
-    p_opening_minor: String(opening), p_closing_minor: String(closing),
+    // nullable bigint: null يبقى NULL فعليًا — لا "null" نصية أبدًا
+    p_opening_minor: opening === null ? null : String(opening),
+    p_closing_minor: closing === null ? null : String(closing),
     p_assertion_source: opts.source ?? 'EXPLICIT_SOURCE', p_assertion_derivation: null,
     p_freshness: opts.end ?? '2026-09-30',
     p_detected_currency: opts.cur ?? null, p_detected_account_fp: opts.fp ?? null });
@@ -73,7 +75,14 @@ async function pipeline(acct, doc, layout, rows, opening, closing, opts = {}) {
   return { id, outcome: dd[0].outcome };
 }
 
-console.log('\n═══ ١ · حسابات البنك: أدوار + بصمة بلا IBAN كامل ═══');
+console.log('\n═══ ٠ · عقد تسلسل NULL في تجهيزات bigint ═══');
+{
+  const ser = (v) => (v === null ? null : String(v));
+  check('null → NULL فعلي لا نص', ser(null) === null && ser(100000) === '100000');
+  check('لا "null" ولا "undefined" في أي تسلسل', ser(null) !== 'null' && String(ser(12n)) !== 'undefined');
+}
+
+console.log('═══ ١ · حسابات البنك: أدوار + بصمة بلا IBAN كامل ═══');
 const { data: acct } = await OWN.client.rpc('acc_create_bank_account', {
   p_company: coA, p_bank_label: `بنك تركيبي ${TAG}`, p_account_identifier: `KW81TEST0000000000${TAG}`, p_currency: 'KWD' });
 check('المالكة تنشئ حساب بنك', !!acct);
