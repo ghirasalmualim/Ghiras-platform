@@ -38,22 +38,81 @@ async function issuedInvoice() {
   await OWN.client.rpc('acc_send_invoice', { p_invoice: inv });
   return inv;
 }
-const ev = (name, code, ref, payload, valid = true, biz = null, src = 'WEBHOOK') =>
-  svc.rpc('acc_mf_record_event', { p_company: coA, p_event_code: code, p_event_name: name, p_event_reference: ref, p_source: src, p_signature_valid: valid, p_payload: payload, p_business_key: biz });
+// يُطبِّع الإرجاع البنيوي table(event_id, outcome) إلى {data:id, outcome, error}
+const ev = async (name, code, ref, payload, valid = true, biz = null, src = 'WEBHOOK') => {
+  const r = await svc.rpc('acc_mf_record_event', { p_company: coA, p_event_code: code, p_event_name: name, p_event_reference: ref, p_source: src, p_signature_valid: valid, p_payload: payload, p_business_key: biz });
+  if (r.error) return { data: null, outcome: null, error: r.error };
+  const row = Array.isArray(r.data) ? r.data[0] : r.data;
+  return { data: row?.event_id ?? null, outcome: row?.outcome ?? null, error: null };
+};
 
 console.log('\n═══ ١ · idempotency التسليم (Event.Reference) — MF-T-010 ═══');
 const r1 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-1`, { Data: 1 }, true, `PID-${TAG}`);
 const r2 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-1`, { Data: 1 }, true, `PID-${TAG}`);
 const r3 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-1`, { Data: 1 }, true, `PID-${TAG}`);
 check('MF-T-010 نفس المرجع ×3 = دليل واحد', !r1.error && r1.data === r2.data && r2.data === r3.data);
+check('العقد: أول تسجيل CREATED ثم IDEMPOTENT_DUPLICATE',
+  r1.outcome === 'CREATED' && r2.outcome === 'IDEMPOTENT_DUPLICATE' && r3.outcome === 'IDEMPOTENT_DUPLICATE');
 const { count: evCount } = await svc.from('acc_mf_events').select('id', { count: 'exact', head: true }).eq('event_reference', `E-${TAG}-1`);
 check('صف دليل واحد فقط', evCount === 1);
+// تكرار مطابق لا يكتب تدقيق تعارض
+const { data: dupAudit } = await svc.from('acc_audit_events').select('id').eq('action', 'MF_EVENT_CONFLICT').eq('subject_id', r1.data);
+check('تكرار مطابق = صفر تدقيق MF_EVENT_CONFLICT', (dupAudit ?? []).length === 0);
 
 console.log('═══ ٢ · تعارض حمولة بنفس المرجع — MF-T-023 ═══');
 const conf = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-1`, { Data: 999 }, true, `PID-${TAG}`);
-check('MF-T-023 حمولة مختلفة بنفس المرجع = CONFLICT (لا استبدال)', !!conf.error && /conflicting payload/.test(conf.error.message));
+// نتيجة بنيوية CONFLICT بلا استثناء SQL
+check('MF-T-023 حمولة مختلفة بنفس المرجع = CONFLICT (نتيجة بنيوية لا استثناء)',
+  !conf.error && conf.outcome === 'CONFLICT' && conf.data === r1.data);
 const { data: confRow } = await svc.from('acc_mf_events').select('processing_state, payload').eq('id', r1.data).single();
-check('الدليل صار CONFLICT والحمولة الأصلية محفوظة', confRow.processing_state === 'CONFLICT' && confRow.payload.Data === 1);
+check('الدليل ثبت CONFLICT والحمولة الأصلية محفوظة (لا استبدال)',
+  confRow.processing_state === 'CONFLICT' && confRow.payload.Data === 1);
+const { data: cAudit } = await svc.from('acc_audit_events').select('id, after_state').eq('action', 'MF_EVENT_CONFLICT').eq('subject_id', r1.data);
+check('تدقيق MF_EVENT_CONFLICT دائم بعد عودة RPC (>=1)', (cAudit ?? []).length >= 1);
+check('التدقيق يحمل السبب وبصمتَي SHA-256 بلا حمولة خام',
+  (cAudit ?? []).some((a) => a.after_state?.reason === 'PROVIDER_EVENT_REFERENCE_PAYLOAD_CONFLICT'
+    && /^[0-9a-f]{64}$/.test(a.after_state?.existing_payload_sha256 ?? '')
+    && /^[0-9a-f]{64}$/.test(a.after_state?.incoming_payload_sha256 ?? '')
+    && a.after_state?.incoming_payload === undefined && a.after_state?.payload === undefined));
+// ملاحظة تعارض متكررة: لا استبدال، لا استثناء، تُسجَّل ملاحظة شذوذ
+const conf2 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-1`, { Data: 999 }, true, `PID-${TAG}`);
+check('تعارض متكرر = CONFLICT ثابت بلا crash', !conf2.error && conf2.outcome === 'CONFLICT');
+const { data: confRow2 } = await svc.from('acc_mf_events').select('processing_state, payload').eq('id', r1.data).single();
+check('التعارض المتكرر لا يستبدل الأصل ولا يغيّر الحالة',
+  confRow2.processing_state === 'CONFLICT' && confRow2.payload.Data === 1);
+
+console.log('═══ ٢ب · تعارض بعد حدث مُعالَج — التاريخ الصالح لا يُعاد كتابته ═══');
+{
+  const invPC = await issuedInvoice();
+  const pidPC = `PID-${TAG}-PC`;
+  const { data: pmtPC } = await OWN.client.rpc('acc_record_payment', { p_company: coA, p_invoice: invPC, p_amount_minor: '100000', p_currency: 'KWD', p_gateway_txn_id: pidPC });
+  await OWN.client.rpc('acc_set_payment_status', { p_payment: pmtPC, p_new_status: 'PENDING' });
+  const e1 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-PC`, { Data: 'P1' }, true, pidPC);
+  await svc.rpc('acc_mf_apply_payment_status', { p_event: e1.data, p_payment_id: pidPC, p_confirmed_status: 'SUCCESS' });
+  const { data: before } = await svc.from('acc_payments').select('status').eq('id', pmtPC).single();
+  const { count: jBefore } = await svc.from('acc_journal_entries').select('id', { count: 'exact', head: true }).eq('company_id', coA);
+  // نفس المرجع بحمولة مختلفة بعد المعالجة
+  const e2 = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-PC`, { Data: 'P2' }, true, pidPC);
+  check('حدث مُعالَج ثم حمولة مختلفة = CONFLICT بنيوي', !e2.error && e2.outcome === 'CONFLICT');
+  const { data: after } = await svc.from('acc_payments').select('status').eq('id', pmtPC).single();
+  const { count: jAfter } = await svc.from('acc_journal_entries').select('id', { count: 'exact', head: true }).eq('company_id', coA);
+  const { data: pcRow } = await svc.from('acc_mf_events').select('processing_state, payload').eq('id', e1.data).single();
+  check('التاريخ الصالح غير مُعاد كتابته (الدفعة تبقى كما هي)', before.status === after.status);
+  check('لا قيد جديد من التعارض (BLK-004)', jBefore === jAfter);
+  check('الحدث CONFLICT والحمولة الأصلية P1 محفوظة', pcRow.processing_state === 'CONFLICT' && pcRow.payload.Data === 'P1');
+}
+
+console.log('═══ ٢ج · تعارض في مسار الاسترداد (RECOVERY) يقف بأمان ═══');
+{
+  const refR = `E-${TAG}-RCONF`;
+  const a = await ev('PAYMENT_STATUS_CHANGED', 1, refR, { Data: 'R1' }, true, `PID-${TAG}-rc`, 'RECOVERY');
+  const b = await ev('PAYMENT_STATUS_CHANGED', 1, refR, { Data: 'R2' }, true, `PID-${TAG}-rc`, 'RECOVERY');
+  check('RECOVERY: أول تسجيل CREATED', a.outcome === 'CREATED');
+  check('RECOVERY: تعارض = CONFLICT نتيجة بنيوية لا استثناء', !b.error && b.outcome === 'CONFLICT');
+  const { data: rConf } = await svc.from('acc_mf_events').select('processing_state, payload, source').eq('id', a.data).single();
+  check('RECOVERY: الحالة CONFLICT، المصدر RECOVERY، الأصل محفوظ',
+    rConf.processing_state === 'CONFLICT' && rConf.source === 'RECOVERY' && rConf.payload.Data === 'R1');
+}
 
 console.log('═══ ٣ · توقيع باطل = صفر أثر — MF-T-012 ═══');
 const bad = await ev('PAYMENT_STATUS_CHANGED', 1, `E-${TAG}-bad`, { Data: 1 }, false, `PID-${TAG}-x`);

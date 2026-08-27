@@ -53,12 +53,20 @@ export async function POST(req: NextRequest) {
 
   const db = svc();
   // تُخزَّن الحمولة **بعد الإسقاط بقائمة بيضاء** — لا حقول حسّاسة
-  const { data: eventId, error } = await db.rpc('acc_mf_record_event', {
+  const { data: rows, error } = await db.rpc('acc_mf_record_event', {
     p_company: companyId, p_event_code: eventCode, p_event_name: eventName,
     p_event_reference: eventRef, p_source: 'WEBHOOK', p_signature_valid: valid,
     p_payload: sanitizeEvent(eventName, body), p_business_key: businessKey,
   });
-  if (error) return NextResponse.json({ status: 'conflict', detail: error.message }, { status: 409 });
+  // فشل قاعدة حقيقي (لا تعارض) — التعارض يعود كنتيجة بنيوية لا كخطأ
+  if (error) return NextResponse.json({ status: 'error', detail: error.message }, { status: 500 });
+  const result = Array.isArray(rows) ? rows[0] : rows;
+  const eventId = result?.event_id as string | undefined;
+  const outcome = result?.outcome as 'CREATED' | 'IDEMPOTENT_DUPLICATE' | 'CONFLICT' | undefined;
+  // تعارض حمولة المزوّد بنفس Event.Reference: الدليل + الحالة + التدقيق
+  // ثبتت في القاعدة (commit)، والآن نوقف المعالجة ونعيد 409 من الطبقة
+  // العليا — لا استدعاء GetPaymentStatus، صفر أثر تجاري/محاسبي (BLK-004)
+  if (outcome === 'CONFLICT') return NextResponse.json({ status: 'conflict', event: eventId }, { status: 409 });
   if (!valid) return NextResponse.json({ status: 'rejected_signature' }, { status: 202 });
 
   // المدفوعات: تأكيد المزوّد قبل أي أثر (MF-013)؛ الموردون بلا أثر

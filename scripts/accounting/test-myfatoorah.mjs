@@ -9,8 +9,13 @@ import { execSync } from "node:child_process";
 let passed = 0, failed = 0;
 const check = (n, c) => { if (c) passed++; else { failed++; console.error(`  ❌ ${n}`); } };
 
-const MIG = readFileSync("supabase/2026-08-27-accounting-myfatoorah.sql", "utf8");
+const BASE = readFileSync("supabase/2026-08-27-accounting-myfatoorah.sql", "utf8");
+const FIX = readFileSync("supabase/2026-08-28-accounting-myfatoorah-conflict-persistence.sql", "utf8");
+// التعريف الفعّال = الأساس + التصحيح (آخر تعريف يفوز). كل العقود تفحص
+// الاثنين معًا كي يعكس الفحص القاعدة بعد الهجرة التسلسلية الكاملة.
+const MIG = BASE + "\n" + FIX;
 const CODE = MIG.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+const FIXC = FIX.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
 const SIG = readFileSync("src/lib/accounting/myfatoorah/signature.ts", "utf8");
 const ROUTE = readFileSync("src/app/api/myfatoorah/webhook/route.ts", "utf8");
 const CLIENT = readFileSync("src/lib/accounting/myfatoorah/client.ts", "utf8");
@@ -48,7 +53,11 @@ const MFT = {
   "020": ["Deposit.Reference مفتاح idempotency التسوية", () => ROUTE.includes("'Deposit.Reference'")],
   "021": ["Dispute.DisputeTransactionId مفتاح النزاع", () => ROUTE.includes("'Dispute.DisputeTransactionId'")],
   "022": ["الموردون بلا أثر (UNSUPPORTED)", () => CODE.includes("'UNSUPPORTED'") && CODE.includes("SUPPLIER_STATUS_CHANGED")],
-  "023": ["تعارض حمولة بنفس المرجع = CONFLICT لا استبدال", () => CODE.includes("'CONFLICT'") && CODE.includes("conflicting payload")],
+  "023": ["تعارض حمولة بنفس المرجع = CONFLICT نتيجة بنيوية (لا استثناء، تدقيق دائم)",
+    () => FIXC.includes("'CONFLICT'") && FIXC.includes("PROVIDER_EVENT_REFERENCE_PAYLOAD_CONFLICT")
+       && FIXC.includes("returns table (event_id uuid, outcome text)")
+       && !/raise exception[^;]*conflict/i.test(FIXC)
+       && ROUTE.includes("outcome === 'CONFLICT'") && /status:\s*409/.test(ROUTE)],
   "024": ["تأكيدات append-only history (لا unique يمنع تأكيدًا لاحقًا)",
     () => CODE.includes("acc_mf_confirmations are append-only history") &&
           !/unique \(company_id, provider_ref, kind\)/.test(CODE)],
@@ -58,7 +67,7 @@ const MFT = {
   "026": ["تقليل البيانات: قائمة بيضاء موجبة + الطريق يطبّقها", () => SAN.includes("EVENT_ALLOW") && SAN.includes("بيضاء") && SAN.includes("CONFIRMATION_ALLOW") && ROUTE.includes("sanitizeEvent(")],
   "027": ["null-auth: كل مقارنة acc_role بـcoalesce", () => !/acc_role\([^)]*\) not in/.test(CODE)],
   "028": ["الابتلاع محجوب عن authenticated (لا bypass عام)",
-    () => (CODE.match(/revoke execute on function[^;]+from public, anon, authenticated/g) || []).length === 7],
+    () => (CODE.match(/revoke execute on function[^;]+from public, anon, authenticated/g) || []).length === 9],
   "029": ["الأدلة والتأكيدات وجولات الاسترداد مجمّدة/append-only",
     () => CODE.includes("acc_mf_events evidence facts are immutable") &&
           CODE.includes("acc_mf_confirmations are append-only") &&
@@ -87,12 +96,39 @@ check("لا % عارية في RAISE",
 check("لا سر في الطريق/المكتبة يُسجَّل أو يعود",
   !/console\.log[^;]*secret|console\.log[^;]*api_key/i.test(ROUTE + CLIENT));
 
+const BASEC = BASE.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
 check("الابتلاع idempotent: ON CONFLICT + IDEMPOTENT_DUPLICATE + CONFLICT للثلاثة",
-  CODE.includes("acc_mf_ingest_payment") && CODE.includes("acc_mf_ingest_settlement") && CODE.includes("acc_mf_ingest_refund") &&
-  (CODE.match(/on conflict[^;]+do nothing/g) || []).length === 3 &&
-  (CODE.match(/'IDEMPOTENT_DUPLICATE'/g) || []).length === 3 &&
-  (CODE.match(/'CONFLICT'/g) || []).length >= 3);
+  BASEC.includes("acc_mf_ingest_payment") && BASEC.includes("acc_mf_ingest_settlement") && BASEC.includes("acc_mf_ingest_refund") &&
+  (BASEC.match(/on conflict[^;]+do nothing/g) || []).length === 3 &&
+  (BASEC.match(/'IDEMPOTENT_DUPLICATE'/g) || []).length === 3 &&
+  (BASEC.match(/'CONFLICT'/g) || []).length >= 3);
 check("دوال الابتلاع service_role حصرًا",
-  (CODE.match(/grant  execute on function public\.acc_mf_ingest_\w+\([^;]*\) to service_role/g) || []).length === 3);
+  (BASEC.match(/grant  execute on function public\.acc_mf_ingest_\w+\([^;]*\) to service_role/g) || []).length === 3);
+
+// ── تصحيح ثبات CONFLICT (الهجرة اللاحقة 2026-08-28) ──
+check("التصحيح: DROP صريح للتوقيع القديم بلا CASCADE",
+  /drop function if exists public\.acc_mf_record_event\(uuid,integer,text,text,text,boolean,jsonb,text\);/.test(FIXC)
+  && !/cascade/i.test(FIXC));
+check("التصحيح: التوقيع الجديد يعيد table(event_id, outcome) — لا uuid",
+  FIXC.includes("returns table (event_id uuid, outcome text)"));
+check("التصحيح: مسار التعارض بلا raise exception (نتيجة بنيوية)",
+  !/raise\s+exception/i.test(FIXC));
+check("التصحيح: انتقال CONFLICT عبر توقيع acc.mf_op الموثوق فقط",
+  FIXC.includes("set_config('acc.mf_op'") && FIXC.includes("processing_state = 'CONFLICT'"));
+check("التصحيح: تدقيق التعارض ببصمات SHA-256 بلا حمولة خام/سر",
+  FIXC.includes("existing_payload_sha256") && FIXC.includes("incoming_payload_sha256")
+  && FIXC.includes("sha256(convert_to"));
+check("التصحيح: acc_mf_record_event وacc_mf_mark_conflict service_role حصرًا",
+  /revoke execute on function public\.acc_mf_record_event\([^;]*\) from public, anon, authenticated;/.test(FIXC)
+  && /grant  execute on function public\.acc_mf_record_event\([^;]*\) to service_role;/.test(FIXC)
+  && /revoke execute on function public\.acc_mf_mark_conflict\([^;]*\) from public, anon, authenticated;/.test(FIXC)
+  && /grant  execute on function public\.acc_mf_mark_conflict\([^;]*\) to service_role;/.test(FIXC));
+check("الطريق: CONFLICT = 409 قبل استدعاء GetPaymentStatus (صفر أثر)",
+  ROUTE.includes("outcome === 'CONFLICT'")
+  && ROUTE.indexOf("outcome === 'CONFLICT'") < ROUTE.indexOf("getPaymentStatus(")
+  && /if \(outcome === 'CONFLICT'\)[^\n]*409/.test(ROUTE));
+check("الطريق: خطأ قاعدة حقيقي = 500 لا 409 (التعارض ليس خطأ)",
+  /status:\s*500/.test(ROUTE));
+
 console.log(`\n  MyFatoorah: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
