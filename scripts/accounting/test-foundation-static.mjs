@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* حراس ساكنون: حدود Stage 1 وغياب QAYD/XBRL (QAYD-T, XBRL-001) */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 let passed=0, failed=0;
 const check=(n,c)=>{ if(c) passed++; else { failed++; console.error(`  ❌ ${n}`); } };
@@ -14,20 +14,45 @@ for (const w of ["journal","ledger","invoice","chart_of_account","posting","reve
 check("جداول الأساس الخمسة فقط",
   (code.match(/create table if not exists/g)||[]).length === 5);
 
-console.log("═══ غياب QAYD/XBRL في المستودع كله (XBRL-001) ═══");
+console.log("═══ غياب تنفيذ QAYD/XBRL في المستودع (XBRL-001) ═══");
 {
-  const hits = execSync("grep -rli 'xbrl\\|taxonomy\\|qayd' src/lib src/app supabase/ scripts/ --exclude-dir=gharas-bank 2>/dev/null || true", {encoding:"utf8"})
-    .split("\n").filter(Boolean)
-    .filter(f => !f.includes("test-foundation-static"))
-    // ملفات سجل Stage 2 تذكر QAYD/XBRL كقاعدة مسجلة (REG-KW-003/004) — معرفة لا تنفيذًا؛
-    // غياب التنفيذ يُفحص على DDL في test-registers.mjs §9
-    .filter(f => !f.includes("regulatorySeed") && !f.includes("accounting-registers") && !f.includes("test-registers"))
-    // ملفات Stage 3 تذكر QAYD/XBRL فقط في تعليقات إثبات الغياب واختباراته
-    .filter(f => !f.includes("accounting-ledger") && !f.includes("test-ledger"))
-    .filter(f => !f.includes("commercial-documents") && !f.includes("revenue"))
-    // هجرة الأساس تذكر QAYD-002 في تعليق توثيقي واحد سببه إثبات الغياب — الكود الفعلي يُفحص أعلاه بلا تعليقات
-    .filter(f => !f.endsWith("2026-08-27-accounting-foundation.sql"));
-  check("صفر ملفات تذكر QAYD/XBRL/taxonomy", hits.length === 0);
+  // فحص دلالي لا حظر بالاسم: نجرّد التعليقات ونصوص السلاسل من كل ملف
+  // تنفيذي (src + supabase)، فيبقى الكود القابل للتنفيذ فقط. ذكر
+  // QAYD/XBRL في تعليق حدّي أو بيانات مرجعية (REG-KW-003) مسموح؛
+  // اسمٌ في موضع تنفيذي (دالة/جدول/مسار/استيراد) يُرفض. لا استثناء
+  // لملف أو مجلد كامل — بما فيه Stage 7.
+  const walk = (dir) => {
+    let out = [];
+    for (const e of readdirSync(dir)) {
+      if (e === "gharas-bank" || e === "node_modules" || e === ".next") continue;
+      const p = dir + "/" + e;
+      if (statSync(p).isDirectory()) out = out.concat(walk(p));
+      else if (/\.(ts|tsx|js|mjs|sql)$/.test(e)) out.push(p);
+    }
+    return out;
+  };
+  const stripped = (src, isSql) => {
+    let s = src;
+    if (isSql) s = s.replace(/--[^\n]*/g, "");                 // تعليقات SQL
+    else s = s.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, ""); // تعليقات JS
+    // إزالة محتوى السلاسل (', ", `) — البيانات المرجعية والرسائل ليست تنفيذًا
+    s = s.replace(/'(?:[^'\\]|\\.)*'/g, "''")
+         .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+         .replace(/`(?:[^`\\]|\\.)*`/g, "``");
+    return s;
+  };
+  const offenders = [];
+  for (const f of [...walk("src"), ...walk("supabase")]) {
+    if (f.includes("test-foundation-static")) continue;
+    const code = stripped(readFileSync(f, "utf8"), f.endsWith(".sql"));
+    if (/(xbrl|taxonomy|qayd)/i.test(code)) offenders.push(f);
+  }
+  check("صفر تنفيذ QAYD/XBRL/taxonomy (تعليقات ونصوص مسموحة)", offenders.length === 0);
+  if (offenders.length) console.error("  offenders:", offenders.join(", "));
+
+  // إثبات نفي: حقن معرّف تنفيذي qayd في نصٍّ مُجرَّد يجب أن يُكتشف
+  const probe = stripped("create function public.acc_qayd_export() returns void as $$ begin end $$;", true);
+  check("الحارس يكشف تنفيذًا اصطناعيًا لـQAYD (نفي)", /(xbrl|taxonomy|qayd)/i.test(probe));
 }
 
 console.log("═══ فصل الأدوار عن منصة غراس ═══");
