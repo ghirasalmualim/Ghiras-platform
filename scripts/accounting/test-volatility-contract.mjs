@@ -15,7 +15,8 @@ const files = [...["foundation","registers","ledger","commercial-documents","rev
   .map((k) => `supabase/2026-08-27-accounting-${k}.sql`),
   "supabase/2026-08-27-accounting-myfatoorah.sql",
   "supabase/2026-08-28-accounting-myfatoorah-conflict-persistence.sql",
-  "supabase/2026-08-29-accounting-expenses-documents.sql"]
+  "supabase/2026-08-29-accounting-expenses-documents.sql",
+  "supabase/2026-08-30-accounting-expenses-documents-ambiguity.sql"]
   .filter((f) => { try { readFileSync(f); return true; } catch { return false; } });
 
 let violations = 0;
