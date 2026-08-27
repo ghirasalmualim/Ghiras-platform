@@ -156,5 +156,42 @@ check('هجرات 1..9 لم تُمسّ',
 check('حدود المحرك معلَّمة ENGINEERING SAFETY LIMITS لا سياسة',
   readFileSync('src/lib/accounting/recon/limits.ts', 'utf8').includes('ENGINEERING SAFETY LIMITS'));
 
+console.log('═══ عقد المسار الثنائي (حادثة v_run غير المُسنَد) ═══');
+{
+  // التعريف الفعّال = آخر تعريف عبر الأساس ثم التصحيحات
+  const files = readdirSync('supabase')
+    .filter((f) => /^2026-09-\d\d-accounting-reconciliation.*\.sql$/.test(f)).sort();
+  const all = files.map((f) => readFileSync('supabase/' + f, 'utf8')).join('\n');
+  const defs = [...all.matchAll(/create (?:or replace )?function public\.acc_recon_create_assertion[\s\S]*?\$\$([\s\S]*?)\$\$;/g)];
+  const rawBody = defs[defs.length - 1][1].replace(/--[^\n]*/g, '');
+  const body = rawBody.replace(/'(?:[^']|'')*'/g, "''");
+  // (أ) v_company يُسنَد في الفرعين: إسنادان على الأقل (يدوي + محرك)
+  const assigns = [...body.matchAll(/v_company\s*:=/g)].map((m) => m.index);
+  check('v_company يُسنَد في الفرعين (يدوي + محرك)', assigns.length >= 2);
+  // (ب) كاشف العائلة: كل مراجع v_run. بعد الإسناد وقبل تسليم الشركة
+  //     إلى v_company — أي مرجع بعد نقطة التسليم = ارتداد العيب
+  const selIdx = body.indexOf('into v_run');
+  const handoff = body.indexOf('v_company := v_run.company_id');
+  //     حدّ الفرع = أول end if بعد التسليم (لا شرطيات متداخلة بعده داخله)
+  const branchEnd = body.indexOf('end if;', handoff);
+  const refs = [...body.matchAll(/v_run\./g)].map((m) => m.index);
+  check('صفر مراجع v_run خارج فرع الجولة (كاشف عائلة لا سطرًا حرفيًا)',
+    selIdx >= 0 && handoff > selIdx && branchEnd > handoff && refs.length > 0
+    && refs.every((i) => i > selIdx && i < branchEnd));
+  // (ج) لا coalesce يلمس v_run في أي موضع (الشركة عبر v_company حصرًا)
+  check('لا coalesce/تعبير مشترك يمس v_run', !/coalesce\([^)]*v_run\./.test(body));
+  // (د) الفرع اليدوي يوجب company_id صريحًا ودورًا مسموحًا (النص الخام)
+  check('اليدوي: company_id إلزامي + دور ACC/FM',
+    rawBody.includes('requires an explicit company_id')
+    && /'ACCOUNTANT','FINANCE_MANAGER'/.test(rawBody));
+  // (هـ) إثبات نفي: جسد اصطناعي بمرجع خارج النافذة يُكتشف
+  const synth = 'if p then select r.* into v_run from t r; v_company := v_run.company_id; end if; y := coalesce(a, v_run.settings_id);';
+  const sSel = synth.indexOf('into v_run'); const sHand = synth.indexOf('v_company := v_run.company_id');
+  const sEnd = synth.indexOf('end if;', sHand);
+  const sRefs = [...synth.matchAll(/v_run\./g)].map((m) => m.index);
+  check('الكاشف يصطاد المثال الاصطناعي (نفي: مرجع خارج الفرع)',
+    !sRefs.every((i) => i > sSel && i < sEnd));
+}
+
 console.log(`\n  عقود المطابقة: ${passed} نجح · ${failed} فشل`);
 if (failed) process.exit(1);
