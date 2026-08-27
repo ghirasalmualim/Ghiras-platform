@@ -11,8 +11,11 @@ const check = (n, c, x = "") => { if (c) passed++; else { failed++; console.erro
 
 const WRITING_HELPERS = ["acc_audit(", "acc_insert_lines(", "acc_insert_invoice_lines(",
   "acc_generate_rateable_rows(", "acc_refresh_invoice_totals("];
-const files = ["foundation","registers","ledger","commercial-documents","revenue","payments-clearing"]
-  .map((k) => `supabase/2026-08-27-accounting-${k}.sql`)
+const files = [...["foundation","registers","ledger","commercial-documents","revenue","payments-clearing"]
+  .map((k) => `supabase/2026-08-27-accounting-${k}.sql`),
+  "supabase/2026-08-27-accounting-myfatoorah.sql",
+  "supabase/2026-08-28-accounting-myfatoorah-conflict-persistence.sql",
+  "supabase/2026-08-29-accounting-expenses-documents.sql"]
   .filter((f) => { try { readFileSync(f); return true; } catch { return false; } });
 
 let violations = 0;
