@@ -18,7 +18,7 @@ const supersededSafe =
   /create or replace function public\.acc_trial_balance[\s\S]*?coalesce\(public\.acc_role\(p_company\), ''\) not in/.test(stage5);
 check("Stage 5 يحمل خليفة آمنة لدالتي Stage 3 المغلقتين", supersededSafe);
 
-const files = readdirSync("supabase").filter((f) => /^2026-08-(2[789]|3\d)-accounting-.*\.sql$/.test(f));
+const files = readdirSync("supabase").filter((f) => /^2026-(08-(2[789]|3\d)|09-\d\d)-accounting-.*\.sql$/.test(f));
 for (const f of files) {
   const lines = readFileSync(`supabase/${f}`, "utf8").split("\n");
   lines.forEach((l, i) => {
