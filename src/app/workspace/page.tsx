@@ -71,7 +71,7 @@ export default async function WorkspacePage() {
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
       <nav className="max-w-5xl mx-auto flex items-center gap-2 text-sm mb-6">
         <span className="px-3 py-1.5 rounded-full bg-sage text-white font-bold">مساحتي</span>
-        <span className="px-3 py-1.5 rounded-full bg-white text-gray-400 border border-gray-200 cursor-default" aria-disabled>أعمالي · قريبًا</span>
+        <Link href="/workspace/work" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">أعمالي</Link>
         <Link href="/account" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">حسابي</Link>
       </nav>
 
