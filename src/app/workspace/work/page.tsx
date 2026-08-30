@@ -30,17 +30,21 @@ export default async function MyWorkPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/workspace/work');
 
-  const [gamesRes, attRes, advRes] = await Promise.all([
+  const [gamesRes, attRes, advRes, resRes] = await Promise.all([
     supabase.from('saved_games').select('id, title, game_type, updated_at')
       .eq('user_id', user.id).order('updated_at', { ascending: false }).limit(50),
     supabase.from('attendance_data').select('updated_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('adventure_data').select('updated_at').eq('user_id', user.id).maybeSingle(),
+    supabase.from('game_results')
+      .select('id, student_name, game_type, score, total, percentage, completed, created_at')
+      .eq('teacher_user_id', user.id).order('created_at', { ascending: false }).limit(100),
   ]);
 
   const games = gamesRes.data ?? [];
   const attendance = attRes.data ?? null;
   const adventure = advRes.data ?? null;
-  const isEmpty = games.length === 0 && !attendance && !adventure;
+  const results = resRes.data ?? [];
+  const isEmpty = games.length === 0 && !attendance && !adventure && results.length === 0;
 
   return (
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
@@ -96,6 +100,26 @@ export default async function MyWorkPage() {
               <span className="text-sage-dark">مغامرة المجموعات{fmt(adventure.updated_at) ? ` · آخر تحديث ${fmt(adventure.updated_at)}` : ''}</span>
               <span className="text-xs text-sage-dark">فتح ←</span>
             </Link>
+          </section>
+        )}
+
+        {results.length > 0 && (
+          <section>
+            <h2 className="font-bold text-sage-dark mb-3">نتائج الطلاب</h2>
+            <div className="flex flex-col gap-2">
+              {results.map((r) => (
+                <div key={r.id} className="card-3d bg-white p-4 rounded-xl flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sage-dark">{r.student_name}</span>
+                    <span className="text-xs text-gray-400">{GAME_NAMES[r.game_type] ?? r.game_type}{fmt(r.created_at) ? ` · ${fmt(r.created_at)}` : ''}{r.completed ? '' : ' · غير مكتملة'}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-sage-dark tabular-nums">{r.score} / {r.total}</span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-sage/10 text-sage-dark border border-sage/30 tabular-nums">{r.percentage}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 

@@ -67,6 +67,15 @@ export default async function WorkspacePage() {
   const name = (p.full_name as string) || 'معلمتنا';
   const credits = typeof p.game_credits === 'number' ? p.game_credits : 0;
 
+  // ملخّصٌ صغير لنتائج الطلاب: العدد + آخر ثلاث نتائج (استعلامٌ خفيف).
+  const [{ count: resultsCount }, { data: latestResults }] = await Promise.all([
+    supabase.from('game_results').select('id', { count: 'exact', head: true })
+      .eq('teacher_user_id', user.id),
+    supabase.from('game_results').select('student_name, percentage, created_at')
+      .eq('teacher_user_id', user.id).order('created_at', { ascending: false }).limit(3),
+  ]);
+  const latest = latestResults ?? [];
+
   return (
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
       <nav className="max-w-5xl mx-auto flex items-center gap-2 text-sm mb-6">
@@ -100,6 +109,30 @@ export default async function WorkspacePage() {
             </Link>
           );
         })}
+      </section>
+
+      <section className="max-w-5xl mx-auto mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-sage-dark">نتائج الطلاب</h2>
+          {(resultsCount ?? 0) > 0 && (
+            <Link href="/workspace/work" className="text-xs text-sage-dark hover:text-sage-deep">عرض النتائج ←</Link>
+          )}
+        </div>
+        {(resultsCount ?? 0) === 0 ? (
+          <div className="card-3d bg-white p-5 rounded-2xl text-center text-gray-500 text-sm">لا توجد نتائج محفوظة حتى الآن.</div>
+        ) : (
+          <div className="card-3d bg-white p-4 rounded-2xl">
+            <p className="text-xs text-gray-400 mb-2">إجمالي النتائج: <span className="font-bold text-sage-dark">{resultsCount}</span></p>
+            <div className="flex flex-col gap-2">
+              {latest.map((r, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-sage-dark">{r.student_name as string}</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-sage/10 text-sage-dark border border-sage/30 tabular-nums">{r.percentage as number}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
