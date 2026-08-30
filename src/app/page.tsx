@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
+import LaunchOffer from '@/components/LaunchOffer';
 import AccountBar from '@/components/AccountBar';
 import { getStages } from '@/lib/supabase/data';
 
@@ -38,6 +39,11 @@ export default async function HomePage() {
           <br />
           للمعلمين والمعلمات — اختر قسمك وابدأ
         </p>
+
+        {/* عرض الانطلاقة */}
+        <div className="w-full mt-8">
+          <LaunchOffer />
+        </div>
 
         {/* كرتان رئيسيان: ألعاب · المعلّم ورئيس القسم */}
         <div
