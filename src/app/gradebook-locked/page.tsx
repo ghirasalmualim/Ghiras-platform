@@ -31,7 +31,7 @@ export default function GradebookLockedPage() {
         </p>
 
         <Link
-          href="/"
+          href="/workspace"
           className="mt-7 inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
         >
           العودة للرئيسية

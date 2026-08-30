@@ -125,7 +125,7 @@ export default async function MyWorkPage() {
 
         <section>
           <h2 className="font-bold text-sage-dark mb-3">سجل الدرجات</h2>
-          <Link href="/gradebook-locked" className="card-3d bg-white p-4 rounded-xl flex items-center justify-between hover:border-sage transition">
+          <Link href="/api/tool-access?tool=gradebook" className="card-3d bg-white p-4 rounded-xl flex items-center justify-between hover:border-sage transition">
             <span className="text-sage-dark">سجل الدرجات الذكي</span>
             <span className="text-xs text-sage-dark">فتح السجل ←</span>
           </Link>

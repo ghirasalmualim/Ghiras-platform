@@ -29,8 +29,8 @@ const TOOLS: Tool[] = [
   { name: 'سجل الحضور الذكي', desc: 'حضورُ الصفِّ بسرعة', href: '/attendance', col: 'attendance_until', emoji: '📋' },
   { name: 'جدول الضرب', desc: 'تدريبٌ تفاعليّ', href: '/multiplication', col: 'multiplication_until', emoji: '✖️' },
   { name: 'الساعة التفاعلية', desc: 'تعلُّمُ الوقت', href: '/clock', col: 'clock_until', emoji: '🕐' },
-  { name: 'سجل الدرجات الذكي', desc: 'رصدُ درجات الطلاب', href: '/gradebook-locked', col: 'gradebook_until', emoji: '📊' },
-  { name: 'الورش التعليمية', desc: 'ورشٌ مهنية', href: '/workshops-locked', col: 'workshops_until', emoji: '🎓' },
+  { name: 'سجل الدرجات الذكي', desc: 'رصدُ درجات الطلاب', href: '/api/tool-access?tool=gradebook', col: 'gradebook_until', emoji: '📊' },
+  { name: 'الورش التعليمية', desc: 'ورشٌ مهنية', href: '/api/tool-access?tool=workshops', col: 'workshops_until', emoji: '🎓' },
   { name: 'سجلات رئيس القسم', desc: 'متابعةٌ إدارية', href: '/head-records-locked', col: 'head_records_until', emoji: '🗂️' },
 ];
 
