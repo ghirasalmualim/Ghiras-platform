@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 const GAMES: GameCard[] = [
   {
     href: '/multiplication',
+    pin: 'multiplication',
     tag: 'كورس مستقل · ٣ د.ك',
     emoji: '✖️',
     title: 'جدول الضرب التفاعلي',
@@ -24,6 +25,7 @@ const GAMES: GameCard[] = [
   },
   {
     href: '/clock',
+    pin: 'clock',
     tag: 'مستقل · ٣ د.ك / ٦ أشهر',
     emoji: '🕐',
     title: 'الساعة التفاعلية',

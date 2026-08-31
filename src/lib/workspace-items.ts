@@ -93,6 +93,16 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     key: 'sinjim', name: 'سين جيم', emoji: '🧠',
     href: '/sinjim', col: null, locked: null,
   },
+  // كورسان مستقلّان لهما عمود صلاحيةٍ خاصّ — فتُشتقّ حالة البطاقة منه
+  // (متاح/انتهى) والمنتهي → صفحة القفل القائمة. البوّابة عند المسار هي الحكم.
+  multiplication: {
+    key: 'multiplication', name: 'جدول الضرب التفاعلي', emoji: '✖️',
+    href: '/multiplication', col: 'multiplication_until', locked: '/multiplication-locked',
+  },
+  clock: {
+    key: 'clock', name: 'الساعة التفاعلية', emoji: '🕐',
+    href: '/clock', col: 'clock_until', locked: '/clock-locked',
+  },
 };
 
 export function isKnownTool(key: string): boolean {

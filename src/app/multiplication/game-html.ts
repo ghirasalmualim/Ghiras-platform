@@ -201,6 +201,7 @@ body.hideP .c.body.pick,body.hideP .c.body.pat,body.hideP .c.body.diag{color:#ff
 <body>
 
 <header>
+  <a href="/games" style="display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;color:#5C7F60;background:#F0F5F0;border:1.5px solid #DDE8DD;border-radius:12px;padding:8px 14px;font-weight:800;font-size:13px;text-decoration:none">← الرجوع إلى ألعاب غراس التفاعلية</a>
   <div class="brandline">
     <div class="brand">جدول <span>الضرب</span> التفاعلي</div>
     <div class="tabs">
