@@ -3,6 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import GameLauncher from '@/components/GameLauncher';
 import LogoutButton from '@/components/LogoutButton';
+import AddToMySpace from '@/components/AddToMySpace';
+import { subjectKey } from '@/lib/workspace-items';
 import { createServerSupabase } from '@/lib/supabase/server';
 import {
   getStageBySlug,
@@ -252,6 +254,14 @@ export default async function SubjectPage({
               <span className="text-sm text-ink/60">
                 أهلاً، <b className="text-sage-deep">{profile.full_name}</b>
               </span>
+            )}
+            {canAccess && (
+              <AddToMySpace
+                itemType="subject"
+                itemKey={subjectKey(stage.slug, grade.slug, subject.slug)}
+                label={subjectDisplayName(subject, grade.slug)}
+                context={`${grade.name} · ${stage.name}`}
+              />
             )}
             <Link
               href="/account"

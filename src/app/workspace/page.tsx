@@ -2,53 +2,54 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { isStillValid, TOOL_COLS } from '@/lib/entitlements';
+import AddToMySpace from '@/components/AddToMySpace';
+import {
+  TOOL_REGISTRY,
+  parseSubjectKey,
+  subjectPath,
+  type WsItemType,
+} from '@/lib/workspace-items';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * مساحتي — الصفحة الشخصية الموحّدة للمعلمة (المرحلة أ).
- * طبقةُ عرضٍ وتجميعٍ فقط: تقرأ صفَّ profiles مرةً واحدة وتعرض
- * بطاقات الأدوات بحالتها. لا تمنح وصولًا ولا تخوّل — بوّابةُ كلِّ
- * أداةٍ القائمة تبقى هي المتحقّقة عند الفتح. لا جدولَ جديدًا،
- * ولا منطقَ اشتراكٍ جديدًا، ولا service-role.
+ * مساحتي — لوحة اختصاراتٍ منسّقةٌ من المعلّم (المرحلة أ الجديدة).
+ * تعرض فقط العناصر التي اختار المعلّم إضافتها (workspace_items). ليست
+ * مصدر صلاحية: حالة كلّ عنصرٍ تُشتقّ حيًّا من profiles، والنقر يمرّ ببوّابة
+ * المصدر القائمة. الإزالة تحذف الاختصار فقط. لا service-role.
  */
 
-type Tool = {
-  name: string;
-  desc: string;
-  href: string;
-  col: (typeof TOOL_COLS)[number] | null; // null = مجاني
-  emoji: string;
+type Row = {
+  id: string;
+  item_type: WsItemType;
+  item_key: string;
+  label_cache: string | null;
+  context_cache: string | null;
+  created_at: string;
 };
 
-const TOOLS: Tool[] = [
-  { name: 'الألعاب التعليمية', desc: 'ألعابٌ تفاعلية بالذكاء', href: '/games', col: null, emoji: '🎮' },
-  { name: 'القرآن الكريم', desc: 'منهجٌ وتسميعٌ وحفظ', href: '/quran', col: null, emoji: '📖' },
-  { name: 'مغامرة المجموعات', desc: 'تحدٍّ جماعيٌّ تفاعلي', href: '/adventure', col: 'adventure_until', emoji: '🚀' },
-  { name: 'بنك غراس', desc: 'أوراق عملٍ ووسائل', href: '/gharas-bank', col: 'gharas_bank_until', emoji: '🏦' },
-  { name: 'سجل الحضور الذكي', desc: 'حضورُ الصفِّ بسرعة', href: '/attendance', col: 'attendance_until', emoji: '📋' },
-  { name: 'جدول الضرب', desc: 'تدريبٌ تفاعليّ', href: '/multiplication', col: 'multiplication_until', emoji: '✖️' },
-  { name: 'الساعة التفاعلية', desc: 'تعلُّمُ الوقت', href: '/clock', col: 'clock_until', emoji: '🕐' },
-  { name: 'سجل الدرجات الذكي', desc: 'رصدُ درجات الطلاب', href: '/api/tool-access?tool=gradebook', col: 'gradebook_until', emoji: '📊' },
-  { name: 'الورش التعليمية', desc: 'ورشٌ مهنية', href: '/api/tool-access?tool=workshops', col: 'workshops_until', emoji: '🎓' },
-  { name: 'سجلات رئيس القسم', desc: 'متابعةٌ إدارية', href: '/head-records-locked', col: 'head_records_until', emoji: '🗂️' },
-];
+type Card = {
+  key: string;
+  type: WsItemType;
+  itemKey: string;
+  emoji: string;
+  name: string;
+  context: string | null;
+  tone: 'available' | 'free' | 'expired';
+  actionHref: string;
+  actionLabel: string;
+  external: boolean;
+};
 
-function statusOf(tool: Tool, profile: Record<string, unknown>, isAdmin: boolean):
-  { label: string; tone: 'free' | 'available' | 'expired' | 'locked' } {
-  if (isAdmin) return { label: 'متاح', tone: 'available' };
-  if (tool.col === null) return { label: 'مجاني', tone: 'free' };
-  const raw = (profile[tool.col] as string | null) ?? null;
-  if (isStillValid(raw)) return { label: 'متاح', tone: 'available' };
-  if (raw) return { label: 'انتهى الاشتراك', tone: 'expired' };
-  return { label: 'غير مشترك', tone: 'locked' };
-}
-
-const TONE: Record<string, string> = {
+const TONE: Record<Card['tone'], string> = {
   free: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   available: 'bg-sage/10 text-sage-dark border-sage/30',
   expired: 'bg-amber-50 text-amber-700 border-amber-200',
-  locked: 'bg-gray-100 text-gray-500 border-gray-200',
+};
+const TONE_LABEL: Record<Card['tone'], string> = {
+  free: 'مجاني',
+  available: 'متاح',
+  expired: 'انتهى الاشتراك',
 };
 
 export default async function WorkspacePage() {
@@ -58,23 +59,75 @@ export default async function WorkspacePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select(['full_name', 'role', 'status', 'game_credits', ...TOOL_COLS].join(', '))
+    .select(['full_name', 'role', 'status', 'sub_end', ...TOOL_COLS].join(', '))
     .eq('id', user.id)
     .maybeSingle();
 
   const p = (profile ?? {}) as Record<string, unknown>;
   const isAdmin = p.role === 'admin';
   const name = (p.full_name as string) || 'معلمتنا';
-  const credits = typeof p.game_credits === 'number' ? p.game_credits : 0;
+  const status = p.status as string | undefined;
+  const subEnd = (p.sub_end as string | null) ?? null;
+  const subjectsAllowed =
+    isAdmin || (status === 'active' && (subEnd === null || isStillValid(subEnd)));
 
-  // ملخّصٌ صغير لنتائج الطلاب: العدد + آخر ثلاث نتائج (استعلامٌ خفيف).
-  const [{ count: resultsCount }, { data: latestResults }] = await Promise.all([
-    supabase.from('game_results').select('id', { count: 'exact', head: true })
-      .eq('teacher_user_id', user.id),
-    supabase.from('game_results').select('student_name, percentage, created_at')
-      .eq('teacher_user_id', user.id).order('created_at', { ascending: false }).limit(3),
-  ]);
-  const latest = latestResults ?? [];
+  const { data: itemsData } = await supabase
+    .from('workspace_items')
+    .select('id, item_type, item_key, label_cache, context_cache, created_at')
+    .eq('teacher_user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const rows = (itemsData ?? []) as Row[];
+
+  const cards: Card[] = [];
+  for (const r of rows) {
+    if (r.item_type === 'tool') {
+      const def = TOOL_REGISTRY[r.item_key];
+      if (!def) continue; // اختصارٌ لأداةٍ غير معروفة → يُتجاهل بأمان
+      let tone: Card['tone'];
+      let accessible: boolean;
+      if (isAdmin || def.col === null) {
+        tone = def.col === null ? 'free' : 'available';
+        accessible = true;
+      } else if (isStillValid((p[def.col] as string | null) ?? null)) {
+        tone = 'available';
+        accessible = true;
+      } else {
+        tone = 'expired';
+        accessible = false;
+      }
+      cards.push({
+        key: r.id,
+        type: 'tool',
+        itemKey: r.item_key,
+        emoji: def.emoji,
+        name: r.label_cache || def.name,
+        context: r.context_cache,
+        tone,
+        actionHref: accessible ? def.href : (def.locked ?? def.href),
+        actionLabel: accessible ? 'فتح' : 'تجديد الاشتراك',
+        external: Boolean(def.external) && accessible,
+      });
+    } else {
+      // subject: الحالة تقريبيّةٌ على مستوى الاشتراك؛ النقر يمرّ ببوّابة
+      // صفحة المادة التي تفرض can_access_subject الحقيقية (دفاعٌ في العمق).
+      const path = subjectPath(r.item_key);
+      if (!path) continue;
+      const parsed = parseSubjectKey(r.item_key)!;
+      cards.push({
+        key: r.id,
+        type: 'subject',
+        itemKey: r.item_key,
+        emoji: '📚',
+        name: r.label_cache || 'مادة دراسية',
+        context: r.context_cache || `${parsed.stage} · ${parsed.grade}`,
+        tone: subjectsAllowed ? 'available' : 'expired',
+        actionHref: path, // صفحة المادة نفسها هي سلوك القفل القائم
+        actionLabel: subjectsAllowed ? 'فتح' : 'تجديد الاشتراك',
+        external: false,
+      });
+    }
+  }
 
   return (
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
@@ -86,54 +139,46 @@ export default async function WorkspacePage() {
 
       <header className="max-w-5xl mx-auto mb-7">
         <h1 className="text-2xl md:text-3xl font-extrabold text-sage-dark">مرحبًا، {name} 🌿</h1>
-        <p className="text-gray-500 mt-1 text-sm md:text-base">كل أدوات غراس في مكانٍ واحد.</p>
+        <p className="text-gray-500 mt-1 text-sm md:text-base">اختصاراتك التي اخترتِها في مكانٍ واحد.</p>
       </header>
 
-      <section className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {TOOLS.map((tool) => {
-          const st = statusOf(tool, p, isAdmin);
-          return (
-            <Link key={tool.href} href={tool.href}
-              className="card-3d bg-white p-5 rounded-2xl flex flex-col gap-3 hover:border-sage transition-all">
+      {cards.length === 0 ? (
+        <section className="max-w-5xl mx-auto">
+          <div className="card-3d bg-white p-8 rounded-2xl text-center">
+            <span className="text-4xl">🌱</span>
+            <p className="text-gray-600 mt-3 font-bold">مساحتك فارغة حتى الآن.</p>
+            <p className="text-gray-500 mt-1 text-sm">
+              أضيفي أدواتك وموادّك من صفحاتها بزرّ «أضف إلى مساحتي» لتظهر هنا.
+            </p>
+            <Link href="/" className="inline-block mt-4 text-sage-dark font-bold hover:text-sage-deep">تصفّح غراس ←</Link>
+          </div>
+        </section>
+      ) : (
+        <section className="max-w-5xl mx-auto flex flex-wrap justify-center gap-4">
+          {cards.map((c) => (
+            <div key={c.key} className="card-3d bg-white p-5 rounded-2xl flex flex-col gap-3 w-full sm:w-[330px] min-h-[168px]">
               <div className="flex items-start justify-between gap-2">
-                <span className="text-3xl leading-none">{tool.emoji}</span>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${TONE[st.tone]}`}>{st.label}</span>
+                <span className="text-3xl leading-none">{c.emoji}</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${TONE[c.tone]}`}>{TONE_LABEL[c.tone]}</span>
               </div>
               <div>
-                <h2 className="font-bold text-sage-dark">{tool.name}</h2>
-                <p className="text-gray-400 text-sm mt-0.5">{tool.desc}</p>
+                <h2 className="font-bold text-sage-dark leading-snug">{c.name}</h2>
+                {c.context && <p className="text-gray-400 text-sm mt-0.5">{c.context}</p>}
               </div>
-              {tool.href === '/games' && (
-                <p className="text-xs text-gray-500 mt-auto">رصيد الألعاب: <span className="font-bold text-sage-dark">{isAdmin ? '∞' : credits}</span></p>
-              )}
-            </Link>
-          );
-        })}
-      </section>
-
-      <section className="max-w-5xl mx-auto mt-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sage-dark">نتائج الطلاب</h2>
-          {(resultsCount ?? 0) > 0 && (
-            <Link href="/workspace/work" className="text-xs text-sage-dark hover:text-sage-deep">عرض النتائج ←</Link>
-          )}
-        </div>
-        {(resultsCount ?? 0) === 0 ? (
-          <div className="card-3d bg-white p-5 rounded-2xl text-center text-gray-500 text-sm">لا توجد نتائج محفوظة حتى الآن.</div>
-        ) : (
-          <div className="card-3d bg-white p-4 rounded-2xl">
-            <p className="text-xs text-gray-400 mb-2">إجمالي النتائج: <span className="font-bold text-sage-dark">{resultsCount}</span></p>
-            <div className="flex flex-col gap-2">
-              {latest.map((r, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-sage-dark">{r.student_name as string}</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-sage/10 text-sage-dark border border-sage/30 tabular-nums">{r.percentage as number}%</span>
-                </div>
-              ))}
+              <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-ink/5">
+                {c.external ? (
+                  <a href={c.actionHref} target="_blank" rel="noopener noreferrer"
+                    className="text-sm font-bold text-sage-dark hover:text-sage-deep whitespace-nowrap">{c.actionLabel} ←</a>
+                ) : (
+                  <Link href={c.actionHref}
+                    className={`text-sm font-bold whitespace-nowrap ${c.tone === 'expired' ? 'text-amber-700 hover:text-amber-800' : 'text-sage-dark hover:text-sage-deep'}`}>{c.actionLabel} ←</Link>
+                )}
+                <AddToMySpace itemType={c.type} itemKey={c.itemKey} label={c.name} initialPinned className="!py-1" />
+              </div>
             </div>
-          </div>
-        )}
-      </section>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

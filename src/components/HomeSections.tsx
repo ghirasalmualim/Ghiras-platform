@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import AddToMySpace from './AddToMySpace';
 
 /**
  * تقسيمة الرئيسية: كرتان رئيسيان — «ألعاب» و«المعلّم ورئيس القسم».
@@ -158,15 +159,20 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
           </div>
 
           <div className="row one" style={{ marginTop: 10 }}>
-            <Link className="tile" href="/adventure">
-              <span className="em" aria-hidden="true">
-                🚀
-              </span>
-              <span>
-                <b>مغامرة المجموعات التفاعلية</b>
-                <small>تحدٍّ صفّي تحفيزي للفرق</small>
-              </span>
-            </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Link className="tile" href="/adventure">
+                <span className="em" aria-hidden="true">
+                  🚀
+                </span>
+                <span>
+                  <b>مغامرة المجموعات التفاعلية</b>
+                  <small>تحدٍّ صفّي تحفيزي للفرق</small>
+                </span>
+              </Link>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <AddToMySpace itemType="tool" itemKey="adventure" label="مغامرة المجموعات التفاعلية" />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -182,23 +188,28 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
           </div>
 
           <div className="row one">
-            <a
-              className="tile"
-              href="https://studio.ghiras-edu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="em" aria-hidden="true">
-                🎬
-              </span>
-              <span>
-                <b>
-                  ستوديو الحصة الذكية
-                  <span className="tag paid">مستقل · مباشر</span>
-                </b>
-                <small>تجهيز الحصص وتوليد الدرس والصور بالذكاء</small>
-              </span>
-            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <a
+                className="tile"
+                href="https://studio.ghiras-edu.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="em" aria-hidden="true">
+                  🎬
+                </span>
+                <span>
+                  <b>
+                    ستوديو الحصة الذكية
+                    <span className="tag paid">مستقل · مباشر</span>
+                  </b>
+                  <small>تجهيز الحصص وتوليد الدرس والصور بالذكاء</small>
+                </span>
+              </a>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <AddToMySpace itemType="tool" itemKey="studio" label="ستوديو الحصة الذكية" />
+              </div>
+            </div>
           </div>
 
           <div className="row one">
@@ -218,30 +229,40 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
 
           <div className="grouplbl">المتابعة الصفية</div>
           <div className="row two">
-            <Link className="tile" href="/attendance">
-              <span className="em" aria-hidden="true">
-                🗓️
-              </span>
-              <span>
-                <b>سجل الحضور الذكي</b>
-                <small>متابعة حضور الطالبات</small>
-              </span>
-            </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Link className="tile" href="/attendance">
+                <span className="em" aria-hidden="true">
+                  🗓️
+                </span>
+                <span>
+                  <b>سجل الحضور الذكي</b>
+                  <small>متابعة حضور الطالبات</small>
+                </span>
+              </Link>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <AddToMySpace itemType="tool" itemKey="attendance" label="سجل الحضور الذكي" />
+              </div>
+            </div>
             {/* سجل الدرجات أداة خارجية تُفتح عبر مُصدِّر التصاريح — نفس آلية النسخة السابقة */}
-            <a
-              className="tile"
-              href="/api/tool-access?tool=gradebook"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="em" aria-hidden="true">
-                📊
-              </span>
-              <span>
-                <b>سجل الدرجات الذكي</b>
-                <small>رصد وتحليل الدرجات سحابيًا</small>
-              </span>
-            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <a
+                className="tile"
+                href="/api/tool-access?tool=gradebook"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="em" aria-hidden="true">
+                  📊
+                </span>
+                <span>
+                  <b>سجل الدرجات الذكي</b>
+                  <small>رصد وتحليل الدرجات سحابيًا</small>
+                </span>
+              </a>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <AddToMySpace itemType="tool" itemKey="gradebook" label="سجل الدرجات الذكي" />
+              </div>
+            </div>
           </div>
 
           <div className="grouplbl">سجلّات القسم</div>
@@ -271,6 +292,7 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
               </div>
             )}
           </div>
+
         </div>
       )}
 
