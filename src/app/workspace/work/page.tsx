@@ -33,7 +33,7 @@ export default async function MyWorkPage() {
 
   const [gamesRes, attRes, advRes, resRes] = await Promise.all([
     supabase.from('saved_games').select('id, title, game_type, updated_at')
-      .eq('user_id', user.id).order('updated_at', { ascending: false }).limit(50),
+      .eq('user_id', user.id).is('deleted_at', null).order('updated_at', { ascending: false }).limit(50),
     supabase.from('attendance_data').select('updated_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('adventure_data').select('updated_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('game_results')
