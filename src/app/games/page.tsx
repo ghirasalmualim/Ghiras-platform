@@ -2,6 +2,9 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
+import AddToMySpace from '@/components/AddToMySpace';
+
+type GameCard = { href: string; tag: string; emoji: string; title: string; desc: string; pin?: string };
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * والخصم يتم عند تشغيل لعبة داخل كل مولّد.
  */
 
-const GAMES = [
+const GAMES: GameCard[] = [
   {
     href: '/multiplication',
     tag: 'كورس مستقل · ٣ د.ك',
@@ -28,6 +31,7 @@ const GAMES = [
   },
   {
     href: '/balloons',
+    pin: 'balloons',
     tag: 'مسابقات',
     emoji: '🎈',
     title: 'صيد البالون',
@@ -35,6 +39,7 @@ const GAMES = [
   },
   {
     href: '/millionaire',
+    pin: 'millionaire',
     tag: 'مسابقات',
     emoji: '🏆',
     title: 'من سيربح المليون',
@@ -42,6 +47,7 @@ const GAMES = [
   },
   {
     href: '/snake',
+    pin: 'snake',
     tag: 'لعبة حركة',
     emoji: '🎲',
     title: 'السلم والثعبان',
@@ -49,6 +55,7 @@ const GAMES = [
   },
   {
     href: '/xo',
+    pin: 'xo',
     tag: 'ذكاء وتحدّي',
     emoji: '⭕',
     title: 'إكس أو',
@@ -56,6 +63,7 @@ const GAMES = [
   },
   {
     href: '/sinjim',
+    pin: 'sinjim',
     tag: 'مسابقة فرق',
     emoji: '🧠',
     title: 'سين جيم',
@@ -107,11 +115,14 @@ export default async function GamesPage() {
         {/* بطاقات الألعاب */}
         <div className="mt-12 grid gap-6 sm:grid-cols-2 w-full max-w-2xl">
           {GAMES.map((g, i) => (
-            <Link
+            <div
               key={g.href}
-              href={g.href}
-              className="card-3d group relative overflow-hidden p-8 text-right animate-float-in"
+              className="flex flex-col gap-2 animate-float-in"
               style={{ animationDelay: `${0.35 + i * 0.12}s` }}
+            >
+            <Link
+              href={g.href}
+              className="card-3d group relative overflow-hidden p-8 text-right"
             >
               <div
                 aria-hidden="true"
@@ -141,6 +152,12 @@ export default async function GamesPage() {
                 </span>
               </span>
             </Link>
+              {g.pin && (
+                <div className="flex justify-end">
+                  <AddToMySpace itemType="tool" itemKey={g.pin} label={g.title} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
 

@@ -70,6 +70,29 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     key: 'games', name: 'ألعاب غراس التفاعلية', emoji: '🎮',
     href: '/games', col: null, locked: null,
   },
+  // أدوات ألعاب غراس التفاعلية المفردة — تُفتح بمسارها الداخلي القائم الذي
+  // يفرض الاشتراك/الرصيد عند التشغيل (البوّابة هي المصدر الموثوق، لا هذه البطاقة).
+  // المعاينة مجانية فالمدخل متاح؛ الخصم عند تشغيل اللعبة داخل كل مولّد.
+  millionaire: {
+    key: 'millionaire', name: 'من سيربح المليون', emoji: '🏆',
+    href: '/millionaire', col: null, locked: null,
+  },
+  balloons: {
+    key: 'balloons', name: 'صيد البالون', emoji: '🎈',
+    href: '/balloons', col: null, locked: null,
+  },
+  snake: {
+    key: 'snake', name: 'السلم والثعبان', emoji: '🎲',
+    href: '/snake', col: null, locked: null,
+  },
+  xo: {
+    key: 'xo', name: 'إكس أو', emoji: '⭕',
+    href: '/xo', col: null, locked: null,
+  },
+  sinjim: {
+    key: 'sinjim', name: 'سين جيم', emoji: '🧠',
+    href: '/sinjim', col: null, locked: null,
+  },
 };
 
 export function isKnownTool(key: string): boolean {
