@@ -213,6 +213,14 @@ export default function AccountBar() {
         <span className="text-xs text-ink/55">لا يوجد اشتراك ساري حاليًا</span>
       )}
 
+      {/* لكل مسجَّل دخول — مدخل مساحته الشخصية بجانب «حسابي» */}
+      <Link
+        href="/workspace"
+        className="rounded-xl border border-sage/40 bg-white px-4 py-2 text-sm font-extrabold text-sage-deep transition-colors hover:border-sage hover:bg-sage/5"
+      >
+        مساحتي
+      </Link>
+
       {/* ⚠️ لكل مسجَّل دخول — وكان يُكتب `/account` باليد أو لا يُبلَغ إطلاقًا */}
       <Link
         href="/account"

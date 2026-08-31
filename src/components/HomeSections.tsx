@@ -102,6 +102,20 @@ export default function HomeSections({ stages }: { stages: StageLink[] }) {
             ←
           </div>
         </Link>
+
+        {/* ── كرت مساحتي — مدخل اللوحة الشخصية للمعلّم (يُوجّه لـ/workspace) ── */}
+        <Link className="main ms" href="/workspace">
+          <div>
+            <div className="ico" aria-hidden="true">
+              🗂️
+            </div>
+            <h2>مساحتي</h2>
+            <p>اختصاراتك وأدواتك وموادك في مكان واحد</p>
+          </div>
+          <div className="arrow" aria-hidden="true">
+            ←
+          </div>
+        </Link>
       </div>
 
       {/* ── لوحة الألعاب ── */}

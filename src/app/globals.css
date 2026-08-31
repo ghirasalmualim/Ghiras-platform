@@ -126,6 +126,13 @@ body {
   grid-column: 1 / -1;
   min-height: 150px;
 }
+/* كرت مساحتي — مدخلُ اللوحة الشخصية. نبرةٌ ذهبيةٌ هادئة تميّزه عن الأقسام
+   دون مزاحمتها، ويمتدّ على العمودين أسفل القرآن. */
+.home .main.ms {
+  background: linear-gradient(155deg, #cbb06a, #9c7f3a);
+  grid-column: 1 / -1;
+  min-height: 132px;
+}
 .home .main .ico {
   font-size: 2.5rem;
   line-height: 1.2;
