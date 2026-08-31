@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
+import DeleteWorkButton from '@/components/DeleteWorkButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,9 +49,11 @@ export default async function MyWorkPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
-      <nav className="max-w-5xl mx-auto flex items-center gap-2 text-sm mb-6">
+      <nav className="max-w-5xl mx-auto flex items-center gap-2 text-sm mb-6 flex-wrap">
+        <Link href="/" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">الرئيسية</Link>
         <Link href="/workspace" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">مساحتي</Link>
         <span className="px-3 py-1.5 rounded-full bg-sage text-white font-bold">أعمالي</span>
+        <Link href="/workspace/trash" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">المحذوفات</Link>
         <Link href="/account" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">حسابي</Link>
       </nav>
 
@@ -72,12 +75,14 @@ export default async function MyWorkPage() {
             <h2 className="font-bold text-sage-dark mb-3">ألعابي المحفوظة</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {games.map((g) => (
-                <Link key={g.id} href={`/${g.game_type}`}
-                  className="card-3d bg-white p-4 rounded-xl flex flex-col gap-1 hover:border-sage transition">
+                <div key={g.id} className="card-3d bg-white p-4 rounded-xl flex flex-col gap-1">
                   <span className="font-bold text-sage-dark truncate">{g.title || 'لعبة'}</span>
                   <span className="text-xs text-gray-400">{GAME_NAMES[g.game_type] ?? g.game_type}{fmt(g.updated_at) ? ` · ${fmt(g.updated_at)}` : ''}</span>
-                  <span className="text-xs text-sage-dark mt-1">فتح ←</span>
-                </Link>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <Link href={`/${g.game_type}`} className="text-xs font-bold text-sage-dark hover:text-sage-deep">فتح ←</Link>
+                    <DeleteWorkButton id={g.id} />
+                  </div>
+                </div>
               ))}
             </div>
           </section>
