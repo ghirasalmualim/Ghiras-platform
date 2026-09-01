@@ -3,13 +3,10 @@ import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
 import LaunchOffer from '@/components/LaunchOffer';
 import AccountBar from '@/components/AccountBar';
-import { getStages } from '@/lib/supabase/data';
 
 export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين مؤقت للسرعة
 
-export default async function HomePage() {
-  const stages = await getStages();
-
+export default function HomePage() {
   return (
     <main className="min-h-dvh flex flex-col">
       {/* شريط الحساب — زائرًا كان أو داخلًا */}
@@ -50,9 +47,7 @@ export default async function HomePage() {
           className="w-full mt-10 animate-float-in"
           style={{ animationDelay: '0.35s' }}
         >
-          <HomeSections
-            stages={stages.map((s) => ({ slug: s.slug, name: s.name }))}
-          />
+          <HomeSections />
         </div>
       </section>
 
