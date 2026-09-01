@@ -3,14 +3,9 @@ import Logo from '@/components/Logo';
 
 /**
  * صفحة الشراء لـ«جدول الضرب التفاعلي» — منتج مستقل بسعره الخاص (٣ د.ك).
- * تظهر لغير المشتركات، وتوضّح ما يفتحه الشراء + زر التواصل/الدفع.
- * ملاحظة: بدّلي رقم الواتساب أدناه برقم إدارة غراس (أو رابط الدفع لاحقًا).
+ * تظهر لغير المشتركات، وتوضّح ما يفتحه الشراء + زر التواصل الداخلي.
  */
 export const dynamic = 'force-dynamic';
-
-// ⬇️ بدّلي هذا الرقم برقم واتساب إدارة غراس (بصيغة دولية بدون + أو أصفار بادئة)
-const WHATSAPP = '96500000000';
-const WA_MSG = encodeURIComponent('السلام عليكم، أرغب بشراء لعبة «جدول الضرب التفاعلي» (٣ د.ك).');
 
 const FEATURES: string[] = [
   '🔍 استكشاف بصري: كل عملية ضرب كمستطيل ونقاط — يفهمها الطفل لا يحفظها',
@@ -57,14 +52,12 @@ export default function MultiplicationLockedPage() {
         </ul>
 
         {/* زر الشراء/التواصل */}
-        <a
-          href={`https://wa.me/${WHATSAPP}?text=${WA_MSG}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/support"
           className="mt-7 inline-block w-full rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-4 shadow-soft transition-all"
         >
-          اشتري الآن · تواصل مع إدارة غراس
-        </a>
+          💬 تواصل معنا للشراء والتفعيل
+        </Link>
         <p className="mt-3 text-ink/45 text-xs font-semibold">
           بعد إتمام الدفع تُفعَّل اللعبة على حسابك مباشرةً وتفتح النسخة الكاملة.
         </p>

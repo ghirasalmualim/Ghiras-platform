@@ -56,6 +56,12 @@ export default function ClockLockedPage() {
         <div className="mt-7 w-full rounded-xl bg-sage/10 border border-sage/30 px-6 py-4 text-sage-dark font-extrabold">
           لتفعيل الساعة التفاعلية، تواصل مع إدارة غراس المعلم
         </div>
+        <Link
+          href="/support"
+          className="mt-4 inline-block w-full rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
+        >
+          💬 تواصل معنا
+        </Link>
         <p className="mt-3 text-ink/45 text-xs font-semibold">
           بعد إتمام التفعيل تفتح اللعبة على حسابك مباشرةً بنسختها الكاملة.
         </p>

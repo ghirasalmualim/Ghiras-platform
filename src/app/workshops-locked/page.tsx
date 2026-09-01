@@ -32,8 +32,14 @@ export default function WorkshopsLockedPage() {
 
         <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/workspace"
+            href="/support"
             className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
+          >
+            💬 تواصل معنا
+          </Link>
+          <Link
+            href="/workspace"
+            className="inline-block rounded-xl border border-sage/40 bg-white hover:border-sage text-sage-deep font-extrabold px-8 py-3 transition-all"
           >
             العودة للرئيسية
           </Link>
