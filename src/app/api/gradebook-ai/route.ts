@@ -1,6 +1,14 @@
 // جسر الذكاء الاصطناعي لأدوات غراس (دفتر التقييم + التحضير الكتابي)
 // يحمل المفتاح على الخادم بأمان. المفتاح يُضبط من إعدادات Vercel كمتغيّر ANTHROPIC_API_KEY.
 
+import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// حاجز الفاتورة: سقف يومي لكل مستخدم قبل نداء الذكاء.
+const GRADEBOOK_DAILY = parseInt(process.env.GRADEBOOK_DAILY || "40", 10) || 40;
+
 const ALLOWED_ORIGINS = [
   "https://ghiras-edu.com",
   "https://www.ghiras-edu.com",
@@ -40,14 +48,14 @@ function _eq(a: string, b: string) {
   for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return r === 0;
 }
-async function verifyKey(value: string | null): Promise<boolean> {
-  if (!value) return false;
+async function verifyKey(value: string | null): Promise<string | null> {
+  if (!value) return null;
   const parts = value.split(".");
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3) return null;
   const [exp, uid, sig] = parts;
-  if (!/^\d+$/.test(exp) || Date.now() > Number(exp)) return false;
+  if (!/^\d+$/.test(exp) || Date.now() > Number(exp)) return null;
   const expected = await _hmac(`k|${uid}|${exp}`);
-  return _eq(sig, expected);
+  return _eq(sig, expected) ? uid : null;
 }
 
 function corsHeaders(origin: string | null) {
@@ -76,11 +84,47 @@ export async function POST(req: Request) {
   };
 
   // تحقّق التوكن الموقّع (SEC-001) — لا استدعاء بلا تصريح صادر من المنصّة
-  const authorized = await verifyKey(req.headers.get("x-ghiras-key"));
-  if (!authorized) {
+  const uid = await verifyKey(req.headers.get("x-ghiras-key"));
+  if (!uid) {
     return new Response(
       JSON.stringify({ error: { message: "تصريح غير صالح — افتح الدفتر من منصّة غراس" } }),
       { status: 401, headers }
+    );
+  }
+
+  // ── حاجز الفاتورة: حجز ذرّي يومي بمعرّف صريح عبر service-role (fail-closed) ──
+  // لا جلسة هنا؛ الـuid مستخرج من التوكن الموقّع فقط. أي خطأ = رفضٌ آمن.
+  const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supaUrl || !serviceKey) {
+    return new Response(
+      JSON.stringify({ error: { message: "الخادم غير مُعدّ بالكامل" } }),
+      { status: 500, headers }
+    );
+  }
+  try {
+    const admin = createClient(supaUrl, serviceKey, { auth: { persistSession: false } });
+    const { data: reserve, error: reserveErr } = await admin.rpc("ai_reserve_daily_for", {
+      p_user: uid,
+      p_kind: "gradebook",
+      p_limit: GRADEBOOK_DAILY,
+    });
+    if (reserveErr || !reserve) {
+      return new Response(
+        JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل." } }),
+        { status: 503, headers }
+      );
+    }
+    if (!(reserve as { allowed?: boolean }).allowed) {
+      return new Response(
+        JSON.stringify({ error: { message: "وصلتِ الحدّ اليومي لاستخدام الدفتر. جرّبي غدًا أو تواصلي مع إدارة غراس." } }),
+        { status: 429, headers }
+      );
+    }
+  } catch {
+    return new Response(
+      JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل." } }),
+      { status: 503, headers }
     );
   }
 

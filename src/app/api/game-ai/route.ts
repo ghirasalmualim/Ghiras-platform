@@ -15,6 +15,9 @@ const MODEL = process.env.GRADEBOOK_MODEL || 'claude-sonnet-5';
 const MAX_TOKENS_CAP = 8192;
 const MAX_TOKENS_DEFAULT = 1000;
 
+// حاجز الفاتورة: سقف يومي لكل مستخدم قبل نداء الذكاء (الأدمِن يتخطّى).
+const GAME_DAILY = parseInt(process.env.GAME_DAILY || '25', 10) || 25;
+
 export async function POST(req: NextRequest) {
   const supabase = createServerSupabase();
 
@@ -62,6 +65,27 @@ export async function POST(req: NextRequest) {
       { error: { message: 'لا يوجد رصيد ألعاب. شراء لعبة للمتابعة.' } },
       { status: 403 }
     );
+  }
+
+  // ── حاجز الفاتورة: حجز ذرّي يومي قبل نداء الذكاء (fail-closed) ──
+  // الأدمِن مُعفى. أي خطأ في الحجز = رفضٌ آمن بلا نداء ذكاء.
+  if (!isAdmin) {
+    const { data: reserve, error: reserveErr } = await supabase.rpc('ai_reserve_daily', {
+      p_kind: 'game',
+      p_limit: GAME_DAILY,
+    });
+    if (reserveErr || !reserve) {
+      return NextResponse.json(
+        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل.' } },
+        { status: 503 }
+      );
+    }
+    if (!(reserve as { allowed?: boolean }).allowed) {
+      return NextResponse.json(
+        { error: { message: 'وصلتِ الحدّ اليومي لتوليد الألعاب. جرّبي غدًا أو تواصلي مع إدارة غراس.' } },
+        { status: 429 }
+      );
+    }
   }
 
   const key = process.env.ANTHROPIC_API_KEY;

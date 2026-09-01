@@ -11,6 +11,9 @@ export const dynamic = 'force-dynamic';
 
 const MODEL = process.env.GRADEBOOK_MODEL || 'claude-sonnet-5';
 
+// حاجز الفاتورة: سقف يومي لكل مستخدم قبل نداء الذكاء (الأدمِن يتخطّى).
+const OCR_DAILY = parseInt(process.env.OCR_DAILY || '30', 10) || 30;
+
 export async function POST(req: NextRequest) {
   const supabase = createServerSupabase();
   const {
@@ -35,6 +38,26 @@ export async function POST(req: NextRequest) {
       new Date(profile.attendance_until as string) > new Date());
   if (!active) {
     return NextResponse.json({ error: { message: 'اشتراك الحضور غير سارٍ' } }, { status: 403 });
+  }
+
+  // ── حاجز الفاتورة: حجز ذرّي يومي قبل نداء الذكاء (fail-closed) ──
+  if (!isAdmin) {
+    const { data: reserve, error: reserveErr } = await supabase.rpc('ai_reserve_daily', {
+      p_kind: 'ocr',
+      p_limit: OCR_DAILY,
+    });
+    if (reserveErr || !reserve) {
+      return NextResponse.json(
+        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل.' } },
+        { status: 503 }
+      );
+    }
+    if (!(reserve as { allowed?: boolean }).allowed) {
+      return NextResponse.json(
+        { error: { message: 'وصلتِ الحدّ اليومي لقراءة الكشوف. جرّبي غدًا أو تواصلي مع إدارة غراس.' } },
+        { status: 429 }
+      );
+    }
   }
 
   const key = process.env.ANTHROPIC_API_KEY;
