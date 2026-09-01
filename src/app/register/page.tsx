@@ -236,6 +236,13 @@ export default function RegisterPage() {
             </p>
           )}
 
+          <p className="text-center text-xs text-ink/55 leading-relaxed">
+            بتسجيلك توافق على{' '}
+            <Link href="/terms" className="font-bold text-sage-dark hover:underline">الشروط والأحكام</Link>
+            {' '}و{' '}
+            <Link href="/privacy" className="font-bold text-sage-dark hover:underline">سياسة الخصوصية</Link>.
+          </p>
+
           <button
             type="button"
             onClick={handleSubmit}
