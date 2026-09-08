@@ -159,11 +159,6 @@ export default function AdminPanel() {
     const supabase = createClient();
     act(id, () => supabase.rpc('admin_grant', { p_user: id, p_kind: 'all', p_months: 6 }), 'تم منح وصول كامل ٦ أشهر ✅');
   };
-  const grantGb = (id: string) => {
-    if (!confirm('منح هذا الحساب وصول دفتر الدرجات لمدة ٦ أشهر مجاناً؟')) return;
-    const supabase = createClient();
-    act(id, () => supabase.rpc('admin_grant', { p_user: id, p_kind: 'gradebook', p_months: 6 }), 'تم منح الدفتر ٦ أشهر ✅');
-  };
   const grantSpecific = (id: string) => {
     const sv = sel[id];
     if (!sv || !sv.target) {
@@ -219,12 +214,6 @@ export default function AdminPanel() {
     act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'all' }), 'تم سحب كل الصلاحيات');
   };
 
-  const revokeGb = (id: string) => {
-    if (!confirm('سحب اشتراك دفتر الدرجات من هذا الحساب؟')) return;
-    const supabase = createClient();
-    act(id, () => supabase.rpc('admin_revoke', { p_user: id, p_kind: 'gradebook' }), 'تم سحب الدفتر');
-  };
-
   // ── الأدوات المدفوعة ──
   // كل أداة لها عمود صلاحية مستقل في profiles. كانت اللوحة تدير الدفتر وحده،
   // فبقية الأدوات كانت تُفعَّل بأمر SQL يدوي. admin_set_tool تمنح وتسحب لأي منها.
@@ -232,6 +221,7 @@ export default function AdminPanel() {
   // حتى لا نغيّر مسارًا يعمل منذ شهور.
   const TOOLS: { key: string; label: string; emoji: string }[] = [
     { key: 'studio', label: 'ستوديو الحصة الذكية', emoji: '🎬' },
+    { key: 'gradebook', label: 'سجل الدرجات الذكي', emoji: '📊' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
     { key: 'head_records', label: 'سجلات رئيس القسم', emoji: '🗂️' },
     { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
@@ -885,14 +875,6 @@ export default function AdminPanel() {
                 <button disabled={isBusy} onClick={() => grantAll(r.id)}
                   className="rounded-lg bg-sage hover:bg-sage-dark text-white font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
                   ＋ وصول كامل ٦ أشهر
-                </button>
-                <button disabled={isBusy} onClick={() => grantGb(r.id)}
-                  className="rounded-lg bg-gold hover:bg-gold-dark text-white font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
-                  ＋ الدفتر ٦ أشهر
-                </button>
-                <button disabled={isBusy} onClick={() => revokeGb(r.id)}
-                  className="rounded-lg border border-gold/50 bg-white hover:bg-gold-light text-gold-dark font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
-                  − سحب الدفتر
                 </button>
                 <button disabled={isBusy} onClick={() => revokeAll(r.id)}
                   className="rounded-lg border border-red-300 bg-white hover:bg-red-50 text-red-700 font-bold text-sm px-3.5 py-2 disabled:opacity-50 transition">
