@@ -219,8 +219,9 @@ export default function AdminPanel() {
   // فبقية الأدوات كانت تُفعَّل بأمر SQL يدوي. admin_set_tool تمنح وتسحب لأي منها.
   // الدفتر مستثنى عمدًا: له زرّاه القائمان أعلاه عبر admin_grant، وتُركا كما هما
   // حتى لا نغيّر مسارًا يعمل منذ شهور.
+  // الستوديو مستثنى عمدًا: صار يُباع بالحصص لا بالمدة — يُشحن عبر بادج
+  // «🎬 رصيد حصص الستوديو» أدناه (باقة حصة / خمس حصص)، لا بمنح ٦ أشهر.
   const TOOLS: { key: string; label: string; emoji: string }[] = [
-    { key: 'studio', label: 'ستوديو الحصة الذكية', emoji: '🎬' },
     { key: 'gradebook', label: 'سجل الدرجات الذكي', emoji: '📊' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
     { key: 'head_records', label: 'سجلات رئيس الشعبة', emoji: '🗂️' },
