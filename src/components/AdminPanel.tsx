@@ -104,7 +104,7 @@ export default function AdminPanel() {
     // فشلها لا يعطّل اللوحة: تظهر الحسابات بلا شارات الأدوات فقط.
     const { data: tdata } = await supabase
       .from('profiles')
-      .select(['id', 'game_credits', ...TOOL_COLS].join(','));
+      .select(['id', 'game_credits', 'lesson_credits', ...TOOL_COLS].join(','));
     if (tdata) {
       const map: Record<string, ToolState> = {};
       for (const rec of tdata as unknown as (ToolState & { id: string })[]) {
@@ -245,6 +245,21 @@ export default function AdminPanel() {
       id,
       () => supabase.rpc('admin_add_game_credits', { p_user: id, p_count: n }),
       `تمت إضافة ${n} — الرصيد الآن ${current + n} 🎮`
+    );
+  };
+
+  // ── رصيد حصص ستوديو الحصة الذكية ──
+  // رصيدُ عددٍ دائم لا مدة له، يُشحن بباقات: حصة واحدة (٣ د.ك) أو خمس حصص (١٠ د.ك).
+  // الإضافة جمعية فوق القائم، والخصم يقع في الستوديو عند اكتمال توليد الدرس
+  // (مرة واحدة لكل درس). منتجٌ مستقل عن رصيد الألعاب وعن كل أعمدة _until.
+  const addLessonCredits = (id: string, current: number, n: number) => {
+    const pkg = n === 1 ? 'باقة حصة واحدة (+١)' : `باقة ${n} حصص (+${n})`;
+    if (!confirm(`${pkg}؟ يصبح رصيد الحصص ${current + n}`)) return;
+    const supabase = createClient();
+    act(
+      id,
+      () => supabase.rpc('admin_add_lesson_credits', { p_user: id, p_count: n }),
+      `تمت إضافة ${n} — رصيد الحصص الآن ${current + n} 🎬`
     );
   };
 
@@ -924,6 +939,29 @@ export default function AdminPanel() {
                         title="إضافة رصيد ألعاب (جمعي فوق القائم)"
                         className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
                         ＋ إضافة رصيد
+                      </button>
+                    </span>
+                    );
+                  })()}
+                  {(() => {
+                    const lc = Number((tools[r.id] as Record<string, unknown> | undefined)?.lesson_credits ?? 0) || 0;
+                    return (
+                    <span className={`inline-flex items-center rounded-lg border overflow-hidden ${lc > 0 ? 'border-sage/50 bg-sage-light/40' : 'border-sage/25 bg-white'}`}>
+                      <span className="px-2.5 py-1.5 text-sm font-bold text-ink/75">
+                        🎬 رصيد حصص الستوديو
+                        <span className={`ms-1.5 text-xs font-extrabold ${lc > 0 ? 'text-sage-deep' : 'text-ink/40'}`}>
+                          {lc} {lc === 1 ? 'حصة' : 'حصص'}
+                        </span>
+                      </span>
+                      <button disabled={isBusy} onClick={() => addLessonCredits(r.id, lc, 1)}
+                        title="باقة حصة واحدة (+١) — ٣ د.ك"
+                        className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        ＋ حصة
+                      </button>
+                      <button disabled={isBusy} onClick={() => addLessonCredits(r.id, lc, 5)}
+                        title="باقة خمس حصص (+٥) — ١٠ د.ك"
+                        className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        ＋ ٥ حصص
                       </button>
                     </span>
                     );
