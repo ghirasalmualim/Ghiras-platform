@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 /**
- * تقسيمة الرئيسية: كرتان رئيسيان — «ألعاب» و«المعلّم ورئيس القسم».
+ * تقسيمة الرئيسية: كرتان رئيسيان — «ألعاب» و«المعلّم ورئيس الشعبة».
  * كل كرت ينقل لصفحته الخاصة (/games-hub و/teacher) بدل التوسّع أسفله،
  * لتكون الخيارات في صفحة مرتّبة ومستقلة أوضح للمستخدم.
  * التصميم والألوان مطابقة للملف المرجعي home-preview.html.
@@ -33,7 +33,7 @@ export default function HomeSections() {
         <Link className="main p" href="/teacher">
           <div>
             <div className="ico">👨‍🏫👩‍🏫</div>
-            <h2>المعلّم ورئيس القسم</h2>
+            <h2>المعلّم ورئيس الشعبة</h2>
             <p>أدوات مهنية وسجلّات ذكية</p>
             <div className="chips">
               <span className="chip">ستوديو الحصة</span>

@@ -42,7 +42,7 @@ export default function HomePage() {
           <LaunchOffer />
         </div>
 
-        {/* كرتان رئيسيان: ألعاب · المعلّم ورئيس القسم */}
+        {/* كرتان رئيسيان: ألعاب · المعلّم ورئيس الشعبة */}
         <div
           className="w-full mt-10 animate-float-in"
           style={{ animationDelay: '0.35s' }}

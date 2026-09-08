@@ -35,7 +35,7 @@ export const ENTITLEMENT_NAMES: Record<string, string> = {
   studio_until: 'استوديو الحصة الذكية',
   gradebook_until: 'سجل الدرجات الذكي',
   attendance_until: 'سجل الحضور الذكي',
-  head_records_until: 'سجلات رئيس القسم',
+  head_records_until: 'سجلات رئيس الشعبة',
   adventure_until: 'مغامرة المجموعات التفاعلية',
   multiplication_until: 'جدول الضرب التفاعلي',
   workshops_until: 'الورش التعليمية',

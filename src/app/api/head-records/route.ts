@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
- * حارس «سجلات رئيس القسم».
+ * حارس «سجلات رئيس الشعبة».
  *
  * التطبيق ملف HTML مكتفٍ بذاته يعيش في private/ خارج مجلد public — أي أنه
  * لا يُخدَم إطلاقًا كملف ثابت، ولا سبيل لفتحه إلا من هنا بعد التحقق من:

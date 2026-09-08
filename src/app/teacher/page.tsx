@@ -3,16 +3,16 @@ import Logo from '@/components/Logo';
 import AddToMySpace from '@/components/AddToMySpace';
 
 export const metadata = {
-  title: 'المعلّم ورئيس القسم — غراس المعلم',
-  description: 'أدوات المعلّم ورئيس القسم: ستوديو الحصة الذكية، بنك غراس، سجل الحضور والدرجات، وسجلّات القسم.',
+  title: 'المعلّم ورئيس الشعبة — غراس المعلم',
+  description: 'أدوات المعلّم ورئيس الشعبة: ستوديو الحصة الذكية، بنك غراس، سجل الحضور والدرجات، وسجلّات القسم.',
 };
 
 /**
- * صفحة قسم «المعلّم ورئيس القسم» المستقلة.
+ * صفحة قسم «المعلّم ورئيس الشعبة» المستقلة.
  * نُقل محتواها من لوحة الأدوات التي كانت تتوسّع أسفل الكرت في الرئيسية،
  * لتصبح صفحة خاصة أنظف وأوضح. الكلاسات (home/panel/tile) عامة في globals.css.
  *
- * «سجلات رئيس القسم» تطبيق مكتفٍ بذاته يُفتح عبر الحارس (مسار API) لا صفحة next.
+ * «سجلات رئيس الشعبة» تطبيق مكتفٍ بذاته يُفتح عبر الحارس (مسار API) لا صفحة next.
  * اجعليها null لإرجاع الخانة إلى وضع «قريبًا».
  */
 const HEAD_RECORDS_HREF: string | null = '/api/head-records';
@@ -40,7 +40,7 @@ export default function TeacherPage() {
           className="animate-float-in mt-5 text-3xl sm:text-4xl font-black text-sage-deep tracking-tight"
           style={{ animationDelay: '0.1s' }}
         >
-          المعلّم ورئيس القسم 👨‍🏫👩‍🏫
+          المعلّم ورئيس الشعبة 👨‍🏫👩‍🏫
         </h1>
         <p className="animate-float-in mt-3 text-ink/55" style={{ animationDelay: '0.15s' }}>
           أدوات مهنية وسجلّات ذكية
@@ -137,7 +137,7 @@ export default function TeacherPage() {
                     🗂️
                   </span>
                   <span>
-                    <b>سجلات رئيس القسم</b>
+                    <b>سجلات رئيس الشعبة</b>
                     <small>زيارات · كادر · تقييم · تصدير</small>
                   </span>
                 </a>
@@ -148,7 +148,7 @@ export default function TeacherPage() {
                   </span>
                   <span>
                     <b>
-                      سجلات رئيس القسم
+                      سجلات رئيس الشعبة
                       <span className="tag wip">قريبًا</span>
                     </b>
                     <small>زيارات · كادر · تقييم · تصدير</small>

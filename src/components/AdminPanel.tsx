@@ -223,7 +223,7 @@ export default function AdminPanel() {
     { key: 'studio', label: 'ستوديو الحصة الذكية', emoji: '🎬' },
     { key: 'gradebook', label: 'سجل الدرجات الذكي', emoji: '📊' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
-    { key: 'head_records', label: 'سجلات رئيس القسم', emoji: '🗂️' },
+    { key: 'head_records', label: 'سجلات رئيس الشعبة', emoji: '🗂️' },
     { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
     { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
     { key: 'workshops', label: 'الورش التعليمية', emoji: '🎓' },

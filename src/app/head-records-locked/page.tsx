@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 
 /**
- * صفحة «الأداة للمشتركين» — تظهر عند محاولة فتح سجلات رئيس القسم
+ * صفحة «الأداة للمشتركين» — تظهر عند محاولة فتح سجلات رئيس الشعبة
  * بحساب غير مشترِك، بدل التوجيه الصامت للصفحة الرئيسية.
  */
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default function HeadRecordsLockedPage() {
           🔒
         </span>
         <h1 className="mt-4 text-xl font-extrabold text-ink">
-          سجلات رئيس القسم — خاص بالمشتركين
+          سجلات رئيس الشعبة — خاص بالمشتركين
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
           اشتراكك الحالي لا يشمل هذه الأداة.
