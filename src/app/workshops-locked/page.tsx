@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 
 /**
- * صفحة «الورش التعليمية — خاص بالمشتركين».
- * تظهر عند محاولة فتح الورش بدون اشتراك سارٍ.
+ * صفحة «عروض غراس التفاعلية — خاص بالمشتركين».
+ * تظهر عند محاولة فتح العروض بدون اشتراك سارٍ.
  */
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +22,10 @@ export default function WorkshopsLockedPage() {
           🎓
         </span>
         <h1 className="mt-4 text-xl font-extrabold text-ink">
-          الورش التعليمية — خاص بالمشتركين
+          عروض غراس التفاعلية — خاص بالمشتركين
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
-          هذه الورش متاحة لمشتركي غراس المعلم.
+          هذه العروض متاحة لمشتركي غراس المعلم.
           <br />
           فعّلي اشتراكك للاطّلاع على العروض التفاعلية الجاهزة للعرض داخل صفّك.
         </p>

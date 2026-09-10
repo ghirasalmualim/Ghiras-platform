@@ -38,7 +38,7 @@ export const ENTITLEMENT_NAMES: Record<string, string> = {
   head_records_until: 'سجلات رئيس الشعبة',
   adventure_until: 'مغامرة المجموعات التفاعلية',
   multiplication_until: 'جدول الضرب التفاعلي',
-  workshops_until: 'الورش التعليمية',
+  workshops_until: 'عروض غراس التفاعلية',
   clock_until: 'الساعة التفاعلية',
   gharas_bank_until: 'بنك غراس',
 };
