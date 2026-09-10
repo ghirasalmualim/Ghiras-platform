@@ -157,6 +157,13 @@ export default function SupportPage() {
         <Logo size={72} />
         <p className="mt-4 font-bold text-ink/70">سجّلي دخولك أولًا لفتح الدعم</p>
         <Link href="/login?next=/support" className="mt-4 rounded-xl bg-sage text-white font-extrabold px-6 py-3">تسجيل الدخول</Link>
+        <div className="mt-6 flex items-center gap-2 text-sm">
+          <span className="font-extrabold text-sage-deep">📞 للتواصل المباشر:</span>
+          <a href="https://wa.me/96597432704" target="_blank" rel="noopener noreferrer"
+            className="rounded-lg bg-[#25D366] text-white font-extrabold px-3 py-1.5">واتساب</a>
+          <a href="tel:+96597432704" dir="ltr"
+            className="rounded-lg border border-sage/40 bg-white text-sage-deep font-extrabold px-3 py-1.5">٩٧٤٣٢٧٠٤</a>
+        </div>
       </main>
     );
   }
@@ -167,6 +174,17 @@ export default function SupportPage() {
         <Link href="/" className="rounded-xl border border-sage/40 bg-white text-sage-deep font-extrabold text-sm px-4 py-2">← منصة غراس</Link>
         <h1 className="text-xl font-black text-sage-deep">💬 تواصل معنا</h1>
       </header>
+
+      {/* رقم التواصل المباشر */}
+      <div className="mt-3 rounded-2xl border border-sage/25 bg-sage/5 px-4 py-3 flex items-center justify-between gap-3">
+        <span className="font-extrabold text-sage-deep text-sm">📞 للتواصل المباشر</span>
+        <span className="flex items-center gap-2">
+          <a href="https://wa.me/96597432704" target="_blank" rel="noopener noreferrer"
+            className="rounded-lg bg-[#25D366] text-white font-extrabold text-sm px-3 py-1.5">واتساب</a>
+          <a href="tel:+96597432704" dir="ltr"
+            className="rounded-lg border border-sage/40 bg-white text-sage-deep font-extrabold text-sm px-3 py-1.5 tracking-wide">٩٧٤٣٢٧٠٤</a>
+        </span>
+      </div>
 
       {!open ? (
         <section className="mt-5 flex-1">

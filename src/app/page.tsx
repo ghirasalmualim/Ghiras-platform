@@ -59,6 +59,8 @@ export default function HomePage() {
         <Link href="/terms" className="underline hover:text-sage-deep">الشروط والأحكام</Link>
         <span className="mx-1.5 text-ink/25">·</span>
         <Link href="/support" className="underline hover:text-sage-deep">💬 تواصل معنا</Link>
+        <span className="mx-1.5 text-ink/25">·</span>
+        <a href="https://wa.me/96597432704" target="_blank" rel="noopener noreferrer" className="underline hover:text-sage-deep">واتساب ٩٧٤٣٢٧٠٤</a>
       </footer>
     </main>
   );
