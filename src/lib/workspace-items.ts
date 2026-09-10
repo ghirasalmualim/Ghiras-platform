@@ -58,7 +58,7 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     href: '/gharas-bank', col: 'gharas_bank_until', locked: '/gharas-bank-locked',
   },
   workshops: {
-    key: 'workshops', name: 'عروض غراس التفاعلية', emoji: '🎓',
+    key: 'workshops', name: 'عروض غراس التفاعلية', emoji: '💻',
     href: '/api/tool-access?tool=workshops', col: 'workshops_until',
     locked: '/workshops-locked', external: true,
   },

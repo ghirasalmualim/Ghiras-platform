@@ -227,7 +227,7 @@ export default function AdminPanel() {
     { key: 'head_records', label: 'سجلات رئيس الشعبة', emoji: '🗂️' },
     { key: 'adventure', label: 'مغامرة المجموعات', emoji: '🚀' },
     { key: 'multiplication', label: 'جدول الضرب', emoji: '✖️' },
-    { key: 'workshops', label: 'عروض غراس التفاعلية', emoji: '🎓' },
+    { key: 'workshops', label: 'عروض غراس التفاعلية', emoji: '💻' },
     { key: 'clock', label: 'الساعة التفاعلية', emoji: '🕐' },
     { key: 'gharas_bank', label: 'بنك غراس', emoji: '🌱' },
   ];
