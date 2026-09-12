@@ -49,6 +49,14 @@ const TOOLS: Record<string, ToolCfg> = {
     lock: '/student-game-locked',
     deviceLimit: false,
   },
+  // لعبة الطالب (الصف الرابع) — نفس النموذج المشمول باشتراك المواد (sub_end).
+  'student-g4': {
+    url: 'https://games.ghiras-edu.com/student-g4/full-review',
+    slug: 'student-g4',
+    until: 'sub_end',
+    lock: '/student-game-locked',
+    deviceLimit: false,
+  },
 };
 
 function b64url(bytes: Uint8Array) {
