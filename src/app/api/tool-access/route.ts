@@ -73,6 +73,14 @@ const TOOLS: Record<string, ToolCfg> = {
     lock: '/student-game-locked',
     deviceLimit: false,
   },
+  // لعبة الطالب (الصف الأول) — نفس النموذج المشمول باشتراك المواد (sub_end).
+  'student-g1': {
+    url: 'https://games.ghiras-edu.com/student-g1/full-review',
+    slug: 'student-g1',
+    until: 'sub_end',
+    lock: '/student-game-locked',
+    deviceLimit: false,
+  },
 };
 
 function b64url(bytes: Uint8Array) {
