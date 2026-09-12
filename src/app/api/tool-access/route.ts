@@ -65,6 +65,14 @@ const TOOLS: Record<string, ToolCfg> = {
     lock: '/student-game-locked',
     deviceLimit: false,
   },
+  // لعبة الطالب (الصف الثاني) — نفس النموذج المشمول باشتراك المواد (sub_end).
+  'student-g2': {
+    url: 'https://games.ghiras-edu.com/student-g2/full-review',
+    slug: 'student-g2',
+    until: 'sub_end',
+    lock: '/student-game-locked',
+    deviceLimit: false,
+  },
 };
 
 function b64url(bytes: Uint8Array) {

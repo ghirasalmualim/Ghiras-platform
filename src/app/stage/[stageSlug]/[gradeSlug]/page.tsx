@@ -26,6 +26,10 @@ const STUDENT_GAMES: Record<string, { tool: string; free: string }> = {
     tool: 'student-g3',
     free: 'https://games.ghiras-edu.com/free-student-g3/full-review',
   },
+  'grade-2': {
+    tool: 'student-g2',
+    free: 'https://games.ghiras-edu.com/free-student-g2/full-review',
+  },
 };
 
 export default async function GradePage({
