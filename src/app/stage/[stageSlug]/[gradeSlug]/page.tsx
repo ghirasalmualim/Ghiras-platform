@@ -10,6 +10,16 @@ import { subjectDisplayName } from '@/lib/subject-display';
 
 export const revalidate = 300;
 
+// ── لعبة الطالب: العوالم المتوفّرة حسب الصف ──
+// المفتاح: gradeSlug — القيمة: أداةُ التصريح (النسخة الكاملة) + رابط النسخة المجانية.
+// لإضافة صفٍّ جديد لاحقًا (كالرابع): أضِف سطرًا واحدًا هنا.
+const STUDENT_GAMES: Record<string, { tool: string; free: string }> = {
+  'grade-5': {
+    tool: 'student-g5',
+    free: 'https://games.ghiras-edu.com/free-student-g5/full-review',
+  },
+};
+
 export default async function GradePage({
   params,
 }: {
@@ -22,6 +32,7 @@ export default async function GradePage({
   if (!grade) notFound();
 
   const subjects = await getSubjects(grade.id);
+  const studentGame = STUDENT_GAMES[grade.slug];
 
   return (
     <main className="min-h-dvh flex flex-col">
@@ -87,6 +98,53 @@ export default async function GradePage({
             </Link>
           ))}
         </div>
+
+        {studentGame && (
+          <div
+            className="mt-8 animate-float-in"
+            style={{ animationDelay: `${0.12 + subjects.length * 0.06}s` }}
+          >
+            <div className="card-3d relative overflow-hidden p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-gradient-to-l from-sage/10 to-transparent">
+              <span
+                aria-hidden="true"
+                className="flex items-center justify-center w-16 h-16 rounded-2xl text-4xl shadow-inset3d shrink-0"
+                style={{ backgroundColor: '#7A9E7E1f' }}
+              >
+                🎒
+              </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-xl text-ink">لعبة الطالب</span>
+                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-gold-light text-gold-dark">
+                    مغامرة كل المواد
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-ink/60 leading-relaxed">
+                  مغامرةٌ واحدة تجمع كل مواد الصف — كل مادةٍ عالَم، وكل درسٍ بيت.
+                  مشمولةٌ ضمن اشتراك المواد.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <a
+                    href={`/api/tool-access?tool=${studentGame.tool}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-sage-deep text-white font-extrabold text-sm px-6 py-2.5 shadow-soft hover:brightness-110 transition active:scale-[0.98]"
+                  >
+                    ابدأ اللعبة ←
+                  </a>
+                  <a
+                    href={studentGame.free}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-sage/10 border border-sage/30 text-sage-dark font-extrabold text-sm px-5 py-2.5 hover:bg-sage/20 transition"
+                  >
+                    🎁 جرّب الدرس الأول مجانًا
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

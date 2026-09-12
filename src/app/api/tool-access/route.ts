@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { isStillValid } from '@/lib/entitlements';
 
 /**
  * مُصدِّر تصاريح الأدوات المحمية (دفتر التقييم الذكي + عروض غراس التفاعلية).
@@ -17,7 +18,8 @@ const enc = new TextEncoder();
 type ToolCfg = {
   url: string; // رابط الأداة على مستودع الألعاب
   slug: string; // المجلّد (لربط التوكن)
-  until: 'gradebook_until' | 'workshops_until'; // عمود صلاحية الاشتراك
+  // عمود صلاحيةٍ واحد، أو عدّة أعمدة — أيُّها سارٍ يفتح الأداة (منطق «أو»).
+  until: string | readonly string[];
   lock: string; // صفحة «خاص بالمشتركين»
   deviceLimit: boolean; // هل تُطبّق قاعدة الجهازين؟
 };
@@ -36,6 +38,15 @@ const TOOLS: Record<string, ToolCfg> = {
     slug: 'workshops',
     until: 'workshops_until',
     lock: '/workshops-locked',
+    deviceLimit: false,
+  },
+  // لعبة الطالب (الصف الخامس) — مزيّةٌ ضمن اشتراك المواد الكامل: تُفتح لكل
+  // مشترِكٍ اشتراكُه ساري المفعول (sub_end)، ولا تُباع منفصلة.
+  'student-g5': {
+    url: 'https://games.ghiras-edu.com/student-g5/full-review',
+    slug: 'student-g5',
+    until: 'sub_end',
+    lock: '/student-game-locked',
     deviceLimit: false,
   },
 };
@@ -78,19 +89,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // صلاحية اشتراك الأداة في عمودها الخاص. والأدمِن يفتح كل شيء.
+  // صلاحية اشتراك الأداة في عمودها الخاص (أو أحد أعمدتها). والأدمِن يفتح كل شيء.
+  const cols = Array.isArray(tool.until) ? tool.until : [tool.until];
   const { data: profile } = await supabase
     .from('profiles')
-    .select(`role, status, ${tool.until}`)
+    .select(`role, status, ${cols.join(', ')}`)
     .eq('id', user.id)
     .single();
 
   const p = profile as { role?: string; status?: string; [k: string]: unknown } | null;
   const isAdmin = p?.role === 'admin';
-  const until = p ? (p[tool.until] as string | null) : null;
+  // سارٍ إن كان أدمِن، أو الحساب غير موقوف وأحدُ أعمدة الصلاحية ساري المفعول.
   const active =
     isAdmin ||
-    (p && p.status !== 'suspended' && until && new Date(until) > new Date());
+    (!!p &&
+      p.status !== 'suspended' &&
+      cols.some((c) => isStillValid((p[c] as string | null) ?? null)));
   if (!active) {
     // ليست مشترِكة في هذه الأداة — صفحة توضيحية بدل التوجيه الصامت
     return NextResponse.redirect(new URL(tool.lock, req.url));
