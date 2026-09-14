@@ -3282,7 +3282,7 @@ function pruneData(){
     if(empty) delete S.data[k]; });
   }catch(e){}
 }
-function snapshot(){ pruneData(); const o={_v:1,_at:dFull()}; SAVEKEYS.forEach(k=>o[k]=S[k]);
+function snapshot(){ pruneData(); const o={_v:1,_at:dFull(),_ts:Date.now()}; SAVEKEYS.forEach(k=>o[k]=S[k]);
   o._themes=THEMES.filter(t=>t.custom); return o; }
 function statSize(){ try{ return Math.round(JSON.stringify(snapshot()).length/1024); }catch(e){ return 0; } }
 /* ===== فحص الجهاز والمتصفح — لاختبار حقيقي على أي جهاز ===== */
@@ -3425,6 +3425,7 @@ const VERN='١١٫٢';
 let LS_OK=true, LS_MSG='', _saveT=null;
 function lsTest(){ try{ localStorage.setItem('__g','1'); localStorage.removeItem('__g'); return true; }catch(e){ return false; } }
 function autosave(){
+  cloudSchedule();
   if(!LS_OK) return;
   clearTimeout(_saveT);
   _saveT=setTimeout(()=>{
@@ -3462,7 +3463,47 @@ function fixSigKeys(){
 }
 function saveNow(){ clearTimeout(_saveT);
   try{ localStorage.setItem(LSK,JSON.stringify(snapshot())); S.savedAt=Date.now(); toast('حُفظ ✓'); }
-  catch(e){ toast('ما قدرت أحفظ — نزّلي نسخة كملف'); } }
+  catch(e){ toast('ما قدرت أحفظ — نزّلي نسخة كملف'); }
+  cloudPush(); }
+/* ================= المزامنة السحابية (حفظ سحابي كامل) =================
+   العميل لا يحمل أي مفتاح؛ الطلبات تحمل كوكيز الجلسة، والخادم + RLS يضمنان
+   أن كل مستخدمة تقرأ/تكتب صفّها هي فقط. المحلي يبقى نسخة offline دائمًا. */
+const CLOUD_URL='/api/head-records/state';
+let CLOUD_OK=true, CLOUD_MSG='', _cloudT=null, _cloudBusy=false, _cloudLastTs=0;
+function cloudSchedule(){ if(!CLOUD_OK)return; clearTimeout(_cloudT); _cloudT=setTimeout(cloudPush,2500); }
+function cloudPush(){ if(!CLOUD_OK)return Promise.resolve(false);
+  if(_cloudBusy){ cloudSchedule(); return Promise.resolve(false); }
+  _cloudBusy=true; clearTimeout(_cloudT); const snap=snapshot();
+  return fetch(CLOUD_URL,{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({data:snap})})
+    .then(r=>{ if(r.status===401||r.status===403){ CLOUD_OK=false; CLOUD_MSG=''; return false; }
+      if(r.status===413){ CLOUD_MSG='النسخة كبيرة على الحفظ السحابي — احفظي نسخة كملف'; return false; }
+      if(!r.ok){ CLOUD_MSG='تعذّر الحفظ السحابي — محفوظ محليًّا'; return false; }
+      CLOUD_MSG=''; _cloudLastTs=snap._ts; return true; })
+    .catch(()=>{ CLOUD_MSG='لا اتصال — محفوظ محليًّا، ويُزامَن لاحقًا'; return false; })
+    .finally(()=>{ _cloudBusy=false; });
+}
+function cloudBeacon(){ try{ if(!CLOUD_OK||!navigator.sendBeacon)return;
+    const blob=new Blob([JSON.stringify({data:snapshot()})],{type:'application/json'});
+    navigator.sendBeacon(CLOUD_URL,blob); }catch(e){} }
+function cloudGet(){ return fetch(CLOUD_URL,{method:'GET',credentials:'same-origin',cache:'no-store'})
+    .then(r=>{ if(r.status===401||r.status===403){ CLOUD_OK=false; return null; }
+      if(!r.ok)return null; return r.json(); })
+    .catch(()=>null); }
+/* عند الفتح: الأحدث يفوز؛ وإن كانت السحابة فارغة أو أقدم تُبذَر من المحلي */
+function cloudSync(localPre){
+  return cloudGet().then(res=>{
+    if(!res){ if(CLOUD_OK)CLOUD_MSG='تعذّرت المزامنة — تعمل محليًّا الآن'; return; }
+    const cloud=res.data, cts=(cloud&&cloud._ts)||0, lts=(localPre&&localPre._ts)||0;
+    if(cloud && cts>lts){
+      applyLS(cloud); _cloudLastTs=cts;
+      rebuild(); try{ensureTeacherField()}catch(e){} applyUI();
+      try{ localStorage.setItem(LSK,JSON.stringify(snapshot())); }catch(e){}
+      if(cur==='book')vBook(); else render();
+      toast('تمت المزامنة من السحابة ✓');
+    } else { cloudPush(); }
+  }).catch(()=>{});
+}
 /* ===== أرشفة العام الدراسي وبدء عام جديد ===== */
 const YRKEYS=['data','entries','covers','visitors','att','attLog','vn','vlog','tasks','utasks',
   'tdone','critCard','gpre','f364','f364v','f366','f366v','ev','evSig1','evSig2','calNote','bk'];
@@ -8154,8 +8195,10 @@ render();
 try{ idbTest().then(ok=>{ if(ok) return idbScan(); }).then(()=>{ if(cur!=='book')render(); }).catch(()=>{}); }catch(e){ IDBOK=false; }
 try{autoSnap()}catch(e){}
 if(_hadSave)setTimeout(()=>toast('رجعت بياناتك المحفوظة ✓'),700);
-window.addEventListener('beforeunload',()=>{try{localStorage.setItem(LSK,JSON.stringify(snapshot()));}catch(e){}});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){try{localStorage.setItem(LSK,JSON.stringify(snapshot()));}catch(e){}}});
+/* مزامنة سحابية عند الفتح (لا تعطّل الإقلاع) */
+try{ cloudSync(_pre); }catch(e){}
+window.addEventListener('beforeunload',()=>{try{localStorage.setItem(LSK,JSON.stringify(snapshot()));}catch(e){} cloudBeacon();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){try{localStorage.setItem(LSK,JSON.stringify(snapshot()));}catch(e){} cloudBeacon();}});
 /* ---- تحديث التاريخ تلقائياً كل يوم ---- */
 let LASTDAY=dISO();
 function checkDay(){ const t=dISO(); if(t!==LASTDAY){ LASTDAY=t; render(); toast('تاريخ جديد: '+dFull()); } }
