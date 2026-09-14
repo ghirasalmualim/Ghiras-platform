@@ -1181,6 +1181,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 
 const S = {
+ customRecs:[],
  school:{country:'دولة الكويت',m:'وزارة التربية',z:'منطقة ……… التعليمية',n:'مدرسة ………',d:'قسم اللغة العربية',y:'',t:''},
  me:{name:'أ/ ………',title:'رئيسة الشعبة'},
  edited:{staff:true,me:true,school:true}, principal:'', supervisor:'', assistant:'',
@@ -2216,7 +2217,7 @@ function vRecs(){
      <button class="${V==='shelf'?'on':''}" onclick="setView('shelf')">🗄 رف</button>
      <button class="${V==='grid'?'on':''}" onclick="setView('grid')">▦ شبكة</button>
      <button class="${V==='tabs'?'on':''}" onclick="setView('tabs')">🔖 فواصل</button>
-    </div><div class="ksp" style="flex:1"></div>
+    </div><div class="ksp" style="flex:1"></div><button class="cabst" onclick="addCustomRec()">＋ سجل خاص</button>
     ${V!=='grid'?`<button class="cabst" onclick="ornSheet()">🎨 الشكل</button>`:''}</div>`;
   if(V==='shelf'){ $('s-recs').innerHTML=SBAR+SW+EMPTY+shelfHTML(); return; }
   if(V==='tabs'){  $('s-recs').innerHTML=SBAR+SW+EMPTY+(S.nbOpen?tabsHTML():nbCoverHTML()); return; }
@@ -2746,7 +2747,7 @@ function nbCoverHTML(){
    <div class="nbnote">${AR(rs.length)} سجلاً — الفواصل الملونة على الحافة</div>`;
 }
 function nbOpen(v){ S.nbOpen=!!v; _navTop=true; render(); }
-function tabsHTML(){
+function tabsHTML(){ syncCustomRecs();
   const GRP=[['main','سجلات رئيسية'],['sec','سجلات ثانوية'],['extra','سجلات أخرى']];
   let n=0, out='';
   GRP.forEach(g=>{
@@ -2770,8 +2771,35 @@ function tabsHTML(){
      <div class="spine"></div><div class="rings">${rings}</div>
      <div class="tabs">${out}</div>
    </div>
-   <div class="nbnote">اضغطي أي فاصل ليفتح سجله · النقطة تبيّن حالة الاكتمال</div>`;
+   <div class="nbnote">اضغطي أي فاصل ليفتح سجله · النقطة تبيّن حالة الاكتمال</div><button class="btn" style="margin:12px auto 0;display:block;max-width:300px" onclick="addCustomRec()">＋ سجل خاص جديد</button>`;
 }
+/* ===== سجلات خاصة ينشئها رئيس الشعبة بنفسه ===== */
+const CUST_ICOS=['📋','📁','⭐','📝','📌','🗂️','🔖','📎','🧾','📊'];
+const CUST_CATS=[['main','رئيسية'],['sec','ثانوية'],['extra','أخرى']];
+function syncCustomRecs(){ if(!Array.isArray(S.customRecs))S.customRecs=[]; S.customRecs.forEach(r=>{ if(r&&r.k&&!S.records.some(x=>x.k===r.k))S.records.push(r); }); }
+function pickCI(el){ [...el.parentNode.children].forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function addCustomRec(){ syncCustomRecs();
+ const icos=CUST_ICOS.map((e,i)=>`<button type="button" class="ci${i===0?' on':''}" data-e="${e}" onclick="pickCI(this)" style="font-size:20px;width:40px;height:40px;border-radius:10px;border:1.6px solid #d8cfc6;background:#fff;margin:3px">${e}</button>`).join('');
+ const cats=CUST_CATS.map((c,i)=>`<option value="${c[0]}"${i===2?' selected':''}>${c[1]}</option>`).join('');
+ const mine=(S.customRecs||[]).map(r=>`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;border:1px solid #eadfd6;border-radius:10px;padding:7px 10px;margin-top:6px"><span>${r.ico||'📋'} ${gx(r.t)}</span><button class="btn gh" style="padding:3px 12px;margin:0" onclick="delCustomRec('${r.k}')">حذف</button></div>`).join('');
+ $('sheet').innerHTML=`<h3>سجل خاص جديد</h3>`
+  +`<div class="dim" style="margin-top:4px">أنشئي سجلك الخاص، ثم أضيفي إليه مدخلات حرّة (عنوان · تاريخ · ملاحظات · صور).</div>`
+  +`<input id="crName" type="text" style="margin-top:10px" placeholder="اسم السجل (مثال: متابعة المبادرات)">`
+  +`<div class="dim" style="margin-top:10px">الأيقونة</div><div id="crIco" style="display:flex;flex-wrap:wrap;margin-top:4px">${icos}</div>`
+  +`<div class="dim" style="margin-top:10px">الفئة</div><select id="crCat" style="margin-top:4px;width:100%;padding:10px;border-radius:10px;border:1.6px solid #d8cfc6;background:#fff;font:inherit">${cats}</select>`
+  +`<button class="btn" style="margin-top:12px" onclick="saveCustomRec()">＋ إنشاء السجل</button>`
+  +`<button class="btn gh" style="margin-top:7px" onclick="closeSheet()">إغلاق</button>`
+  +(mine?`<div class="dim" style="margin-top:14px">سجلاتك الخاصة</div>${mine}`:'');
+ $('mask').classList.add('on'); uText($('sheet')); }
+function saveCustomRec(){ const name=($('crName').value||'').trim(); if(!name){toast('اكتبي اسم السجل');return;}
+ const icoEl=document.querySelector('#crIco .ci.on'); const ico=icoEl?icoEl.dataset.e:'📋'; const cls=($('crCat')||{}).value||'extra';
+ const r={k:'cust_'+Date.now().toString(36),t:name,cls:cls,kind:'entries',src:1,custom:true,ico:ico,intro:'سجلّ خاصّ أنشأتِه بنفسك؛ أضيفي إليه ما تشائين من مدخلات.',ref:0,obj:[],f:[{k:'title',l:'العنوان',t:'text',full:1},{k:'date',l:'التاريخ',t:'text'},{k:'body',l:'الملاحظات',t:'long'},{k:'ph',l:'الصور',t:'imgs'}]};
+ S.customRecs=S.customRecs||[]; S.customRecs.push(r); syncCustomRecs(); if(typeof autosave==='function')autosave(); closeSheet(); render(); toast('أُنشئ السجل ✓'); }
+function delCustomRec(k){ if(!confirm('حذف هذا السجل الخاص وكل مدخلاته؟'))return;
+ S.customRecs=(S.customRecs||[]).filter(r=>r.k!==k); S.records=S.records.filter(r=>r.k!==k);
+ if(S.entries) delete S.entries[k];
+ if(S.data){ Object.keys(S.data).forEach(dk=>{ if(dk===k||dk.indexOf(k+'|')===0||dk.indexOf(k+'.')===0) delete S.data[dk]; }); }
+ if(typeof autosave==='function')autosave(); render(); addCustomRec(); toast('حُذف السجل'); }
 function openTab(el,k){ el.style.transform='translateX(-6px)';
   setTimeout(()=>{ ctx={rk:k,sec:null,tab:null}; go('rec'); },150); }
 function shelfHTML(){
@@ -3170,7 +3198,7 @@ function exportPDF(all){
 
 /* ================= BACKUP / RESTORE ================= */
 const SAVEKEYS=['school','me','stage','gender','subject','subjects','staff','data','entries','covers',
- 'info','recView','nbCover','nbOpen','uiFont','icon3d','cabWood','spineCol','cabTone','headLine','spineName','shelf','ornStyle','ornTone','ornMatch','wbg','ui','frontBasic','printBg','vn','vision','mission','ntElems','land','pgMode','pgZoom','seq','arch','viewYear','gcls','gridSets','gper','grows','visitors','att','critSets','critMode','fieldSets','fakeToday','edited','principal','supervisor','need','genObj','scale','vlog','critCard','gpre','tdone','utasks','attLog','morning','mornOff','bk','bkHide','termStart','calNote','tt','f364','f364v','f366','f366v','ev','evRole','evSup','evGrade','evSig1','evSig2','logos','hlayout','amirPage','front','theme','autofill','tasks','savedSig'];
+ 'info','recView','nbCover','nbOpen','uiFont','icon3d','cabWood','spineCol','cabTone','headLine','spineName','shelf','ornStyle','ornTone','ornMatch','wbg','ui','frontBasic','printBg','vn','vision','mission','ntElems','land','pgMode','pgZoom','seq','arch','viewYear','gcls','gridSets','gper','grows','visitors','att','critSets','critMode','fieldSets','fakeToday','edited','principal','supervisor','need','genObj','scale','vlog','critCard','gpre','tdone','utasks','attLog','morning','mornOff','bk','bkHide','termStart','calNote','tt','f364','f364v','f366','f366v','ev','evRole','evSup','evGrade','evSig1','evSig2','logos','hlayout','amirPage','front','theme','autofill','tasks','savedSig','customRecs'];
 /* سجلات تُنشأ بمجرد فتح الشاشة وتبقى فارغة — ننظّفها قبل الحفظ */
 function pruneData(){
   try{ Object.keys(S.data||{}).forEach(k=>{ const f=S.data[k];
