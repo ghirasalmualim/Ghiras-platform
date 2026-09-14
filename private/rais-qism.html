@@ -2906,6 +2906,7 @@ function vStaff(){
   <div class="dim" style="margin-bottom:9px">أسرع طريقة: انسخي الجدول من Excel والصقيه. أو ارفعي ملف <b>xlsx</b> أو <b>csv</b> — يعمل حتى بدون إنترنت.</div>
   <div class="row"><button class="btn" onclick="pasteStaff()">📋 لصق من Excel</button>
    <button class="btn o" onclick="fileStaff()">📄 رفع ملف</button></div>
+  ${dupCount()?`<button class="btn" style="margin-top:8px;background:#C9A227;border-color:#C9A227" onclick="dedupeCurrentStaff()">🔗 دمج الأسماء المكررة (${AR(dupCount())})</button>`:''}
   ${UNDOSTAFF?`<button class="btn gh" style="margin-top:8px;color:var(--red);border-color:var(--red)" onclick="undoImport()">↩︎ تراجع عن آخر استيراد (${AR((UNDOSTAFF||[]).length)} قبل)</button>`:''}
   ${junkStaff().length?`<button class="btn" style="margin-top:8px;background:var(--red);border-color:var(--red)" onclick="cleanStaffSheet()">🗑 تنظيف: ${AR(junkStaff().length)} أسماء غير مفهومة</button>`:''}
   <div class="dim" style="margin-top:6px;line-height:1.8">الصيغ المقبولة: <b>xlsx · CSV · Word (docx) · PDF</b> — ولا تُقرأ الصور.<br>
@@ -3902,6 +3903,29 @@ function dedupeStaff(list){
     out[j]=rich;
   });
   return out;
+}
+/* عدّ الأسماء المكررة في الكادر الحالي */
+function dupCount(){ const seen={}; let d=0; (S.staff||[]).forEach(s=>{ const k=hdNorm(String(s.n||'')); if(!k)return; if(seen[k])d++; else seen[k]=1; }); return d; }
+/* دمج التكرار في الكادر الحالي (بدون إعادة استيراد) — بالاسم، نُبقي الأغنى ونملأ فراغاته */
+function dedupeCurrentStaff(){
+  const list=S.staff||[]; if(list.length<2){ toast('ما فيه تكرار'); return; }
+  const score=s=>Object.keys(s).filter(k=>k!=='id'&&k!=='isNew'&&String(s[k]||'').trim()).length;
+  const seen={}, out=[];
+  list.forEach(s=>{
+    const key=hdNorm(String(s.n||'')); if(!key){ out.push(s); return; }
+    if(seen[key]===undefined){ seen[key]=out.length; out.push(s); return; }
+    const j=seen[key], rich=score(s)>score(out[j])?s:out[j], poor=rich===s?out[j]:s;
+    Object.keys(poor).forEach(k=>{ if(k==='id'||k==='isNew')return;
+      if(!String(rich[k]||'').trim() && String(poor[k]||'').trim()) rich[k]=poor[k]; });
+    if(!rich.exp && poor.exp) rich.exp=poor.exp;
+    rich.isNew=(parseInt(AR2EN(String(rich.exp)).replace(/[^0-9]/g,''))||0)===0;
+    out[j]=rich;
+  });
+  const removed=list.length-out.length;
+  if(!removed){ toast('ما فيه أسماء مكررة ✓'); return; }
+  UNDOSTAFF=JSON.parse(JSON.stringify(S.staff));
+  S.staff=out; S.edited=S.edited||{}; S.edited.staff=true; autosave(); render();
+  toast('دُمج '+AR(removed)+' مكرر — الكادر '+AR(out.length)+' ✓');
 }
 function parseRows(rows){
   if(!rows.length)return [];
