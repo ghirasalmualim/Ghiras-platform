@@ -3269,7 +3269,7 @@ function exportPDF(all){
 
 /* ================= BACKUP / RESTORE ================= */
 const SAVEKEYS=['school','me','stage','gender','subject','subjects','staff','data','entries','covers',
- 'info','recView','nbCover','nbOpen','uiFont','icon3d','cabWood','spineCol','cabTone','headLine','spineName','shelf','ornStyle','ornTone','ornMatch','wbg','ui','frontBasic','printBg','vn','vision','mission','ntElems','land','pgMode','pgZoom','seq','arch','viewYear','gcls','gridSets','gper','grows','visitors','att','critSets','critMode','fieldSets','fakeToday','edited','principal','supervisor','need','genObj','scale','vlog','critCard','gpre','tdone','utasks','attLog','morning','mornOff','bk','bkHide','termStart','calNote','tt','f364','f364v','f366','f366v','ev','evRole','evSup','evGrade','evSig1','evSig2','logos','hlayout','amirPage','front','theme','autofill','tasks','savedSig','customRecs','recMeta','hidden'];
+ 'info','recView','nbCover','nbOpen','uiFont','icon3d','cabWood','spineCol','cabTone','headLine','spineName','shelf','ornStyle','ornTone','ornMatch','wbg','ui','frontBasic','printBg','vn','vision','mission','ntElems','land','pgMode','pgZoom','seq','arch','viewYear','gcls','gridSets','gper','grows','visitors','att','critSets','critMode','fieldSets','fakeToday','edited','principal','supervisor','need','genObj','scale','vlog','critCard','gpre','tdone','utasks','attLog','morning','mornOff','bk','bkHide','termStart','calNote','tt','f364','f364v','f366','f366v','ev','evRole','evSup','evGrade','evSig1','evSig2','logos','hlayout','amirPage','front','theme','autofill','tasks','savedSig','customRecs','recMeta','hidden','_defBlue'];
 /* سجلات تُنشأ بمجرد فتح الشاشة وتبقى فارغة — ننظّفها قبل الحفظ */
 function pruneData(){
   try{ Object.keys(S.data||{}).forEach(k=>{ const f=S.data[k];
@@ -3451,6 +3451,12 @@ function applyLS(o){
   SAVEKEYS.forEach(k=>{ if(o[k]!==undefined)S[k]=o[k]; });
   (o._themes||[]).forEach(t=>{ if(!THEMES.find(x=>x.id===t.id))THEMES.push(t); });
   fixSigKeys();
+  /* ترقية لمرة واحدة: النموذج الافتراضي صار «أزرق مائي» (p1510). القرار مبني
+     على اللقطة المُحمَّلة نفسها (o._defBlue) لا على الجلسة، فيسري صحيحاً سواء
+     حُمِّلت من المحلي أو من السحابة. من بقيت على الافتراضي القديم (toile) ولم
+     تبدّل تُرفَع مرة وتُعلَّم، وتنتقل الترقية مع اللقطة لباقي الأجهزة؛ ومن اختارت
+     نموذجاً آخر عمداً يبقى اختيارها. */
+  if(o._defBlue!==1){ if(S.theme==='toile') S.theme='p1510'; S._defBlue=1; }
   S.savedAt=Date.now(); return true;
 }
 /* ترقية: توقيعات المعلمين كانت تُحفظ بالمفتاح نفسه المحجوز لتوقيع المُدخلة */
