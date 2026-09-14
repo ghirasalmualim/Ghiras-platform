@@ -2848,7 +2848,7 @@ function vStaff(){
   <button class="btn gh" style="margin-top:8px" onclick="ctx={rk:'visit',tab:'ent',sec:'budget'};MODE='form';go('rec')">🏫 ميزانية الفصول والهيئة التدريسية</button>
   <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px">
    <div class="lbl" style="margin:0">الكادر الحالي</div>
-   <button class="snip" onclick="SHOWCIVIL=!SHOWCIVIL;render()">${SHOWCIVIL?'🙈 إخفاء الأرقام المدنية':'👁 إظهار الأرقام المدنية'}</button></div>
+   </div>
   ${S.staff.length>STAFFCAP?`<div class="card" style="background:var(--goldsoft);border-color:#EFE3CB">
     <div class="dim" style="color:#7A5E28">عدد الكادر <b>${AR(S.staff.length)}</b> — تُعرض أول ${AR(STAFFCAP)} فقط حتى لا تبطئ الشاشة.</div></div>`:''}
   ${S.staff.slice(0,STAFFCAP).map(s=>`<div class="card" onclick="editStaff(${s.id})" style="cursor:pointer">
@@ -3713,7 +3713,7 @@ const HDMAP={'الاسم':'name','الاسم الرباعي':'name','اسم ال
  'المدرسة السابقة':'note','مصدر المؤهل':'qualSrc','المؤهل وتاريخه':'qual',
  'اسم المعلم رباعياً':'name','الاسم رباعي':'name','اسم المعلمة رباعي':'name'};
 let PBUF=null, SHOWCIVIL=false;
-function maskCivil(v){ if(!v)return '—'; v=String(v); return SHOWCIVIL?v:('•'.repeat(Math.max(0,v.length-4))+v.slice(-4)); }
+function maskCivil(v){ if(!v)return '—'; return String(v); }
 /* عناوين النماذج الوزارية تجي بالتطويل والتشكيل وبأشكال ألف مختلفة */
 function hdNorm(s){
   return String(s==null?'':s)
@@ -4406,7 +4406,7 @@ function commitImport(append){
   PBUF.forEach(o=>{ id++;
     base.push({id,n:o.name,civil:o.civil||'',file:o.file||'',nat:o.nat||'',qual:o.qual||'',
       sp:o.spec||S.subject,job:o.job||G().tn,grades:o.grades||'',cls:o.cls||'',qualDate:o.qualDate||'',
-      load:o.load||'',exp:parseInt(String(o.exp).replace(/[^0-9]/g,''))||0,join:o.join||'',
+      load:o.load||'',exp:parseInt(AR2EN(String(o.exp)).replace(/[^0-9]/g,''))||0,join:o.join||'',
       promo:o.promo||'',expHere:o.expHere||'',home:o.home||'',mobile:o.mobile||'',note:o.note||'',
       isNew:(parseInt(String(o.exp).replace(/[^0-9]/g,''))||0)===0});
   });
@@ -4509,7 +4509,7 @@ function saveStaff(){
   const s=ctx._sd;
   if(!s) return;                       /* ضغطة مكرّرة سريعة — الحفظ تمّ فعلاً */
   if(!s.n||!s.n.trim()){toast('اكتبي الاسم أولاً');return;}
-  s.exp=parseInt(String(s.exp).replace(/[^0-9]/g,''))||0; s.isNew=s.exp===0;
+  s.exp=parseInt(AR2EN(String(s.exp)).replace(/[^0-9]/g,''))||0; s.isNew=s.exp===0;
   if(s._new){
     const nm=String(s.n||'').replace(/\s+/g,' ').trim();
     const cv=String(s.civil||'').replace(/\D/g,'');
