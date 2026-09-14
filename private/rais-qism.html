@@ -3880,6 +3880,29 @@ function findHeader(rows){
   }
   return {A,B, start: best+(two?2:1)};
 }
+/* الرقم المدني الكويتي = ١٢ خانة متتالية — نلتقطه من أي خلية في الصف حتى لو كان
+   مدموجاً تحت رقم الملف في عمود واحد. لا يعبر السطر الواحد فلا يخلط رقمين. */
+function findCivil(r){
+  for(let i=0;i<r.length;i++){
+    const cm=AR2EN(String(r[i]==null?'':r[i])).match(/(?:^|\D)(\d{12})(?:\D|$)/);
+    if(cm) return cm[1];
+  }
+  return '';
+}
+/* إزالة التكرار بالاسم (ملفات فيها جدول ثانٍ كالجدول الأسبوعي يكرّر الأسماء).
+   نُبقي الصف الأغنى بالبيانات لكل اسم، ونملأ فراغاته من نظيره الأفقر. */
+function dedupeStaff(list){
+  const seen={}, out=[];
+  const score=o=>Object.keys(o).filter(k=>String(o[k]||'').trim()).length;
+  (list||[]).forEach(o=>{
+    const key=hdNorm(o.name||''); if(!key) return;
+    if(seen[key]===undefined){ seen[key]=out.length; out.push(o); return; }
+    const j=seen[key], rich=score(o)>score(out[j])?o:out[j], poor=rich===o?out[j]:o;
+    Object.keys(poor).forEach(k=>{ if(!String(rich[k]||'').trim() && String(poor[k]||'').trim()) rich[k]=poor[k]; });
+    out[j]=rich;
+  });
+  return out;
+}
 function parseRows(rows){
   if(!rows.length)return [];
   const H=findHeader(rows);
@@ -3900,6 +3923,7 @@ function parseRows(rows){
       }
       put(o, kA||kB, raw.replace(/\s+/g,' '));
     });
+    if(!o.civil){ const c=findCivil(r); if(c) o.civil=c; }
     return o;
   }).filter(o=>o.name && !/مثال/.test(o.name) && !hdKey(o.name));
 }
@@ -4504,11 +4528,13 @@ function mapApply(){
     r.forEach((v,i)=>{ const k=MAPBUF[i]; if(!k)return;
       const t=String(v==null?'':v).replace(/\s+/g,' ').trim(); if(!t)return;
       o[k]= o[k] ? (o[k]+' '+t).trim() : t; });
+    if(!o.civil){ const c=findCivil(r); if(c) o.civil=c; }
     return o; }).filter(o=>o.name && !junkTxt(o.name));
   if(!d.length){ toast('ما طلع أي صف — جرّبي عموداً آخر للاسم'); return; }
   preview(d);
 }
 function preview(data,dropped){
+  data=dedupeStaff(data);
   PBUF=data;
   $('sheet').innerHTML=`<h3>معاينة ${AR(data.length)} صفاً</h3>
    <div class="dim">راجعي البيانات قبل الاستيراد. الصفوف بلا اسم تُتجاهَل تلقائياً.</div>
@@ -4530,11 +4556,15 @@ function commitImport(append){
   const base=append?S.staff.slice():[];
   let id=base.reduce((m,s)=>Math.max(m,s.id),0);
   PBUF.forEach(o=>{ id++;
+    let expN=parseInt(AR2EN(String(o.exp)).replace(/[^0-9]/g,''))||0;
+    /* ملفات «المشغول الفعلي» ما فيها عمود خبرة — نحسبها من سنة التعيين */
+    if(!expN && o.join){ const jm=AR2EN(String(o.join)).match(/(\d{4})/);
+      if(jm){ const jy=+jm[1], cy=new Date().getFullYear(); if(jy>=1980 && jy<=cy) expN=cy-jy; } }
     base.push({id,n:o.name,civil:o.civil||'',file:o.file||'',nat:o.nat||'',qual:o.qual||'',
       sp:o.spec||S.subject,job:o.job||G().tn,grades:o.grades||'',cls:o.cls||'',qualDate:o.qualDate||'',
-      load:o.load||'',exp:parseInt(AR2EN(String(o.exp)).replace(/[^0-9]/g,''))||0,join:o.join||'',
+      load:o.load||'',exp:expN,join:o.join||'',
       promo:o.promo||'',expHere:o.expHere||'',home:o.home||'',mobile:o.mobile||'',note:o.note||'',
-      isNew:(parseInt(String(o.exp).replace(/[^0-9]/g,''))||0)===0});
+      isNew:expN===0});
   });
   UNDOSTAFF=JSON.parse(JSON.stringify(S.staff||[]));
   S.staff=base; S.edited=S.edited||{}; S.edited.staff=true; PBUF=null; closeSheet(); render();
