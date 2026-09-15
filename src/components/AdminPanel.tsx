@@ -53,6 +53,7 @@ const TOOL_COLS = [
   'workshops_until',
   'clock_until',
   'gharas_bank_until',
+  'agenda_until',
 ] as const;
 
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
@@ -222,6 +223,7 @@ export default function AdminPanel() {
   // الستوديو مستثنى عمدًا: صار يُباع بالحصص لا بالمدة — يُشحن عبر بادج
   // «🎬 رصيد حصص الستوديو» أدناه (باقة حصة / خمس حصص)، لا بمنح ٦ أشهر.
   const TOOLS: { key: string; label: string; emoji: string }[] = [
+    { key: 'agenda', label: 'أجندتي', emoji: '🌿' },
     { key: 'gradebook', label: 'سجل الدرجات الذكي', emoji: '📊' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
     { key: 'head_records', label: 'سجلات رئيس الشعبة', emoji: '🗂️' },
