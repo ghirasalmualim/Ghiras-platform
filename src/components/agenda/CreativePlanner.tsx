@@ -293,31 +293,37 @@ export default function CreativePlanner({ canvas, onCommit }: { canvas: Canvas; 
         )}
       </div>
 
-      {/* شريط أدوات العنصر المحدّد */}
+      {/* شريط أدوات العنصر المحدّد — عائم ثابت أسفل الشاشة (فوق شريط التنقّل) */}
       {selEl && (
-        <div className="bg-white rounded-2xl p-2.5 border border-sage/15 shadow-lift">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button onClick={() => dupEl(selEl.id)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">⧉ نسخ</button>
-            <button onClick={() => setZ(selEl.id, true)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">▲ أمام</button>
-            <button onClick={() => setZ(selEl.id, false)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">▼ خلف</button>
-            {(selEl.type === 'note' || selEl.type === 'task') && (
-              <select value={selEl.shape || 'square'} onChange={(e) => updateEl(selEl.id, { shape: e.target.value })} className="rounded-lg bg-white border border-sage/25 px-2 py-1.5 text-[13px] font-bold text-sage-deep">
-                {NOTE_SHAPES.map((n) => (
-                  <option key={n.k} value={n.k}>{n.name}</option>
-                ))}
-              </select>
-            )}
-            <button onClick={() => removeEl(selEl.id)} className="rounded-lg bg-white border border-red-200 px-3 py-1.5 text-[13px] font-bold text-red-500 mr-auto">🗑 حذف</button>
-          </div>
-          {/* لون */}
-          <div className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t border-sage/10">
-            {selEl.type === 'sticker'
-              ? ['#E48AA6', '#5C7F60', '#5E8FB5', '#8E7BC0', '#D9B24C', '#E08A5B', '#41603F', '#9A9A94'].map((c) => (
-                  <button key={c} onClick={() => updateEl(selEl.id, { color: c })} className={`w-6 h-6 rounded-full border ${selEl.color === c ? 'ring-2 ring-sage-deep border-white' : 'border-black/10'}`} style={{ background: c }} />
-                ))
-              : PASTELS.map((p) => (
-                  <button key={p.k} onClick={() => updateEl(selEl.id, { color: p.k })} title={p.n} className={`w-6 h-6 rounded-full border ${selEl.color === p.k || (!selEl.color && p.k === 'none') ? 'ring-2 ring-sage-deep border-white' : 'border-black/10'}`} style={{ background: p.c }} />
-                ))}
+        <div className="fixed inset-x-0 bottom-[70px] md:bottom-4 z-40 px-3">
+          <div className="mx-auto max-w-3xl bg-white/95 backdrop-blur rounded-2xl p-2.5 border border-sage/25 shadow-lift">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[12.5px] font-extrabold text-sage-deep">🎨 أدوات العنصر</span>
+              <button onClick={() => setSel(null)} className="mr-auto w-7 h-7 rounded-full bg-sage-light text-sage-deep font-bold">✕</button>
+            </div>
+            {/* لون */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              {selEl.type === 'sticker'
+                ? ['#E48AA6', '#5C7F60', '#5E8FB5', '#8E7BC0', '#D9B24C', '#E08A5B', '#41603F', '#9A9A94'].map((c) => (
+                    <button key={c} onClick={() => updateEl(selEl.id, { color: c })} className={`w-7 h-7 rounded-full border ${selEl.color === c ? 'ring-2 ring-sage-deep border-white' : 'border-black/10'}`} style={{ background: c }} />
+                  ))
+                : PASTELS.map((p) => (
+                    <button key={p.k} onClick={() => updateEl(selEl.id, { color: p.k })} title={p.n} className={`w-7 h-7 rounded-full border ${selEl.color === p.k || (!selEl.color && p.k === 'none') ? 'ring-2 ring-sage-deep border-white' : 'border-black/10'}`} style={{ background: p.c }} />
+                  ))}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button onClick={() => dupEl(selEl.id)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">⧉ نسخ</button>
+              <button onClick={() => setZ(selEl.id, true)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">▲ أمام</button>
+              <button onClick={() => setZ(selEl.id, false)} className="rounded-lg bg-sage-light px-3 py-1.5 text-[13px] font-bold text-sage-deep">▼ خلف</button>
+              {(selEl.type === 'note' || selEl.type === 'task') && (
+                <select value={selEl.shape || 'square'} onChange={(e) => updateEl(selEl.id, { shape: e.target.value })} className="rounded-lg bg-white border border-sage/25 px-2 py-1.5 text-[13px] font-bold text-sage-deep">
+                  {NOTE_SHAPES.map((n) => (
+                    <option key={n.k} value={n.k}>{n.name}</option>
+                  ))}
+                </select>
+              )}
+              <button onClick={() => removeEl(selEl.id)} className="rounded-lg bg-red-500 text-white px-4 py-1.5 text-[13px] font-extrabold mr-auto">🗑 حذف</button>
+            </div>
           </div>
         </div>
       )}
