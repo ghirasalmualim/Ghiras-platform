@@ -31,6 +31,10 @@ export interface ToolDef {
  * بمفتاحٍ خارج هذا السجلّ لا يُعرَض (unknown → يُتجاهل بأمان).
  */
 export const TOOL_REGISTRY: Record<string, ToolDef> = {
+  my_agenda: {
+    key: 'my_agenda', name: 'أجندتي', emoji: '🌿',
+    href: '/my-agenda', col: 'agenda_until', locked: '/my-agenda-locked',
+  },
   attendance: {
     key: 'attendance', name: 'سجل الحضور الذكي', emoji: '🗓️',
     href: '/attendance', col: 'attendance_until', locked: '/attendance-locked',

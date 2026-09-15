@@ -20,6 +20,7 @@ export const TOOL_COLS = [
   'workshops_until',
   'clock_until',
   'gharas_bank_until',
+  'agenda_until',
 ] as const;
 
 export type ToolCol = (typeof TOOL_COLS)[number];
@@ -41,6 +42,7 @@ export const ENTITLEMENT_NAMES: Record<string, string> = {
   workshops_until: 'عروض غراس التفاعلية',
   clock_until: 'الساعة التفاعلية',
   gharas_bank_until: 'بنك غراس',
+  agenda_until: 'أجندتي',
 };
 
 /** كل الأعمدة التي تحمل تاريخ انتهاء — `sub_end` ثم الأدوات. */

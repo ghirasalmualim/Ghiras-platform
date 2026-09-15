@@ -156,6 +156,27 @@ export default function TeacherPage() {
                 </div>
               )}
             </div>
+
+            <div className="grouplbl">التنظيم الشخصي</div>
+            <div className="row one">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <a className="tile" href="/my-agenda">
+                  <span className="em" aria-hidden="true">
+                    🌿
+                  </span>
+                  <span>
+                    <b>
+                      أجندتي
+                      <span className="tag paid">مستقل</span>
+                    </b>
+                    <small>مهام · تقويم شهري · إنجازات بالصور · ملف إنجاز PDF</small>
+                  </span>
+                </a>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <AddToMySpace itemType="tool" itemKey="my_agenda" label="أجندتي" />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="legend">
