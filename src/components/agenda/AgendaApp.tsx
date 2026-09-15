@@ -2138,15 +2138,15 @@ function PortfolioBuilder({
                 )}
               </div>
 
-              {/* التذييل */}
+              {/* التذييل — رئيسة القسم يمين، مديرة المدرسة يسار */}
               <div className="flex items-end justify-between mt-4 text-[12.5px]">
-                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-                  <div className="font-bold text-ink">مديرة المدرسة</div>
-                  <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
-                </div>
                 <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
                   <div className="font-bold text-ink">رئيسة القسم</div>
                   <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
+                </div>
+                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+                  <div className="font-bold text-ink">مديرة المدرسة</div>
+                  <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
                 </div>
               </div>
             </div>
