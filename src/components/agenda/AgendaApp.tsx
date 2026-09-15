@@ -2120,8 +2120,8 @@ function PortfolioBuilder({
 
               {a.desc ? <p className="text-[12px] text-ink/75 mt-2 leading-relaxed text-center">{a.desc}</p> : null}
 
-              {/* صندوق الصور — ارتفاع ثابت والصور كاملة داخله */}
-              <div className="mt-3 rounded-xl p-3 relative" style={{ border: '2px solid #222', height: 360 }}>
+              {/* صندوق الصور — ارتفاع ثابت والصور كاملة داخله بلا تجاوز */}
+              <div className="mt-3 rounded-xl p-3 relative" style={{ border: '2px solid #222', height: 360, overflow: 'hidden' }}>
                 <div className="absolute -top-3 right-6 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصور</div>
                 {a.images.length ? (
                   <div className={`grid gap-2 h-full ${a.images.length === 1 ? 'grid-cols-1' : a.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
