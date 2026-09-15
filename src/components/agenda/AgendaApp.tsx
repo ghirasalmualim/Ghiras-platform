@@ -2120,22 +2120,24 @@ function PortfolioBuilder({
 
               {a.desc ? <p className="text-[12px] text-ink/75 mt-2 leading-relaxed text-center">{a.desc}</p> : null}
 
-              {/* صندوق الصور — ارتفاع ثابت والصور كاملة داخله بلا تجاوز */}
-              <div className="mt-3 rounded-xl p-3 relative" style={{ border: '2px solid #222', height: 360, overflow: 'hidden' }}>
-                <div className="absolute -top-3 right-6 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصور</div>
-                {a.images.length ? (
-                  <div className={`grid gap-2 h-full ${a.images.length === 1 ? 'grid-cols-1' : a.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
-                    {a.images.slice(0, 4).map((img) => {
-                      const u = imgUrl(img);
-                      return u ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={img.id} src={u} alt="" className="w-full h-full object-contain rounded-lg bg-sage-light/20" />
-                      ) : null;
-                    })}
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-ink/30 text-sm">— لا صور —</div>
-                )}
+              {/* صندوق الصور — التسمية خارج المربع المقصوص كي لا تُقصّ */}
+              <div className="mt-4 relative">
+                <div className="absolute -top-3 right-6 z-10 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصور</div>
+                <div className="rounded-xl p-3" style={{ border: '2px solid #222', height: 360, overflow: 'hidden' }}>
+                  {a.images.length ? (
+                    <div className={`grid gap-2 h-full ${a.images.length === 1 ? 'grid-cols-1' : a.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
+                      {a.images.slice(0, 4).map((img) => {
+                        const u = imgUrl(img);
+                        return u ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img key={img.id} src={u} alt="" className="w-full h-full object-contain rounded-lg bg-sage-light/20" />
+                        ) : null;
+                      })}
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-ink/30 text-sm">— لا صور —</div>
+                  )}
+                </div>
               </div>
 
               {/* التذييل — رئيسة القسم يمين، مديرة المدرسة يسار */}
