@@ -156,6 +156,17 @@ export default function TeacherPage() {
                 </div>
               )}
             </div>
+            <div className="row one">
+              <a className="tile" href="/head-shares">
+                <span className="em" aria-hidden="true">
+                  🤝
+                </span>
+                <span>
+                  <b>مشاركة الملفات</b>
+                  <small>شاركي كل معلمة صفحتها لترفع صورها وأوراقها</small>
+                </span>
+              </a>
+            </div>
 
             <div className="grouplbl">التنظيم الشخصي</div>
             <div className="row one">
