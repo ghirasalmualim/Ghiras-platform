@@ -61,6 +61,12 @@ export interface PortfolioMeta {
   head?: string; // رئيسة القسم
   principal?: string; // مديرة المدرسة
   logo?: string; // شعار المدرسة (dataURL اختياري)
+  // بيانات المعلمة الأساسية (صفحة تمهيدية تُكتب مرة واحدة)
+  civilId?: string; // الرقم المدني
+  fileNo?: string; // رقم الملف
+  specialty?: string; // التخصص
+  appointYear?: string; // سنة التعيين
+  experience?: string; // سنوات الخبرة
 }
 export interface AgendaData {
   _v: number;
@@ -2041,6 +2047,18 @@ function PortfolioBuilder({
             {field('head', 'رئيسة القسم (اختياري)', 'الاسم')}
             {field('principal', 'مديرة المدرسة (اختياري)', 'الاسم')}
           </div>
+
+          {/* بيانات المعلمة الأساسية — تُكتب مرة واحدة وتظهر كصفحة تمهيدية */}
+          <div className="rounded-xl bg-sage-light/40 border border-sage/15 p-3">
+            <div className="text-[12px] font-extrabold text-sage-deep mb-2">🪪 بيانات المعلمة الأساسية <span className="font-normal text-ink/55">(تُكتب مرة واحدة — تظهر أول صفحة في السجل)</span></div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {field('civilId', 'الرقم المدني', 'مثال: 2xxxxxxxxxxx')}
+              {field('fileNo', 'رقم الملف', 'مثال: 12345')}
+              {field('specialty', 'التخصص', 'مثال: تربية إسلامية')}
+              {field('appointYear', 'سنة التعيين', 'مثال: 2015')}
+              {field('experience', 'سنوات الخبرة', 'مثال: 10 سنوات')}
+            </div>
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => logoRef.current?.click()} className="rounded-xl bg-sage-light text-sage-deep font-bold text-sm px-4 py-2.5">🏫 {meta.logo ? 'تغيير شعار المدرسة' : 'رفع شعار المدرسة (اختياري)'}</button>
             {meta.logo && (
@@ -2067,10 +2085,71 @@ function PortfolioBuilder({
         </div>
       </div>
 
-      {/* الصفحات الرسمية — صفحة لكل إنجاز */}
+      {/* الصفحات الرسمية — صفحة البيانات الأساسية ثم صفحة لكل إنجاز */}
       <div className="port-pages p-3 md:p-6 space-y-6" style={{ fontFamily: "var(--font-cairo),'Tajawal',sans-serif" }}>
+        {/* صفحة تمهيدية — بيانات المعلمة الأساسية (دائمًا أولًا) */}
+        <div dir="rtl" className="port-page bg-white mx-auto p-5" style={{ maxWidth: 760, border: '1.5px solid #222', boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
+          {/* الترويسة الوزارية على اليمين، الشعار على اليسار */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-right text-[12px] text-ink/80 leading-relaxed" style={{ minWidth: '42%' }}>
+              <div className="font-bold">وزارة التربية</div>
+              {meta.region ? <div>الإدارة العامة لمنطقة {meta.region} التعليمية</div> : <div>الإدارة العامة لمنطقة ……… التعليمية</div>}
+              {meta.school ? <div>مدرسة {meta.school}</div> : <div>مدرسة …………</div>}
+              {meta.dept ? <div>قسم {meta.dept}</div> : null}
+            </div>
+            <div className="flex-1" />
+            <div className="w-20 flex items-start justify-center">
+              {meta.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={meta.logo} alt="" className="max-h-16 max-w-full object-contain" />
+              ) : null}
+            </div>
+          </div>
+
+          {/* العنوان */}
+          <div className="flex justify-center my-8">
+            <div className="rounded-2xl px-10 py-3 font-extrabold text-sage-deep text-2xl" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+              ملف الإنجاز المهني
+            </div>
+          </div>
+
+          <div className="text-center font-bold text-ink text-base mb-4">بيانات المعلمة الأساسية</div>
+
+          {/* جدول البيانات */}
+          <table className="w-full border-collapse text-[13.5px] mx-auto" dir="rtl" style={{ maxWidth: 560 }}>
+            <tbody>
+              {([
+                ['الاسم', meta.teacher],
+                ['الرقم المدني', meta.civilId],
+                ['رقم الملف', meta.fileNo],
+                ['التخصص', meta.specialty],
+                ['اسم المدرسة', meta.school],
+                ['سنة التعيين', meta.appointYear],
+                ['سنوات الخبرة', meta.experience],
+              ] as const).map(([label, val]) => (
+                <tr key={label}>
+                  <td className="border border-ink/40 p-2.5 font-bold text-ink text-center w-2/5" style={{ background: '#FAFAF4' }}>{label}</td>
+                  <td className="border border-ink/40 p-2.5 text-ink text-center">{val || '…………'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* التذييل — رئيسة القسم يمين، مديرة المدرسة يسار */}
+          <div className="flex items-end justify-between mt-10 text-[12.5px]">
+            <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+              <div className="font-bold text-ink">رئيسة القسم</div>
+              <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
+            </div>
+            <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+              <div className="font-bold text-ink">مديرة المدرسة</div>
+              <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
+            </div>
+          </div>
+        </div>
+
         {included.length === 0 ? (
-          <p className="text-center text-sage/60 font-bold py-10">لا إنجازات ضمن الاختيار.</p>
+          <p className="agenda-noprint text-center text-sage/60 font-bold py-10">لا إنجازات ضمن الاختيار.</p>
         ) : (
           included.map((a) => (
             <div key={a.id} dir="rtl" className="port-page bg-white mx-auto p-5" style={{ maxWidth: 760, border: '1.5px solid #222', boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
