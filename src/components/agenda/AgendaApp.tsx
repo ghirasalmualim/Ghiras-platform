@@ -2023,7 +2023,7 @@ function PortfolioBuilder({
 
   return (
     <div className="fixed inset-0 z-[60] bg-cream overflow-y-auto agenda-report">
-      <style>{`@media print { html,body{height:auto!important;overflow:visible!important;background:#fff!important} body *{visibility:hidden!important} .agenda-report,.agenda-report *{visibility:visible!important} .agenda-report{position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;background:#fff!important} .agenda-noprint{display:none!important} .port-page{break-after:page;page-break-after:always;box-shadow:none!important;border:1.5px solid #222!important;margin:0 auto!important} .port-page:last-child{break-after:auto;page-break-after:auto} }`}</style>
+      <style>{`@page{size:A4;margin:8mm} @media print { html,body{height:auto!important;overflow:visible!important;background:#fff!important;margin:0!important} body *{visibility:hidden!important} .agenda-report,.agenda-report *{visibility:visible!important} .agenda-report{position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;background:#fff!important} .agenda-noprint{display:none!important} .port-pages{padding:0!important} .port-page{break-inside:avoid;page-break-inside:avoid;break-after:page;page-break-after:always;box-shadow:none!important;border:1.2px solid #222!important;margin:0 auto!important;max-width:none!important;width:100%!important} .port-page:last-child{break-after:auto;page-break-after:auto} }`}</style>
 
       {/* شريط الخيارات (لا يُطبع) */}
       <div className="agenda-noprint bg-white border-b border-sage/15 p-4">
@@ -2068,33 +2068,31 @@ function PortfolioBuilder({
       </div>
 
       {/* الصفحات الرسمية — صفحة لكل إنجاز */}
-      <div className="p-3 md:p-6 space-y-6" style={{ fontFamily: "var(--font-cairo),'Tajawal',sans-serif" }}>
+      <div className="port-pages p-3 md:p-6 space-y-6" style={{ fontFamily: "var(--font-cairo),'Tajawal',sans-serif" }}>
         {included.length === 0 ? (
           <p className="text-center text-sage/60 font-bold py-10">لا إنجازات ضمن الاختيار.</p>
         ) : (
           included.map((a) => (
-            <div key={a.id} className="port-page bg-white mx-auto p-6" style={{ maxWidth: 760, border: '1.5px solid #222', boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
-              {/* الترويسة */}
+            <div key={a.id} dir="rtl" className="port-page bg-white mx-auto p-5" style={{ maxWidth: 760, border: '1.5px solid #222', boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
+              {/* الترويسة — النص الوزاري على اليمين، الشعار على اليسار */}
               <div className="flex items-start justify-between gap-3">
-                <div className="w-24 flex items-center justify-center">
-                  {meta.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={meta.logo} alt="" className="max-h-20 max-w-full object-contain" />
-                  ) : null}
-                </div>
-                <div className="text-center flex-1 pt-1 text-[11px] text-ink/50 leading-relaxed">
-                  <div>دولة الكويت</div>
-                </div>
-                <div className="text-right text-[12px] text-ink/80 leading-relaxed min-w-[38%]">
+                <div className="text-right text-[12px] text-ink/80 leading-relaxed" style={{ minWidth: '42%' }}>
                   <div className="font-bold">وزارة التربية</div>
                   {meta.region ? <div>الإدارة العامة لمنطقة {meta.region} التعليمية</div> : <div>الإدارة العامة لمنطقة ……… التعليمية</div>}
                   {meta.school ? <div>مدرسة {meta.school}</div> : <div>مدرسة …………</div>}
                   {meta.dept ? <div>قسم {meta.dept}</div> : null}
                 </div>
+                <div className="flex-1" />
+                <div className="w-20 flex items-start justify-center">
+                  {meta.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={meta.logo} alt="" className="max-h-16 max-w-full object-contain" />
+                  ) : null}
+                </div>
               </div>
 
               {/* عنوان القسم */}
-              <div className="flex justify-center my-4">
+              <div className="flex justify-center my-3">
                 <div className="rounded-2xl px-8 py-2 font-extrabold text-sage-deep text-lg" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
                   {meta.dept ? `قسم ${meta.dept}` : 'القسم'}
                 </div>
@@ -2120,28 +2118,28 @@ function PortfolioBuilder({
                 </tbody>
               </table>
 
-              {a.desc ? <p className="text-[12.5px] text-ink/75 mt-2 leading-relaxed text-center">{a.desc}</p> : null}
+              {a.desc ? <p className="text-[12px] text-ink/75 mt-2 leading-relaxed text-center">{a.desc}</p> : null}
 
-              {/* صندوق الصور */}
-              <div className="mt-4 rounded-xl p-3 relative" style={{ border: '2px solid #222', minHeight: 300 }}>
-                <div className="absolute -top-3 right-6 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصُّور</div>
+              {/* صندوق الصور — ارتفاع ثابت والصور كاملة داخله */}
+              <div className="mt-3 rounded-xl p-3 relative" style={{ border: '2px solid #222', height: 360 }}>
+                <div className="absolute -top-3 right-6 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصور</div>
                 {a.images.length ? (
-                  <div className={`grid gap-2 mt-2 ${a.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                    {a.images.map((img) => {
+                  <div className={`grid gap-2 h-full ${a.images.length === 1 ? 'grid-cols-1' : a.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
+                    {a.images.slice(0, 4).map((img) => {
                       const u = imgUrl(img);
                       return u ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={img.id} src={u} alt="" className="w-full object-cover rounded-lg" style={{ maxHeight: a.images.length === 1 ? 340 : 200 }} />
+                        <img key={img.id} src={u} alt="" className="w-full h-full object-contain rounded-lg bg-sage-light/20" />
                       ) : null;
                     })}
                   </div>
                 ) : (
-                  <div className="h-64 flex items-center justify-center text-ink/30 text-sm">— لا صور —</div>
+                  <div className="h-full flex items-center justify-center text-ink/30 text-sm">— لا صور —</div>
                 )}
               </div>
 
               {/* التذييل */}
-              <div className="flex items-end justify-between mt-6 text-[12.5px]">
+              <div className="flex items-end justify-between mt-4 text-[12.5px]">
                 <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
                   <div className="font-bold text-ink">مديرة المدرسة</div>
                   <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
