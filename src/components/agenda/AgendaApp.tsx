@@ -47,8 +47,20 @@ export interface Achievement {
   title: string;
   date: string;
   desc?: string;
+  place?: string; // مكان الفعالية (للنموذج الرسمي)
+  audience?: string; // الفئة المستهدفة
   images: AchImage[];
   createdAt: number;
+}
+/* بيانات ترويسة/تذييل ملف الإنجاز الرسمي (تُحفظ وتُعاد) */
+export interface PortfolioMeta {
+  region?: string; // المنطقة التعليمية
+  school?: string; // المدرسة
+  dept?: string; // القسم
+  teacher?: string; // اسم المعلم/ة
+  head?: string; // رئيسة القسم
+  principal?: string; // مديرة المدرسة
+  logo?: string; // شعار المدرسة (dataURL اختياري)
 }
 export interface AgendaData {
   _v: number;
@@ -61,6 +73,7 @@ export interface AgendaData {
   bg?: string; // معرّف خلفية ورقية (اختياري)
   mode?: 'simple' | 'creative';
   canvas?: Canvas;
+  portfolioMeta?: PortfolioMeta;
 }
 
 /* ضغط الصورة في المتصفّح قبل الرفع — جودة عالية بحجم صغير */
@@ -585,7 +598,18 @@ export default function AgendaApp({
       )}
 
       {showPortfolio && (
-        <PortfolioBuilder data={data} imgUrl={imgUrl} firstName={firstName} onClose={() => setShowPortfolio(false)} />
+        <PortfolioBuilder
+          data={data}
+          imgUrl={imgUrl}
+          firstName={firstName}
+          onSaveMeta={(m) =>
+            mutate((d) => {
+              d.portfolioMeta = m;
+              return d;
+            })
+          }
+          onClose={() => setShowPortfolio(false)}
+        />
       )}
 
       {showAchForm && (
@@ -1688,6 +1712,8 @@ function AchForm({
   const [title, setTitle] = useState(ach?.title || '');
   const [date, setDate] = useState(ach?.date || todayISO());
   const [desc, setDesc] = useState(ach?.desc || '');
+  const [place, setPlace] = useState(ach?.place || '');
+  const [audience, setAudience] = useState(ach?.audience || '');
   const [images, setImages] = useState<AchImage[]>(ach?.images || []);
   const [busy, setBusy] = useState(false);
   const addedRef = useRef<AchImage[]>([]); // مرفوعة هذه الجلسة
@@ -1734,7 +1760,7 @@ function AchForm({
   const save = async () => {
     if (!title.trim()) return;
     for (const img of removedRef.current) await removeImage(img);
-    onSave({ title: title.trim(), date, desc: desc.trim() || undefined, images });
+    onSave({ title: title.trim(), date, desc: desc.trim() || undefined, place: place.trim() || undefined, audience: audience.trim() || undefined, images });
   };
 
   return (
@@ -1750,6 +1776,17 @@ function AchForm({
 
         <label className="block text-[13px] font-bold text-sage-deep mb-1">التاريخ</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-soft border border-sage/25 bg-white p-3 text-ink focus:outline-none focus:border-sage mb-3" />
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-[13px] font-bold text-sage-deep mb-1">مكان الفعالية (اختياري)</label>
+            <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="مثال: قاعة الأنشطة" className="w-full rounded-soft border border-sage/25 bg-white p-3 text-ink focus:outline-none focus:border-sage" />
+          </div>
+          <div>
+            <label className="block text-[13px] font-bold text-sage-deep mb-1">الفئة المستهدفة (اختياري)</label>
+            <input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="مثال: طالبات الصف الخامس" className="w-full rounded-soft border border-sage/25 bg-white p-3 text-ink focus:outline-none focus:border-sage" />
+          </div>
+        </div>
 
         <label className="block text-[13px] font-bold text-sage-deep mb-1">وصف مختصر (اختياري)</label>
         <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} placeholder="مثال: تم تطبيق النشاط مع طلاب الصف الخامس." className="w-full resize-none rounded-soft border border-sage/25 bg-white p-3 text-ink focus:outline-none focus:border-sage mb-3" />
@@ -1921,144 +1958,202 @@ function HarvestView({
   );
 }
 
-/* ============================ ملف الإنجاز (PDF) ============================ */
+/* ============================ ملف الإنجاز الرسمي (PDF) ============================ */
 function PortfolioBuilder({
   data,
   imgUrl,
   firstName,
+  onSaveMeta,
   onClose,
 }: {
   data: AgendaData;
   imgUrl: (img: AchImage) => string | undefined;
   firstName: string;
+  onSaveMeta: (m: PortfolioMeta) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(firstName || '');
+  const init = data.portfolioMeta || {};
+  const [meta, setMeta] = useState<PortfolioMeta>({ teacher: init.teacher || firstName, ...init });
   const [period, setPeriod] = useState<'all' | 'thisM' | 'lastM' | 'thisY'>('all');
-  const [showImages, setShowImages] = useState(true);
-  const [showDesc, setShowDesc] = useState(true);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  const setField = (k: keyof PortfolioMeta, v: string) => {
+    const m = { ...meta, [k]: v };
+    setMeta(m);
+  };
+  const commitMeta = (m = meta) => onSaveMeta(m);
+
+  const pickLogo = async (files: FileList | null) => {
+    if (!files || !files[0]) return;
+    try {
+      const dataUrl = await compressImage(files[0], 400, 0.9);
+      const m = { ...meta, logo: dataUrl };
+      setMeta(m);
+      commitMeta(m);
+    } catch {
+      /* ignore */
+    }
+    if (logoRef.current) logoRef.current.value = '';
+  };
 
   const now = new Date();
   const thisM = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
-  const lastM = `${now.getFullYear()}-${pad(now.getMonth())}` === `${now.getFullYear()}-00` ? `${now.getFullYear() - 1}-12` : iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)).slice(0, 7);
+  const lastM = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)).slice(0, 7);
   const thisY = String(now.getFullYear());
-
   const inPeriod = useCallback(
     (d: string) => (period === 'all' ? true : period === 'thisM' ? monthKey(d) === thisM : period === 'lastM' ? monthKey(d) === lastM : d.slice(0, 4) === thisY),
     [period, thisM, lastM, thisY]
   );
-  const periodLabel = period === 'all' ? 'كل الفترات' : period === 'thisM' ? `${MO[now.getMonth()]} ${AR(now.getFullYear())}` : period === 'lastM' ? `${MO[(now.getMonth() + 11) % 12]} ${AR(now.getFullYear())}` : `عام ${AR(now.getFullYear())}`;
-
   const list = useMemo(() => data.achievements.filter((a) => inPeriod(a.date)).sort((a, b) => a.date.localeCompare(b.date)), [data.achievements, inPeriod]);
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const included = list.filter((a) => !excluded.has(a.id));
+
+  const field = (k: keyof PortfolioMeta, label: string, ph: string) => (
+    <div>
+      <label className="block text-[12px] font-bold text-sage-deep mb-1">{label}</label>
+      <input
+        value={(meta[k] as string) || ''}
+        onChange={(e) => setField(k, e.target.value)}
+        onBlur={() => commitMeta()}
+        placeholder={ph}
+        className="w-full rounded-soft border border-sage/25 bg-white p-2.5 text-sm text-ink focus:outline-none focus:border-sage"
+      />
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[60] bg-cream overflow-y-auto agenda-report">
-      <style>{`@media print { html,body{height:auto!important;overflow:visible!important;background:#fff!important} body *{visibility:hidden!important} .agenda-report,.agenda-report *{visibility:visible!important} .agenda-report{position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;background:#fff!important} .agenda-noprint{display:none!important} .break-inside-avoid{break-inside:avoid;page-break-inside:avoid} }`}</style>
+      <style>{`@media print { html,body{height:auto!important;overflow:visible!important;background:#fff!important} body *{visibility:hidden!important} .agenda-report,.agenda-report *{visibility:visible!important} .agenda-report{position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;background:#fff!important} .agenda-noprint{display:none!important} .port-page{break-after:page;page-break-after:always;box-shadow:none!important;border:1.5px solid #222!important;margin:0 auto!important} .port-page:last-child{break-after:auto;page-break-after:auto} }`}</style>
 
       {/* شريط الخيارات (لا يُطبع) */}
-      <div className="agenda-noprint sticky top-0 z-10 bg-white border-b border-sage/15 p-4">
+      <div className="agenda-noprint bg-white border-b border-sage/15 p-4">
         <div className="mx-auto max-w-3xl flex items-center gap-2 mb-3">
-          <h2 className="font-extrabold text-sage-deep text-lg flex-1">📄 ملف الإنجاز</h2>
-          <button onClick={() => window.print()} className="rounded-xl bg-sage-deep text-white font-extrabold text-sm px-4 py-2.5 shadow-soft">
-            🖨 حفظ الملف كامل PDF
-          </button>
+          <h2 className="font-extrabold text-sage-deep text-lg flex-1">📄 ملف الإنجاز — النموذج الرسمي</h2>
+          <button onClick={() => window.print()} className="rounded-xl bg-sage-deep text-white font-extrabold text-sm px-4 py-2.5 shadow-soft">🖨 حفظ الملف كامل PDF</button>
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-white border border-sage/25 text-sage-deep font-bold">✕</button>
         </div>
-        <div className="mx-auto max-w-3xl grid gap-3 md:grid-cols-2">
-          <div>
-            <label className="block text-[12px] font-bold text-sage-deep mb-1">اسم المعلم/ة</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم" className="w-full rounded-soft border border-sage/25 bg-white p-2.5 text-sm text-ink focus:outline-none focus:border-sage" />
+        <div className="mx-auto max-w-3xl space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {field('region', 'المنطقة التعليمية', 'مثال: حولي')}
+            {field('school', 'المدرسة', 'مثال: مشرف الابتدائية')}
+            {field('dept', 'القسم', 'مثال: التربية الإسلامية')}
+            {field('teacher', 'اسم المعلم/ة', 'الاسم')}
+            {field('head', 'رئيسة القسم (اختياري)', 'الاسم')}
+            {field('principal', 'مديرة المدرسة (اختياري)', 'الاسم')}
           </div>
-          <div>
-            <label className="block text-[12px] font-bold text-sage-deep mb-1">الفترة</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {(
-                [
-                  ['all', 'الكل'],
-                  ['thisM', 'هذا الشهر'],
-                  ['lastM', 'الشهر السابق'],
-                  ['thisY', 'هذا العام'],
-                ] as const
-              ).map(([k, l]) => (
-                <button key={k} onClick={() => setPeriod(k)} className={`rounded-full px-3 py-1.5 text-[12px] font-bold border ${period === k ? 'bg-sage-deep text-white border-transparent' : 'bg-white text-sage-deep border-sage/25'}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={() => logoRef.current?.click()} className="rounded-xl bg-sage-light text-sage-deep font-bold text-sm px-4 py-2.5">🏫 {meta.logo ? 'تغيير شعار المدرسة' : 'رفع شعار المدرسة (اختياري)'}</button>
+            {meta.logo && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={meta.logo} alt="" className="h-10 w-10 object-contain rounded border border-sage/20" />
+                <button onClick={() => { const m = { ...meta, logo: undefined }; setMeta(m); commitMeta(m); }} className="text-red-500 font-bold text-[13px]">إزالة الشعار</button>
+              </>
+            )}
+            <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => pickLogo(e.target.files)} />
           </div>
-          <div className="flex gap-4 md:col-span-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-sage-deep">
-              <input type="checkbox" checked={showImages} onChange={(e) => setShowImages(e.target.checked)} className="w-4 h-4 accent-[#41603F]" /> إظهار الصور
-            </label>
-            <label className="flex items-center gap-2 text-sm font-bold text-sage-deep">
-              <input type="checkbox" checked={showDesc} onChange={(e) => setShowDesc(e.target.checked)} className="w-4 h-4 accent-[#41603F]" /> إظهار الوصف
-            </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {([['all', 'الكل'], ['thisM', 'هذا الشهر'], ['lastM', 'الشهر السابق'], ['thisY', 'هذا العام']] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setPeriod(k)} className={`rounded-full px-3 py-1.5 text-[12px] font-bold border ${period === k ? 'bg-sage-deep text-white border-transparent' : 'bg-white text-sage-deep border-sage/25'}`}>{l}</button>
+            ))}
           </div>
-        </div>
-        {list.length > 0 && (
-          <div className="mx-auto max-w-3xl mt-3">
-            <div className="text-[12px] font-bold text-sage-deep mb-1.5">الإنجازات المضمّنة ({AR(included.length)}/{AR(list.length)}):</div>
+          {list.length > 0 && (
             <div className="flex gap-1.5 flex-wrap">
               {list.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() =>
-                    setExcluded((s) => {
-                      const n = new Set(s);
-                      if (n.has(a.id)) n.delete(a.id);
-                      else n.add(a.id);
-                      return n;
-                    })
-                  }
-                  className={`rounded-full px-3 py-1 text-[11.5px] font-bold border ${excluded.has(a.id) ? 'bg-white text-sage/50 border-sage/20 line-through' : 'bg-sage-light text-sage-deep border-transparent'}`}
-                >
-                  {a.title.length > 20 ? a.title.slice(0, 20) + '…' : a.title}
-                </button>
+                <button key={a.id} onClick={() => setExcluded((s) => { const n = new Set(s); if (n.has(a.id)) n.delete(a.id); else n.add(a.id); return n; })} className={`rounded-full px-3 py-1 text-[11.5px] font-bold border ${excluded.has(a.id) ? 'bg-white text-sage/50 border-sage/20 line-through' : 'bg-sage-light text-sage-deep border-transparent'}`}>{a.title.length > 20 ? a.title.slice(0, 20) + '…' : a.title}</button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* التقرير */}
-      <div className="mx-auto max-w-3xl p-6 md:p-10">
-        <div className="text-center pb-5 border-b-2 border-gold/50">
-          <div className="text-2xl font-extrabold text-sage-deep">ملف إنجاز المعلّم</div>
-          {name ? <div className="mt-2 text-lg font-bold text-ink">{name}</div> : null}
-          <div className="mt-1 text-sm text-sage font-bold">{periodLabel}</div>
-        </div>
-
+      {/* الصفحات الرسمية — صفحة لكل إنجاز */}
+      <div className="p-3 md:p-6 space-y-6" style={{ fontFamily: "var(--font-cairo),'Tajawal',sans-serif" }}>
         {included.length === 0 ? (
           <p className="text-center text-sage/60 font-bold py-10">لا إنجازات ضمن الاختيار.</p>
         ) : (
-          <div className="mt-6 space-y-6">
-            {included.map((a, i) => (
-              <article key={a.id} className="break-inside-avoid border border-sage/20 rounded-xl p-4">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-gold-dark font-extrabold">{AR(i + 1)}.</span>
-                  <h3 className="font-extrabold text-sage-deep text-lg flex-1">{a.title}</h3>
-                  <span className="text-[12px] text-sage font-bold">{longDate(a.date)}</span>
+          included.map((a) => (
+            <div key={a.id} className="port-page bg-white mx-auto p-6" style={{ maxWidth: 760, border: '1.5px solid #222', boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
+              {/* الترويسة */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="w-24 flex items-center justify-center">
+                  {meta.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={meta.logo} alt="" className="max-h-20 max-w-full object-contain" />
+                  ) : null}
                 </div>
-                {showDesc && a.desc ? <p className="text-ink/75 text-sm mt-2 leading-relaxed">{a.desc}</p> : null}
-                {showImages && a.images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                <div className="text-center flex-1 pt-1 text-[11px] text-ink/50 leading-relaxed">
+                  <div>دولة الكويت</div>
+                </div>
+                <div className="text-right text-[12px] text-ink/80 leading-relaxed min-w-[38%]">
+                  <div className="font-bold">وزارة التربية</div>
+                  {meta.region ? <div>الإدارة العامة لمنطقة {meta.region} التعليمية</div> : <div>الإدارة العامة لمنطقة ……… التعليمية</div>}
+                  {meta.school ? <div>مدرسة {meta.school}</div> : <div>مدرسة …………</div>}
+                  {meta.dept ? <div>قسم {meta.dept}</div> : null}
+                </div>
+              </div>
+
+              {/* عنوان القسم */}
+              <div className="flex justify-center my-4">
+                <div className="rounded-2xl px-8 py-2 font-extrabold text-sage-deep text-lg" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+                  {meta.dept ? `قسم ${meta.dept}` : 'القسم'}
+                </div>
+              </div>
+
+              {/* الجدول */}
+              <table className="w-full border-collapse text-center text-[12.5px]" dir="rtl">
+                <thead>
+                  <tr style={{ background: '#FAFAF4' }}>
+                    {['اسم المعلم', 'عنوان الفعالية', 'اليوم والتاريخ', 'مكان الفعالية', 'الفئة المستهدفة'].map((h) => (
+                      <th key={h} className="border border-ink/40 p-2 font-bold text-ink">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-ink/40 p-2.5">{meta.teacher || ''}</td>
+                    <td className="border border-ink/40 p-2.5 font-bold">{a.title}</td>
+                    <td className="border border-ink/40 p-2.5">{longDate(a.date)}</td>
+                    <td className="border border-ink/40 p-2.5">{a.place || ''}</td>
+                    <td className="border border-ink/40 p-2.5">{a.audience || ''}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {a.desc ? <p className="text-[12.5px] text-ink/75 mt-2 leading-relaxed text-center">{a.desc}</p> : null}
+
+              {/* صندوق الصور */}
+              <div className="mt-4 rounded-xl p-3 relative" style={{ border: '2px solid #222', minHeight: 300 }}>
+                <div className="absolute -top-3 right-6 px-4 py-0.5 font-bold text-ink text-[13px]" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8', borderRadius: 8 }}>الصُّور</div>
+                {a.images.length ? (
+                  <div className={`grid gap-2 mt-2 ${a.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                     {a.images.map((img) => {
                       const u = imgUrl(img);
                       return u ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={img.id} src={u} alt="" className="w-full aspect-[4/3] object-cover rounded-lg border border-sage/15" />
+                        <img key={img.id} src={u} alt="" className="w-full object-cover rounded-lg" style={{ maxHeight: a.images.length === 1 ? 340 : 200 }} />
                       ) : null;
                     })}
                   </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        )}
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-ink/30 text-sm">— لا صور —</div>
+                )}
+              </div>
 
-        <div className="text-center text-[11px] text-sage/60 font-bold mt-8 pt-4 border-t border-sage/15">🌿 غراس المعلم — أجندتي</div>
+              {/* التذييل */}
+              <div className="flex items-end justify-between mt-6 text-[12.5px]">
+                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+                  <div className="font-bold text-ink">مديرة المدرسة</div>
+                  <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
+                </div>
+                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+                  <div className="font-bold text-ink">رئيسة القسم</div>
+                  <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -2227,6 +2322,7 @@ function normalize(d: AgendaData): AgendaData {
     bg: typeof d?.bg === 'string' ? d.bg : undefined,
     mode: d?.mode === 'creative' ? 'creative' : 'simple',
     canvas: d?.canvas && Array.isArray(d.canvas.els) ? d.canvas : { els: [] },
+    portfolioMeta: d?.portfolioMeta && typeof d.portfolioMeta === 'object' ? d.portfolioMeta : undefined,
   };
 }
 function structuredCloneSafe<T>(o: T): T {
