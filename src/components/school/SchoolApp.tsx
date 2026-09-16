@@ -22,6 +22,8 @@ type Klass = { id: string; grade_id: string; name: string; sort: number; archive
 type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
 type Member = { id: string; user_id: string; name: string | null; role: string; department_id: string | null };
 type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
+type Subject = { id: string; name: string; department_id: string | null; sort: number };
+type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'مسؤولة المدرسة',
@@ -50,6 +52,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'structure', label: 'الهيكل المدرسي', emoji: '🏫' },
   { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫' },
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
+  { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅', soon: true },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄', soon: true },
@@ -77,8 +80,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [members, setMembers] = useState<Member[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [openClass, setOpenClass] = useState<Klass | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [teaching, setTeaching] = useState<Teaching[]>([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -131,12 +136,16 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb] = await Promise.all([
+      const [dp, mb, su, tc] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
+        supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_teaching').select('id,member_id,subject_id,class_id,weekly_hours').eq('school_id', sid),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
+      setSubjects((su.data as Subject[]) || []);
+      setTeaching((tc.data as Teaching[]) || []);
     },
     [supabase]
   );
@@ -323,6 +332,48 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setStudents((s) => s.filter((x) => x.id !== id));
   };
 
+  // ── المواد والتوزيع ───────────────────────────────────────────
+  const addSubject = async (name: string) => {
+    const { data, error } = await supabase
+      .from('school_subjects')
+      .insert({ school_id: schoolId, name, sort: nextSort(subjects) })
+      .select('id,name,department_id,sort')
+      .single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setSubjects((s) => [...s, data as Subject]);
+  };
+  const renameSubject = async (id: string, name: string) => {
+    const { error } = await supabase.from('school_subjects').update({ name }).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setSubjects((s) => s.map((x) => (x.id === id ? { ...x, name } : x)));
+  };
+  const delSubject = async (id: string) => {
+    if (!window.confirm('حذف المادة؟ (يُحذف توزيعها)')) return;
+    const { error } = await supabase.from('school_subjects').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setSubjects((s) => s.filter((x) => x.id !== id));
+    setTeaching((t) => t.filter((x) => x.subject_id !== id));
+  };
+  const addTeaching = async (memberId: string, subjectId: string, classId: string, hours: number) => {
+    const { data, error } = await supabase
+      .from('school_teaching')
+      .insert({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, weekly_hours: hours })
+      .select('id,member_id,subject_id,class_id,weekly_hours')
+      .single();
+    if (error || !data) return showToast(/duplicate|unique/i.test(error?.message || '') ? 'هذا التوزيع موجود مسبقًا' : 'تعذّرت الإضافة');
+    setTeaching((t) => [...t, data as Teaching]);
+  };
+  const updateHours = async (id: string, hours: number) => {
+    const { error } = await supabase.from('school_teaching').update({ weekly_hours: hours }).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setTeaching((t) => t.map((x) => (x.id === id ? { ...x, weekly_hours: hours } : x)));
+  };
+  const delTeaching = async (id: string) => {
+    const { error } = await supabase.from('school_teaching').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setTeaching((t) => t.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -394,6 +445,22 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           moveStudent={moveStudent}
           delStudent={delStudent}
         />
+      ) : view === 'teaching' ? (
+        <TeachingView
+          subjects={subjects}
+          teaching={teaching}
+          members={members}
+          grades={grades}
+          classes={classes}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          addSubject={addSubject}
+          renameSubject={renameSubject}
+          delSubject={delSubject}
+          addTeaching={addTeaching}
+          updateHours={updateHours}
+          delTeaching={delTeaching}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -404,7 +471,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
             else if (k === 'students') {
               setOpenClass(null);
               setView('students');
-            }
+            } else if (k === 'teaching') setView('teaching');
           }}
         />
       )}
@@ -754,6 +821,166 @@ function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) 
       >
         ＋ إضافة
       </button>
+    </div>
+  );
+}
+
+/* ───────────────────────── المواد والتوزيع ───────────────────────── */
+function TeachingView({
+  subjects,
+  teaching,
+  members,
+  grades,
+  classes,
+  canManage,
+  onBack,
+  addSubject,
+  renameSubject,
+  delSubject,
+  addTeaching,
+  updateHours,
+  delTeaching,
+}: {
+  subjects: Subject[];
+  teaching: Teaching[];
+  members: Member[];
+  grades: Grade[];
+  classes: Klass[];
+  canManage: boolean;
+  onBack: () => void;
+  addSubject: (name: string) => void;
+  renameSubject: (id: string, name: string) => void;
+  delSubject: (id: string) => void;
+  addTeaching: (memberId: string, subjectId: string, classId: string, hours: number) => void;
+  updateHours: (id: string, hours: number) => void;
+  delTeaching: (id: string) => void;
+}) {
+  const [mSel, setMSel] = useState('');
+  const [sSel, setSSel] = useState('');
+  const [cSel, setCSel] = useState('');
+  const [hSel, setHSel] = useState('3');
+
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
+  const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || '—';
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    if (!c) return '—';
+    const g = grades.find((x) => x.id === c.grade_id);
+    return g ? `${g.name} · ${c.name}` : c.name;
+  };
+
+  const teachers = members.filter((m) => teaching.some((t) => t.member_id === m.id));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">المواد والتوزيع</div>
+      </div>
+
+      {/* المواد */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">المواد</div>
+        {subjects.length ? (
+          <div className="space-y-1 mb-2">
+            {subjects.map((s) => (
+              <Row
+                key={s.id}
+                label={s.name}
+                small
+                canManage={canManage}
+                onRename={() => {
+                  const n = window.prompt('اسم المادة', s.name);
+                  if (n && n.trim()) renameSubject(s.id, n.trim());
+                }}
+                onDelete={() => delSubject(s.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-[12px] text-ink/35 mb-2">— لا مواد بعد —</div>
+        )}
+        {canManage ? <AddInline placeholder="مادة جديدة (مثال: اللغة العربية)" onAdd={addSubject} /> : null}
+      </div>
+
+      {/* التوزيع */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">التوزيع</div>
+
+        {canManage ? (
+          subjects.length && members.length && classes.length ? (
+            <div className="grid grid-cols-2 gap-1.5 mb-3">
+              <select value={mSel} onChange={(e) => setMSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">المعلمة</option>
+                {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <select value={sSel} onChange={(e) => setSSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">المادة</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select value={cSel} onChange={(e) => setCSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">الفصل</option>
+                {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
+              </select>
+              <div className="flex gap-1.5">
+                <input type="number" min={1} value={hSel} onChange={(e) => setHSel(e.target.value)} className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2" title="حصص أسبوعية" />
+                <button
+                  onClick={() => {
+                    if (mSel && sSel && cSel) {
+                      addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1));
+                      setSSel('');
+                      setCSel('');
+                    }
+                  }}
+                  className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] px-2"
+                >
+                  ＋ توزيع
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[12px] text-ink/45 mb-2">أضيفي مواد ومعلمات وفصولًا أولًا.</div>
+          )
+        ) : null}
+
+        {teachers.length === 0 ? (
+          <div className="text-[12px] text-ink/35">— لا توزيع بعد —</div>
+        ) : (
+          teachers.map((m) => {
+            const rows = teaching.filter((t) => t.member_id === m.id);
+            const total = rows.reduce((a, t) => a + t.weekly_hours, 0);
+            return (
+              <div key={m.id} className="mb-3">
+                <div className="font-bold text-ink text-[13.5px] mb-1">
+                  {m.name} <span className="text-[11px] text-ink/45">({total} حصة أسبوعيًا)</span>
+                </div>
+                <div className="pr-3 border-r-2 border-sage/10 space-y-1">
+                  {rows.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2 text-[12.5px]">
+                      <div className="flex-1 text-ink">{subjectName(t.subject_id)} · {classLabel(t.class_id)}</div>
+                      {canManage ? (
+                        <input
+                          type="number"
+                          min={1}
+                          defaultValue={t.weekly_hours}
+                          onBlur={(e) => { const v = Math.max(1, +e.target.value || 1); if (v !== t.weekly_hours) updateHours(t.id, v); }}
+                          className="w-14 rounded border border-sage/25 bg-white text-[12px] p-1 text-center"
+                          title="حصص"
+                        />
+                      ) : (
+                        <span className="text-ink/60">{t.weekly_hours} حصة</span>
+                      )}
+                      {canManage ? (
+                        <button onClick={() => delTeaching(t.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
