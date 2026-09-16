@@ -168,6 +168,22 @@ export default function TeacherPage() {
               </a>
             </div>
 
+            <div className="grouplbl">إدارة المدرسة</div>
+            <div className="row one">
+              <a className="tile" href="/school">
+                <span className="em" aria-hidden="true">
+                  🏫
+                </span>
+                <span>
+                  <b>
+                    إدارة المدرسة
+                    <span className="tag paid">مستقل</span>
+                  </b>
+                  <small>الهيكل · الشُّعب · الجدول الذكي · الحضور · الاحتياط · المناوبات · الصلاحيات</small>
+                </span>
+              </a>
+            </div>
+
             <div className="grouplbl">التنظيم الشخصي</div>
             <div className="row one">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
