@@ -82,12 +82,12 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
   { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
-  { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄' },
   { key: 'duty', label: 'المناوبات', emoji: '📍' },
-  { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
   { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
   { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️' },
+  { key: 'reports', label: 'التقارير', emoji: '📄' },
+  { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
 ];
 
@@ -363,7 +363,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -1070,6 +1070,19 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           addDuty={addDuty}
           delDuty={delDuty}
         />
+      ) : view === 'reports' ? (
+        <ReportsView
+          school={school}
+          entries={entries}
+          periods={periods}
+          members={members}
+          subjects={subjects}
+          classes={classes}
+          grades={grades}
+          duties={duties}
+          dutyLocs={dutyLocs}
+          onBack={() => setView('dash')}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -1092,6 +1105,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
               loadSub(subDate);
               setView('substitution');
             } else if (k === 'duty') setView('duty');
+            else if (k === 'reports') setView('reports');
           }}
         />
       )}
@@ -1922,6 +1936,147 @@ function TeachingView({
               </div>
             );
           })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── التقارير (قابلة للطباعة) ───────────────────────── */
+function ReportsView({
+  school,
+  entries,
+  periods,
+  members,
+  subjects,
+  classes,
+  grades,
+  duties,
+  dutyLocs,
+  onBack,
+}: {
+  school: School | null;
+  entries: Entry[];
+  periods: Period[];
+  members: Member[];
+  subjects: Subject[];
+  classes: Klass[];
+  grades: Grade[];
+  duties: Duty[];
+  dutyLocs: DutyLoc[];
+  onBack: () => void;
+}) {
+  const [type, setType] = useState<'class' | 'teacher' | 'duties'>('class');
+  const [pick, setPick] = useState('');
+
+  const lessonPeriods = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort);
+  const wd = (school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4]).slice().sort((a, b) => a - b);
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
+  const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name || '—';
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    if (!c) return '—';
+    const g = grades.find((x) => x.id === c.grade_id);
+    return g ? `${g.name} · ${c.name}` : c.name;
+  };
+  const periodName = (id: string) => periods.find((p) => p.id === id)?.name || '—';
+  const locName = (id: string) => dutyLocs.find((l) => l.id === id)?.name || '—';
+
+  const cellClass = (day: number, pid: string, cid: string) => entries.find((e) => e.day === day && e.period_id === pid && e.class_id === cid);
+  const cellTeacher = (day: number, pid: string, mid: string) => entries.find((e) => e.day === day && e.period_id === pid && e.member_id === mid);
+
+  const title =
+    type === 'class' ? `جدول الفصل ${pick ? classLabel(pick) : ''}` : type === 'teacher' ? `جدول المعلمة ${pick ? memberName(pick) : ''}` : 'جدول المناوبات';
+
+  return (
+    <div className="space-y-3">
+      <style>{`@media print { body * { visibility: hidden } .school-report, .school-report * { visibility: visible } .school-report { position: absolute; top: 0; right: 0; left: 0; width: 100% } .no-print { display: none !important } @page { size: A4 landscape; margin: 10mm } }`}</style>
+
+      <div className="flex items-center gap-2 no-print">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">التقارير</div>
+        <button onClick={() => window.print()} className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-1.5">🖨 طباعة</button>
+      </div>
+
+      <div className="card-3d bg-white rounded-2xl p-3 no-print flex gap-2 flex-wrap">
+        <select value={type} onChange={(e) => { setType(e.target.value as 'class' | 'teacher' | 'duties'); setPick(''); }} className="rounded-lg border border-sage/25 bg-white text-[13px] p-2">
+          <option value="class">جدول فصل</option>
+          <option value="teacher">جدول معلمة</option>
+          <option value="duties">المناوبات</option>
+        </select>
+        {type === 'class' ? (
+          <select value={pick} onChange={(e) => setPick(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-2">
+            <option value="">اختاري الفصل…</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
+          </select>
+        ) : type === 'teacher' ? (
+          <select value={pick} onChange={(e) => setPick(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-2">
+            <option value="">اختاري المعلمة…</option>
+            {members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar')).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        ) : null}
+      </div>
+
+      {/* المحتوى القابل للطباعة */}
+      <div className="school-report card-3d bg-white rounded-2xl p-4">
+        <div className="text-center mb-3">
+          <div className="font-extrabold text-sage-deep text-lg">{school?.name || 'المدرسة'}</div>
+          <div className="font-bold text-ink">{title}</div>
+          {school?.academic_year ? <div className="text-[12px] text-ink/55">العام {school.academic_year}{school.term ? ` · الفصل ${school.term}` : ''}</div> : null}
+        </div>
+
+        {type === 'duties' ? (
+          duties.length === 0 ? (
+            <div className="text-center text-ink/40 py-6">لا مناوبات.</div>
+          ) : (
+            wd.map((d) => {
+              const dd = duties.filter((x) => x.day === d);
+              if (!dd.length) return null;
+              return (
+                <div key={d} className="mb-2">
+                  <div className="font-bold text-sage-deep">{WEEKDAYS[d]}</div>
+                  <div className="pr-3">{dd.map((x) => <div key={x.id} className="text-[12.5px]">{periodName(x.period_id)} · {locName(x.location_id)} · {memberName(x.member_id)}</div>)}</div>
+                </div>
+              );
+            })
+          )
+        ) : !pick ? (
+          <div className="text-center text-ink/40 py-6">اختاري {type === 'class' ? 'فصلًا' : 'معلمة'} من الأعلى.</div>
+        ) : lessonPeriods.length === 0 ? (
+          <div className="text-center text-ink/40 py-6">لا حصص محدّدة في «أوقات اليوم».</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="border-collapse text-center text-[11px] w-full">
+              <thead>
+                <tr>
+                  <th className="border border-ink/30 bg-sage-light/40 p-1.5">الحصة</th>
+                  {wd.map((d) => <th key={d} className="border border-ink/30 bg-sage-light/40 p-1.5 whitespace-nowrap">{WEEKDAYS[d]}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {lessonPeriods.map((p) => (
+                  <tr key={p.id}>
+                    <td className="border border-ink/30 bg-sage-light/20 p-1.5 font-bold whitespace-nowrap">{p.name}</td>
+                    {wd.map((d) => {
+                      const e = type === 'class' ? cellClass(d, p.id, pick) : cellTeacher(d, p.id, pick);
+                      return (
+                        <td key={d} className="border border-ink/20 p-1.5" style={{ minWidth: 80 }}>
+                          {e ? (
+                            <div className="leading-tight">
+                              <div className="font-bold">{subjectName(e.subject_id)}</div>
+                              <div className="text-[10px] text-ink/60">{type === 'class' ? memberName(e.member_id) : classLabel(e.class_id)}</div>
+                            </div>
+                          ) : (
+                            <span className="text-ink/20">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
