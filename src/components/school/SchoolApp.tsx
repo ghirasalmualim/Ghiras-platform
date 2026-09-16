@@ -1257,7 +1257,7 @@ function DepartmentsView({
   importMembers: (names: string[], deptId: string | null) => void;
 }) {
   const [newDept, setNewDept] = useState('');
-  const noDept = members.filter((m) => !m.department_id);
+  const noDept = members.filter((m) => !m.department_id).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
 
   const MemberRow = ({ m, roleText }: { m: Member; roleText?: string }) => (
     <div className="flex items-center gap-2 py-1">
@@ -1925,7 +1925,7 @@ function SubstitutionView({
       .sort((a, b) => monthCount(a.id) - monthCount(b.id));
   };
 
-  const absentList = members.filter((m) => absentIds.has(m.id));
+  const absentList = members.filter((m) => absentIds.has(m.id)).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
 
   return (
     <div className="space-y-3">
@@ -2014,6 +2014,7 @@ function StaffView({
   setStaffStatus: (memberId: string, status: string, atTime?: string | null) => void;
 }) {
   const [q, setQ] = useState('');
+  const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   const recOf = (mid: string) => staffRecords.find((r) => r.member_id === mid && r.date === staffDate);
   const monthSummary = (mid: string) => {
     const rows = staffRecords.filter((r) => r.member_id === mid && r.status !== 'present');
@@ -2021,7 +2022,7 @@ function StaffView({
     for (const r of rows) by[r.status] = (by[r.status] || 0) + 1;
     return Object.entries(by).map(([k, n]) => `${staffLabel(k)} ${n}`).join(' · ');
   };
-  const shown = members.filter((m) => !q.trim() || (m.name || '').includes(q.trim()));
+  const shown = sortedMembers.filter((m) => !q.trim() || (m.name || '').includes(q.trim()));
   const present = members.length - staffRecords.filter((r) => r.date === staffDate && r.status !== 'present').length;
 
   return (
