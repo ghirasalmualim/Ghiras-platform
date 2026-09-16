@@ -84,11 +84,14 @@ const subActive = (until: string | null) => !!until && new Date(until) > new Dat
  * ويعيد ما تعذّر وضعه ليُعرض في تقرير الفحص.
  */
 type SolveTask = { member_id: string; subject_id: string; class_id: string };
+type SolveCons = { offDay: Set<string>; noSlot: Set<string>; avoidLast: Set<string>; lastPid: string | null };
 function solveTimetable(
   teaching: { member_id: string; subject_id: string; class_id: string; weekly_hours: number }[],
   lessonPeriodIds: string[],
-  workDays: number[]
+  workDays: number[],
+  cons?: SolveCons
 ): { placements: (SolveTask & { day: number; period_id: string })[]; unplaced: SolveTask[] } {
+  const c = cons || { offDay: new Set<string>(), noSlot: new Set<string>(), avoidLast: new Set<string>(), lastPid: null };
   const slots: { day: number; pid: string }[] = [];
   for (const d of workDays) for (const pid of lessonPeriodIds) slots.push({ day: d, pid });
 
@@ -112,9 +115,21 @@ function solveTimetable(
       const cb = cBusy.get(t.class_id) || new Set<string>();
       const csKey = `${t.class_id}|${t.subject_id}`;
       const usedDays = csDays.get(csKey) || new Set<number>();
-      const cands = slots.filter((s) => !tb.has(key(s.day, s.pid)) && !cb.has(key(s.day, s.pid)));
-      // تفضيل: يومٌ لا يحمل هذه المادة لهذا الفصل بعد
-      cands.sort((a, b) => (usedDays.has(a.day) ? 1 : 0) - (usedDays.has(b.day) ? 1 : 0));
+      // قيود إلزامية: يوم غير متاح للمعلمة، وحصة ممنوعة عليها
+      const cands = slots.filter(
+        (s) =>
+          !tb.has(key(s.day, s.pid)) &&
+          !cb.has(key(s.day, s.pid)) &&
+          !c.offDay.has(`${t.member_id}|${s.day}`) &&
+          !c.noSlot.has(`${t.member_id}|${s.pid}`)
+      );
+      // تفضيلات (مرنة): يومٌ لا يحمل هذه المادة بعد، وتجنّب آخر حصة لمواد مطلوبة
+      const avoidLast = c.avoidLast.has(t.subject_id) && c.lastPid;
+      cands.sort((a, b) => {
+        const pa = (usedDays.has(a.day) ? 1 : 0) + (avoidLast && a.pid === c.lastPid ? 2 : 0);
+        const pb = (usedDays.has(b.day) ? 1 : 0) + (avoidLast && b.pid === c.lastPid ? 2 : 0);
+        return pa - pb;
+      });
       if (cands.length) {
         const s = cands[0];
         tb.add(key(s.day, s.pid));
@@ -142,6 +157,62 @@ function solveTimetable(
     if (res.unplaced.length < best.unplaced.length) best = res;
   }
   return best;
+}
+
+/* ── فهم القيود المكتوبة بالعربي (تحويلها إلى قواعد منظّمة قبل التوليد) ── */
+type Rule =
+  | { kind: 'off_day'; member_id: string; day: number; text: string }
+  | { kind: 'no_period'; member_id: string; periodIndex: number; text: string }
+  | { kind: 'avoid_last'; subject_id: string; text: string };
+
+const DAY_WORDS: [RegExp, number][] = [
+  [/الأحد|الاحد/, 0],
+  [/الإثنين|الاثنين/, 1],
+  [/الثلاثاء|الثلاثا/, 2],
+  [/الأربعاء|الاربعاء/, 3],
+  [/الخميس/, 4],
+  [/الجمعة/, 5],
+  [/السبت/, 6],
+];
+const ORD_WORDS: [RegExp, number][] = [
+  [/الأولى|الاولى/, 0],
+  [/الثانية/, 1],
+  [/الثالثة/, 2],
+  [/الرابعة/, 3],
+  [/الخامسة/, 4],
+  [/السادسة/, 5],
+  [/السابعة/, 6],
+];
+const firstWord = (n: string | null) => (n || '').trim().split(/\s+/)[0];
+
+function parseRules(
+  text: string,
+  members: { id: string; name: string | null }[],
+  subjects: { id: string; name: string }[]
+): { rules: Rule[]; unknown: string[] } {
+  const lines = text.split(/\n|\.|؛|،/).map((s) => s.trim()).filter(Boolean);
+  const rules: Rule[] = [];
+  const unknown: string[] = [];
+  for (const line of lines) {
+    const mem = members.find((m) => m.name && (line.includes(m.name) || (firstWord(m.name).length > 1 && line.includes(firstWord(m.name)))));
+    const subj = subjects.find((s) => s.name && line.includes(s.name));
+    const day = DAY_WORDS.find(([re]) => re.test(line));
+    const ord = ORD_WORDS.find(([re]) => re.test(line));
+    const neg = /(^|\s)(لا|ما|بدون|ممنوع)(\s|$)|غير|تجنّب|تجنب|إجازة|اجازة|غايب|غائب/.test(line);
+    const last = /آخر|الأخيرة|الاخيرة/.test(line);
+    const offDayHint = /غير متاح|ما تدو|ما تدر|لا تدو|لا تدر|إجازة|اجازة|غايب|غائب|مو موجود|غير موجود|ما عندها دوام|ما تحضر/.test(line);
+
+    if (mem && day && offDayHint) {
+      rules.push({ kind: 'off_day', member_id: mem.id, day: day[1], text: line });
+    } else if (mem && ord && neg) {
+      rules.push({ kind: 'no_period', member_id: mem.id, periodIndex: ord[1], text: line });
+    } else if (subj && last) {
+      rules.push({ kind: 'avoid_last', subject_id: subj.id, text: line });
+    } else {
+      unknown.push(line);
+    }
+  }
+  return { rules, unknown };
 }
 
 export default function SchoolApp({ firstName, isAdmin }: { firstName: string; isAdmin: boolean }) {
@@ -503,14 +574,26 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   };
 
   // ── التوليد التلقائي (محرّك القيود) ───────────────────────────
-  const generateTimetable = async () => {
+  const generateTimetable = async (rules: Rule[] = []) => {
     if (!schoolId) return;
     const lessonPids = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort).map((p) => p.id);
     const wd = school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4];
     if (!teaching.length || !lessonPids.length) return showToast('أضيفي توزيعًا وحصصًا أولًا');
     if (!window.confirm('توليد الجدول تلقائيًا؟ سيستبدل الجدول الحالي (مسودة).')) return;
     setGenerating(true);
-    const res = solveTimetable(teaching, lessonPids, wd);
+    // بناء القيود للمحرّك
+    const offDay = new Set<string>();
+    const noSlot = new Set<string>();
+    const avoidLast = new Set<string>();
+    for (const r of rules) {
+      if (r.kind === 'off_day') offDay.add(`${r.member_id}|${r.day}`);
+      else if (r.kind === 'no_period') {
+        const pid = lessonPids[r.periodIndex];
+        if (pid) noSlot.add(`${r.member_id}|${pid}`);
+      } else if (r.kind === 'avoid_last') avoidLast.add(r.subject_id);
+    }
+    const cons: SolveCons = { offDay, noSlot, avoidLast, lastPid: lessonPids[lessonPids.length - 1] || null };
+    const res = solveTimetable(teaching, lessonPids, wd, cons);
     const { error: delErr } = await supabase.from('school_timetable_entries').delete().eq('school_id', schoolId);
     if (delErr) {
       setGenerating(false);
@@ -1039,7 +1122,7 @@ function TimetableView({
   delPeriod: (id: string) => void;
   addEntry: (day: number, periodId: string, classId: string, memberId: string, subjectId: string) => void;
   delEntry: (id: string) => void;
-  generateTimetable: () => void;
+  generateTimetable: (rules?: Rule[]) => void;
   generating: boolean;
   genReport: { placed: number; unplaced: SolveTask[] } | null;
 }) {
@@ -1048,6 +1131,15 @@ function TimetableView({
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [gridClass, setGridClass] = useState('');
+  const [rulesText, setRulesText] = useState('');
+  const [parsed, setParsed] = useState<{ rules: Rule[]; unknown: string[] } | null>(null);
+  const ORD_LABELS = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة'];
+  const ruleLabel = (r: Rule) =>
+    r.kind === 'off_day'
+      ? `🔴 ${memberName(r.member_id)} غير متاحة يوم ${WEEKDAYS[r.day]}`
+      : r.kind === 'no_period'
+      ? `🔴 ${memberName(r.member_id)} لا تأخذ الحصة ${ORD_LABELS[r.periodIndex] || r.periodIndex + 1}`
+      : `🟡 تجنّب ${subjectName(r.subject_id)} في آخر حصة`;
 
   const lessonPeriods = periods.filter((p) => p.kind === 'lesson');
   const workDays = (school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4]).slice().sort((a, b) => a - b);
@@ -1154,22 +1246,59 @@ function TimetableView({
         ) : null}
       </div>
 
-      {/* التوليد الذكي */}
+      {/* التوليد الذكي + القواعد بالعربي */}
       {canManage ? (
         <div className="card-3d bg-white rounded-2xl p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="font-extrabold text-sage-deep flex-1">✨ إنشاء الجدول تلقائيًا</div>
+          <div className="font-extrabold text-sage-deep mb-1">✨ إنشاء الجدول الذكي</div>
+          <div className="text-[11.5px] text-ink/55 mb-2">اكتبي قيودك بالعربي (اختياري)، والنظام يفهمها ويعرضها لك للتأكيد قبل التوليد.</div>
+
+          <textarea
+            value={rulesText}
+            onChange={(e) => {
+              setRulesText(e.target.value);
+              setParsed(null);
+            }}
+            rows={4}
+            placeholder={'مثال:\nسارة غير متاحة يوم الخميس\nمنى لا تأخذ الحصة الأولى\nتجنّب الرياضيات في آخر حصة'}
+            className="w-full rounded-xl border border-sage/25 bg-white text-[13px] p-2.5 leading-relaxed focus:outline-none focus:border-sage"
+          />
+
+          <div className="flex gap-2 mt-2 flex-wrap">
             <button
-              onClick={generateTimetable}
+              onClick={() => setParsed(parseRules(rulesText, members, subjects))}
+              disabled={!rulesText.trim()}
+              className="rounded-xl border border-sage/30 text-sage-deep font-bold text-[12.5px] px-4 py-2 disabled:opacity-40"
+            >
+              فهم القواعد
+            </button>
+            <button
+              onClick={() => generateTimetable(parsed?.rules || [])}
               disabled={generating}
               className="rounded-xl bg-gold text-white font-extrabold text-[13px] px-4 py-2 shadow-soft disabled:opacity-50"
             >
-              {generating ? '…جارٍ الحساب' : '✨ توليد الجدول'}
+              {generating ? '…جارٍ الحساب' : parsed?.rules.length ? '✨ إنشاء الجدول بهذه القواعد' : '✨ توليد الجدول'}
             </button>
           </div>
-          <div className="text-[11.5px] text-ink/55">
-            يوزّع الحصص على الأيام من «التوزيع» تلقائيًا، بلا تعارضات (كل معلمة نصابها كامل، ولا تكرار في نفس الوقت).
-          </div>
+
+          {parsed ? (
+            <div className="mt-2 rounded-xl bg-sage-light/40 p-2.5 text-[12.5px]">
+              {parsed.rules.length ? (
+                <>
+                  <div className="font-bold text-sage-deep mb-1">فهمت القواعد التالية:</div>
+                  <div className="space-y-0.5 text-ink/80">
+                    {parsed.rules.map((r, i) => <div key={i}>{ruleLabel(r)}</div>)}
+                  </div>
+                  <div className="text-[11px] text-ink/50 mt-1">🔴 إلزامي (لا يُخالَف) · 🟡 تفضيل (يُحاوَل قدر الإمكان)</div>
+                </>
+              ) : (
+                <div className="text-ink/60">ما فهمت أي قاعدة. جرّبي صياغة أوضح (اسم المعلمة + اليوم/الحصة).</div>
+              )}
+              {parsed.unknown.length ? (
+                <div className="mt-1 text-[11.5px] text-gold-deep">لم أفهم: {parsed.unknown.slice(0, 4).join(' · ')}</div>
+              ) : null}
+            </div>
+          ) : null}
+
           {genReport ? (
             <div className={`mt-2 rounded-xl p-2.5 text-[12.5px] ${genReport.unplaced.length ? 'bg-gold/10' : 'bg-sage-light/50'}`}>
               <div className="font-bold text-sage-deep">نتيجة الفحص</div>
