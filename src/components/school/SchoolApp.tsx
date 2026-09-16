@@ -60,6 +60,8 @@ type Duty = { id: string; day: number; period_id: string; location_id: string; m
 type Supervision = { id: string; member_id: string; scope_type: 'stage' | 'grade' | 'class'; scope_id: string; note: string | null };
 type Note = { id: string; author_id: string | null; target_type: 'student' | 'member'; target_id: string; target_name: string | null; category: string | null; body: string; created_at: string };
 type Perm = { id: string; user_id: string; module: string; action: string; scope_type: string; scope_id: string | null };
+type GItem = { id: string; member_id: string; subject_id: string; class_id: string; name: string; max_score: number; sort: number };
+type GScore = { id: string; item_id: string; student_id: string; score: number | null };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -93,6 +95,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'reports', label: 'التقارير', emoji: '📄' },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼' },
   { key: 'notes', label: 'رصد الملاحظات', emoji: '📝' },
+  { key: 'grades', label: 'سجل الدرجات', emoji: '📊' },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐' },
 ];
 
@@ -368,10 +371,12 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const [supervisions, setSupervisions] = useState<Supervision[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [permissions, setPermissions] = useState<Perm[]>([]);
+  const [gradeItems, setGradeItems] = useState<GItem[]>([]);
+  const [gradeScores, setGradeScores] = useState<GScore[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'permissions' | 'reports'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'grades' | 'permissions' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal' || myRole === 'deputy';
@@ -398,8 +403,6 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const scClasses = isSupervisor ? classes.filter((c) => scopeClassIds.has(c.id)) : classes;
   const scGradeIds = new Set(scClasses.map((c) => c.grade_id));
   const scGrades = isSupervisor ? grades.filter((g) => scGradeIds.has(g.id)) : grades;
-  const scStageIds = new Set(scGrades.map((g) => g.stage_id));
-  const scStages = isSupervisor ? stages.filter((s) => scStageIds.has(s.id)) : stages;
   // معلمات نطاق المشرفة = من يُدرِّسن في فصولها (للمتابعة)
   const scopeMemberIds = new Set<string>();
   if (isSupervisor) teaching.filter((t) => scopeClassIds.has(t.class_id)).forEach((t) => scopeMemberIds.add(t.member_id));
@@ -417,8 +420,21 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const coordSubjectIds = new Set(coordSubjects.map((s) => s.id));
   const coordTeaching = teaching.filter((t) => coordSubjectIds.has(t.subject_id));
   // خريطة الوحدة ← بطاقة القسم (الوحدات المدعومة بصلاحية دقيقة: الهيكل/الطالبات/الحضور)
-  const MOD_KEY: Record<string, string> = { structure: 'structure', students: 'students', attendance: 'attendance' };
-  const allowedKeys = canManage ? null : Array.from(new Set(myPerms.map((p) => MOD_KEY[p.module]).filter(Boolean)));
+  const MOD_KEY: Record<string, string> = { structure: 'structure', students: 'students', attendance: 'attendance', grades: 'grades' };
+  const teachesAny = !!myMember && teaching.some((t) => t.member_id === myMember.id);
+  let allowedKeys = canManage ? null : Array.from(new Set(myPerms.map((p) => MOD_KEY[p.module]).filter(Boolean)));
+  if (allowedKeys && teachesAny) {
+    if (!allowedKeys.includes('grades')) allowedKeys = [...allowedKeys, 'grades'];
+    if (!allowedKeys.includes('attendance')) allowedKeys = [...allowedKeys, 'attendance'];
+  }
+  // نطاق الحضور للعارضة: مشرفة=نطاقها · معلمة=فصولها · غيرها=الكل
+  const taughtClassIds = new Set(teachesAny ? teaching.filter((t) => t.member_id === myMember!.id).map((t) => t.class_id) : []);
+  const teacherOnly = !canManage && !isSupervisor && teachesAny;
+  const attClasses = isSupervisor ? scClasses : teacherOnly ? classes.filter((c) => taughtClassIds.has(c.id)) : classes;
+  const attGradeIds = new Set(attClasses.map((c) => c.grade_id));
+  const attGrades = isSupervisor || teacherOnly ? grades.filter((g) => attGradeIds.has(g.id)) : grades;
+  const attStageIds = new Set(attGrades.map((g) => g.stage_id));
+  const attStages = isSupervisor || teacherOnly ? stages.filter((s) => attStageIds.has(s.id)) : stages;
 
   // ── قائمة المدارس (الأدمِن: الكل؛ العضو: مدارسه) ──────────────
   const loadSchools = useCallback(async () => {
@@ -464,7 +480,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd, en, dl, du, sv, nt, pm] = await Promise.all([
+      const [dp, mb, su, tc, pd, en, dl, du, sv, nt, pm, gi, gs] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
@@ -476,6 +492,8 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         supabase.from('school_supervisions').select('id,member_id,scope_type,scope_id,note').eq('school_id', sid).order('created_at'),
         supabase.from('school_notes').select('id,author_id,target_type,target_id,target_name,category,body,created_at').eq('school_id', sid).order('created_at', { ascending: false }),
         supabase.from('school_permissions').select('id,user_id,module,action,scope_type,scope_id').eq('school_id', sid),
+        supabase.from('school_grade_items').select('id,member_id,subject_id,class_id,name,max_score,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_grade_scores').select('id,item_id,student_id,score').eq('school_id', sid),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
@@ -488,6 +506,8 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
       setSupervisions((sv.data as Supervision[]) || []);
       setNotes((nt.data as Note[]) || []);
       setPermissions((pm.data as Perm[]) || []);
+      setGradeItems((gi.data as GItem[]) || []);
+      setGradeScores((gs.data as GScore[]) || []);
     },
     [supabase]
   );
@@ -696,6 +716,38 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     const { error } = await supabase.from('school_permissions').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
     setPermissions((p) => p.filter((x) => x.id !== id));
+  };
+
+  // ── سجل الدرجات ───────────────────────────────────────────────
+  const addGradeItem = async (memberId: string, subjectId: string, classId: string, name: string, maxScore: number) => {
+    const sort = gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).length + 1;
+    const { data, error } = await supabase
+      .from('school_grade_items')
+      .insert({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name, max_score: maxScore, sort })
+      .select('id,member_id,subject_id,class_id,name,max_score,sort')
+      .single();
+    if (error || !data) return showToast('تعذّرت إضافة التقييم');
+    setGradeItems((g) => [...g, data as GItem]);
+    showToast('تمت الإضافة ✅');
+  };
+  const delGradeItem = async (id: string) => {
+    if (!window.confirm('حذف التقييم ودرجاته؟')) return;
+    const { error } = await supabase.from('school_grade_items').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setGradeItems((g) => g.filter((x) => x.id !== id));
+    setGradeScores((s) => s.filter((x) => x.item_id !== id));
+  };
+  const setScore = async (itemId: string, studentId: string, score: number | null) => {
+    const { data, error } = await supabase
+      .from('school_grade_scores')
+      .upsert({ school_id: schoolId, item_id: itemId, student_id: studentId, score }, { onConflict: 'item_id,student_id' })
+      .select('id,item_id,student_id,score')
+      .single();
+    if (error || !data) return showToast('تعذّر حفظ الدرجة');
+    setGradeScores((s) => {
+      const rest = s.filter((x) => !(x.item_id === itemId && x.student_id === studentId));
+      return [...rest, data as GScore];
+    });
   };
 
   // ── المتعلمات ─────────────────────────────────────────────────
@@ -1168,14 +1220,14 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         />
       ) : view === 'attendance' ? (
         <AttendanceView
-          stages={scStages}
-          grades={scGrades}
-          classes={scClasses}
+          stages={attStages}
+          grades={attGrades}
+          classes={attClasses}
           attClass={attClass}
           attDate={attDate}
           attStudents={attStudents}
           attRecords={attRecords}
-          canManage={isSupervisor ? true : permManage('attendance')}
+          canManage={isSupervisor || teacherOnly ? true : permManage('attendance')}
           onBack={() => (attClass ? setAttClass(null) : setView('dash'))}
           onOpenClass={openAttClass}
           onChangeDate={changeAttDate}
@@ -1251,6 +1303,25 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           addNote={addNote}
           delNote={delNote}
         />
+      ) : view === 'grades' ? (
+        <GradebookView
+          teaching={teaching}
+          members={members}
+          subjects={subjects}
+          classes={classes}
+          grades={grades}
+          students={students}
+          openClass={openClass}
+          gradeItems={gradeItems}
+          gradeScores={gradeScores}
+          myMemberId={myMember?.id || null}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          onOpenClass={openClassStudents}
+          addGradeItem={addGradeItem}
+          delGradeItem={delGradeItem}
+          setScore={setScore}
+        />
       ) : view === 'permissions' ? (
         <PermissionsView
           members={members}
@@ -1313,6 +1384,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
             else if (k === 'timetable' || k === 'smart') setView('timetable');
             else if (k === 'supervision') setView('supervision');
             else if (k === 'notes') setView('notes');
+            else if (k === 'grades') setView('grades');
             else if (k === 'attendance') {
               setAttClass(null);
               setView('attendance');
@@ -3277,6 +3349,7 @@ function StudentsView({
 const PERM_MODULES: { key: string; label: string }[] = [
   { key: 'students', label: 'الطالبات' },
   { key: 'attendance', label: 'الحضور' },
+  { key: 'grades', label: 'الدرجات' },
   { key: 'structure', label: 'الهيكل' },
 ];
 const PERM_ACTIONS: { key: string; label: string }[] = [
@@ -3443,6 +3516,190 @@ function PermissionsView({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ───────────────────────── سجل الدرجات ───────────────────────── */
+function GradebookView({
+  teaching,
+  members,
+  subjects,
+  classes,
+  grades,
+  students,
+  openClass,
+  gradeItems,
+  gradeScores,
+  myMemberId,
+  canManage,
+  onBack,
+  onOpenClass,
+  addGradeItem,
+  delGradeItem,
+  setScore,
+}: {
+  teaching: Teaching[];
+  members: Member[];
+  subjects: Subject[];
+  classes: Klass[];
+  grades: Grade[];
+  students: Student[];
+  openClass: Klass | null;
+  gradeItems: GItem[];
+  gradeScores: GScore[];
+  myMemberId: string | null;
+  canManage: boolean;
+  onBack: () => void;
+  onOpenClass: (cls: Klass) => void;
+  addGradeItem: (memberId: string, subjectId: string, classId: string, name: string, maxScore: number) => void;
+  delGradeItem: (id: string) => void;
+  setScore: (itemId: string, studentId: string, score: number | null) => void;
+}) {
+  const [sel, setSel] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newMax, setNewMax] = useState('10');
+
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
+  const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || '—';
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    if (!c) return '—';
+    const g = grades.find((x) => x.id === c.grade_id);
+    return g ? `${g.name} · ${c.name}` : c.name;
+  };
+
+  // مجموعات (معلمة×مادة×فصل): تدريسي + أي مجموعة لها تقييمات (للمتابعة)
+  const key = (m: string, s: string, c: string) => `${m}|${s}|${c}`;
+  const map = new Map<string, { member_id: string; subject_id: string; class_id: string; canEdit: boolean }>();
+  const consider = (m: string, s: string, c: string) => {
+    const k = key(m, s, c);
+    if (!map.has(k)) map.set(k, { member_id: m, subject_id: s, class_id: c, canEdit: canManage || m === myMemberId });
+  };
+  teaching.forEach((t) => {
+    if (canManage || t.member_id === myMemberId) consider(t.member_id, t.subject_id, t.class_id);
+  });
+  gradeItems.forEach((g) => consider(g.member_id, g.subject_id, g.class_id)); // مجموعات مرئية (متابعة)
+  const groups = Array.from(map.values());
+
+  const selGroup = groups.find((g) => key(g.member_id, g.subject_id, g.class_id) === sel) || null;
+  const selCls = selGroup ? classes.find((c) => c.id === selGroup.class_id) || null : null;
+  const cols = selGroup
+    ? gradeItems.filter((i) => i.member_id === selGroup.member_id && i.subject_id === selGroup.subject_id && i.class_id === selGroup.class_id).sort((a, b) => a.sort - b.sort)
+    : [];
+  const rows = selGroup && openClass && openClass.id === selGroup.class_id ? students.filter((s) => !s.archived) : [];
+  const scoreOf = (itemId: string, studentId: string) => gradeScores.find((x) => x.item_id === itemId && x.student_id === studentId)?.score ?? null;
+
+  const openGroup = (g: { member_id: string; subject_id: string; class_id: string }) => {
+    setSel(key(g.member_id, g.subject_id, g.class_id));
+    const cls = classes.find((c) => c.id === g.class_id);
+    if (cls) onOpenClass(cls);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={() => (sel ? setSel('') : onBack())} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ {sel ? 'السجلات' : 'اللوحة'}</button>
+        <div className="font-extrabold text-sage-deep flex-1">سجل الدرجات</div>
+      </div>
+
+      {!selGroup ? (
+        groups.length === 0 ? (
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لا يوجد توزيع دراسي لك بعد — تُسند لكِ المواد من «المواد والتوزيع».</div>
+        ) : (
+          <div className="space-y-1.5">
+            {groups.map((g) => (
+              <button key={key(g.member_id, g.subject_id, g.class_id)} onClick={() => openGroup(g)} className="card-3d bg-white rounded-xl p-3 w-full text-right flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="font-bold text-sage-deep text-[13.5px]">{subjectName(g.subject_id)} · {classLabel(g.class_id)}</div>
+                  {g.member_id !== myMemberId ? <div className="text-[11px] text-ink/50 mt-0.5">{memberName(g.member_id)}</div> : null}
+                </div>
+                {!g.canEdit ? <span className="text-[10px] bg-sage/10 text-ink/50 rounded-full px-2 py-0.5">عرض</span> : null}
+                <span className="text-ink/30 text-xs">›</span>
+              </button>
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="space-y-2">
+          <div className="card-3d bg-white rounded-2xl p-3">
+            <div className="font-extrabold text-sage-deep">{subjectName(selGroup.subject_id)} · {classLabel(selGroup.class_id)}</div>
+            {selGroup.member_id !== myMemberId ? <div className="text-[11px] text-ink/50">{memberName(selGroup.member_id)}</div> : null}
+          </div>
+
+          {selGroup.canEdit ? (
+            <div className="card-3d bg-white rounded-2xl p-3 flex gap-1.5 items-center">
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="تقييم جديد (اختبار ١)" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+              <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(e.target.value)} title="الدرجة العظمى" className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
+              <button
+                onClick={() => { if (newName.trim()) { addGradeItem(selGroup.member_id, selGroup.subject_id, selGroup.class_id, newName.trim(), Math.max(1, +newMax || 10)); setNewName(''); } }}
+                className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-2"
+              >
+                ＋ عمود
+              </button>
+            </div>
+          ) : null}
+
+          {rows.length === 0 ? (
+            <div className="text-[12px] text-ink/40 text-center py-4">— لا طالبات في هذا الفصل —</div>
+          ) : cols.length === 0 ? (
+            <div className="text-[12px] text-ink/40 text-center py-4">أضيفي عمود تقييم لتبدئي التسجيل.</div>
+          ) : (
+            <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+              <table className="text-[12px] w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-right p-1.5 sticky right-0 bg-white">الطالبة</th>
+                    {cols.map((c) => (
+                      <th key={c.id} className="p-1.5 text-center whitespace-nowrap">
+                        <div className="font-bold text-sage-deep">{c.name}</div>
+                        <div className="text-[10px] text-ink/45 font-normal">/{c.max_score}</div>
+                        {selGroup.canEdit ? <button onClick={() => delGradeItem(c.id)} aria-label="حذف العمود" className="text-red-300 hover:text-red-500 text-[10px]">حذف</button> : null}
+                      </th>
+                    ))}
+                    <th className="p-1.5 text-center">المجموع</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((st) => {
+                    const total = cols.reduce((a, c) => a + (Number(scoreOf(c.id, st.id)) || 0), 0);
+                    const max = cols.reduce((a, c) => a + Number(c.max_score), 0);
+                    return (
+                      <tr key={st.id} className="border-t border-sage/10">
+                        <td className="p-1.5 text-right sticky right-0 bg-white font-medium text-ink">{st.name}</td>
+                        {cols.map((c) => {
+                          const v = scoreOf(c.id, st.id);
+                          return (
+                            <td key={c.id} className="p-1 text-center">
+                              {selGroup.canEdit ? (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={c.max_score}
+                                  defaultValue={v ?? ''}
+                                  onBlur={(e) => {
+                                    const raw = e.target.value.trim();
+                                    const val = raw === '' ? null : Math.max(0, Math.min(c.max_score, +raw || 0));
+                                    if (val !== v) setScore(c.id, st.id, val);
+                                  }}
+                                  className="w-14 rounded border border-sage/25 bg-white text-[12px] p-1 text-center"
+                                />
+                              ) : (
+                                <span className="text-ink">{v ?? '—'}</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="p-1.5 text-center font-bold text-sage-deep tabular-nums">{total}<span className="text-[10px] text-ink/40">/{max}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
