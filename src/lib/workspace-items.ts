@@ -35,10 +35,6 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     key: 'my_agenda', name: 'أجندتي', emoji: '🌿',
     href: '/my-agenda', col: 'agenda_until', locked: '/my-agenda-locked',
   },
-  school: {
-    key: 'school', name: 'إدارة المدرسة', emoji: '🏫',
-    href: '/school', col: 'school_until', locked: '/school-locked',
-  },
   attendance: {
     key: 'attendance', name: 'سجل الحضور الذكي', emoji: '🗓️',
     href: '/attendance', col: 'attendance_until', locked: '/attendance-locked',

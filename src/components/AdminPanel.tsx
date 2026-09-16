@@ -54,7 +54,6 @@ const TOOL_COLS = [
   'clock_until',
   'gharas_bank_until',
   'agenda_until',
-  'school_until',
 ] as const;
 
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
@@ -225,7 +224,6 @@ export default function AdminPanel() {
   // «🎬 رصيد حصص الستوديو» أدناه (باقة حصة / خمس حصص)، لا بمنح ٦ أشهر.
   const TOOLS: { key: string; label: string; emoji: string }[] = [
     { key: 'agenda', label: 'أجندتي', emoji: '🌿' },
-    { key: 'school', label: 'إدارة المدرسة', emoji: '🏫' },
     { key: 'gradebook', label: 'سجل الدرجات الذكي', emoji: '📊' },
     { key: 'attendance', label: 'سجل الحضور', emoji: '🗓️' },
     { key: 'head_records', label: 'سجلات رئيس الشعبة', emoji: '🗂️' },
