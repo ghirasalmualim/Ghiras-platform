@@ -3662,15 +3662,19 @@ function SmartAttendanceView({
   };
   const openClasses = classes.filter((c) => !c.archived);
 
+  const clsName = (cid: string) => classLabel(cid);
+  const studentName = (sid: string) => students.find((s) => s.id === sid)?.name || '';
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <style>{`@media print { body * { visibility: hidden } .school-report, .school-report * { visibility: visible } .school-report { position: absolute; top: 0; right: 0; left: 0; width: 100% } .no-print { display: none !important } @page { size: A4 portrait; margin: 12mm } }`}</style>
+      <div className="flex items-center gap-2 no-print">
         <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
         <div className="font-extrabold text-sage-deep flex-1">الحضور الذكي</div>
       </div>
 
       {/* أوضاع */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 no-print">
         {iTeach ? (
           <button onClick={() => { setMode('mark'); setSelEntry(''); }} className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${mode === 'mark' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}>تسجيل حصتي</button>
         ) : null}
@@ -3749,7 +3753,13 @@ function SmartAttendanceView({
             return withEx.length === 0 ? (
               <div className="card-3d bg-white rounded-2xl p-6 text-center text-sage-deep text-[13px]">✓ لا استثناءات هذا اليوم — الكل حاضرات.</div>
             ) : (
-              <div className="card-3d bg-white rounded-2xl p-3 space-y-2">
+              <>
+                <button onClick={() => window.print()} className="no-print rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-1.5">🖨 طباعة الكشف</button>
+                <div className="school-report card-3d bg-white rounded-2xl p-3 space-y-2">
+                <div className="mb-1 pb-1 border-b border-sage/15">
+                  <div className="font-extrabold text-sage-deep text-[14px]">كشف الاستثناءات اليومي</div>
+                  <div className="text-[11px] text-ink/55">{clsName(selClass)} · {date} ({WEEKDAYS[wd]})</div>
+                </div>
                 {withEx.map(({ st, ex }) => (
                   <div key={st.id} className="border-b border-sage/10 pb-2 last:border-0">
                     <div className="font-bold text-sage-deep text-[13px] mb-1">{st.name}</div>
@@ -3762,7 +3772,8 @@ function SmartAttendanceView({
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              </>
             );
           })()}
         </div>
@@ -3784,7 +3795,12 @@ function SmartAttendanceView({
             const rows = periodAtt.filter((x) => x.student_id === selStudent).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : periodSort(a.period_id) - periodSort(b.period_id)));
             const cnt = (s: string) => rows.filter((r) => r.status === s).length;
             return (
-              <div className="space-y-2">
+              <div className="school-report space-y-2">
+                <button onClick={() => window.print()} className="no-print rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-1.5">🖨 طباعة الكشف</button>
+                <div className="pb-1 border-b border-sage/15">
+                  <div className="font-extrabold text-sage-deep text-[14px]">كشف الطالبة</div>
+                  <div className="text-[11px] text-ink/55">{studentName(selStudent)} · {clsName(selClass)}</div>
+                </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {(['absent', 'late', 'permission'] as const).map((s) => (
                     <div key={s} className="card-3d bg-white rounded-xl py-2 text-center">
@@ -3835,7 +3851,13 @@ function SmartAttendanceView({
             return list.length === 0 ? (
               <div className="text-[12px] text-ink/40 text-center py-4">— لا طالبات —</div>
             ) : (
-              <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+              <>
+                <button onClick={() => window.print()} className="no-print rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-1.5 mb-2">🖨 طباعة الإحصائية</button>
+                <div className="school-report card-3d bg-white rounded-2xl p-3 overflow-x-auto">
+                <div className="mb-2 pb-1 border-b border-sage/15">
+                  <div className="font-extrabold text-sage-deep text-[14px]">إحصائية حضور الفصل</div>
+                  <div className="text-[11px] text-ink/55">{clsName(selClass)} · من {from} إلى {to}</div>
+                </div>
                 <table className="text-[12px] w-full border-collapse">
                   <thead>
                     <tr className="text-ink/55">
@@ -3856,7 +3878,8 @@ function SmartAttendanceView({
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             );
           })()}
         </div>
