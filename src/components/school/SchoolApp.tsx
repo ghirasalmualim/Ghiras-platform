@@ -19,8 +19,8 @@ type School = { id: string; name: string; academic_year: string | null; term: st
 type Stage = { id: string; name: string; sort: number };
 type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
-type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
-type Member = { id: string; user_id: string | null; name: string | null; role: string; department_id: string | null; note?: string | null };
+type Dept = { id: string; name: string; head_member_id: string | null; sort: number; block?: boolean; lab_weekly?: number; lab_capacity?: number };
+type Member = { id: string; user_id: string | null; name: string | null; role: string; department_id: string | null; note?: string | null; block_off?: boolean };
 type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
 type Subject = { id: string; name: string; department_id: string | null; sort: number };
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
@@ -111,8 +111,22 @@ const subActive = (until: string | null) => !!until && new Date(until) > new Dat
  * تفضيل مرن: توزيع حصص المادة الواحدة على أيام مختلفة. جشِع + إعادات عشوائية،
  * ويعيد ما تعذّر وضعه ليُعرض في تقرير الفحص.
  */
-type SolveTask = { member_id: string; subject_id: string; class_id: string };
-type SolveCons = { offDay: Set<string>; noSlot: Set<string>; avoidLast: Set<string>; lastPid: string | null };
+type SolveTask = { member_id: string; subject_id: string; class_id: string; isLab?: boolean; group?: string };
+type SolveCons = {
+  offDay: Set<string>;
+  noSlot: Set<string>;
+  avoidLast: Set<string>;
+  lastPid: string | null;
+  subjectDept?: Map<string, string>;   // subject_id → dept_id
+  labWeekly?: Map<string, number>;     // dept_id → حصص مختبر/أسبوع لكل توزيع
+  labCapacity?: Map<string, number>;   // dept_id → عدد المختبرات (سقف متزامن)
+  blockDepts?: Set<string>;            // أقسام مفعّل فيها البلوك
+  blockOff?: Set<string>;              // معلمات مستثناة من البلوك
+};
+function shuffle<T>(a: T[]): T[] {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 function solveTimetable(
   teaching: { member_id: string; subject_id: string; class_id: string; weekly_hours: number }[],
   lessonPeriodIds: string[],
@@ -120,68 +134,95 @@ function solveTimetable(
   cons?: SolveCons
 ): { placements: (SolveTask & { day: number; period_id: string })[]; unplaced: SolveTask[] } {
   const c = cons || { offDay: new Set<string>(), noSlot: new Set<string>(), avoidLast: new Set<string>(), lastPid: null };
+  const subjectDept = c.subjectDept || new Map<string, string>();
+  const labWeekly = c.labWeekly || new Map<string, number>();
+  const labCapacity = c.labCapacity || new Map<string, number>();
+  const blockDepts = c.blockDepts || new Set<string>();
+  const blockOff = c.blockOff || new Set<string>();
   const slots: { day: number; pid: string }[] = [];
   for (const d of workDays) for (const pid of lessonPeriodIds) slots.push({ day: d, pid });
-
-  const tasks: SolveTask[] = [];
-  for (const t of teaching) for (let i = 0; i < Math.max(0, t.weekly_hours); i++) tasks.push({ member_id: t.member_id, subject_id: t.subject_id, class_id: t.class_id });
-
-  const load: Record<string, number> = {};
-  for (const t of tasks) load[t.member_id] = (load[t.member_id] || 0) + 1;
-  const baseOrder = tasks.map((_, i) => i).sort((a, b) => (load[tasks[b].member_id] || 0) - (load[tasks[a].member_id] || 0));
-
+  const deptOf = (t: SolveTask) => subjectDept.get(t.subject_id) || null;
   const key = (d: number, p: string) => `${d}|${p}`;
-  const attempt = (order: number[]) => {
+
+  // بناء المهام مع وسم حصص المختبر ومجموعات البلوك
+  const rawTasks: SolveTask[] = [];
+  for (const t of teaching) {
+    const dept = subjectDept.get(t.subject_id) || null;
+    const labW = dept ? labWeekly.get(dept) || 0 : 0;
+    const useBlock = dept ? blockDepts.has(dept) && !blockOff.has(t.member_id) : false;
+    const hrs = Math.max(0, t.weekly_hours);
+    const grp = useBlock && hrs >= 2 ? `${t.member_id}|${t.subject_id}|${t.class_id}` : undefined;
+    for (let i = 0; i < hrs; i++) rawTasks.push({ member_id: t.member_id, subject_id: t.subject_id, class_id: t.class_id, isLab: i < labW, group: grp });
+  }
+  const groupMap = new Map<string, SolveTask[]>();
+  const singles: SolveTask[] = [];
+  for (const t of rawTasks) {
+    if (t.group) { const a = groupMap.get(t.group) || []; a.push(t); groupMap.set(t.group, a); }
+    else singles.push(t);
+  }
+  const groups = Array.from(groupMap.values());
+  const load: Record<string, number> = {};
+  for (const t of singles) load[t.member_id] = (load[t.member_id] || 0) + 1;
+  const baseSingles = singles.slice().sort((a, b) => (load[b.member_id] || 0) - (load[a.member_id] || 0));
+
+  const attempt = (grpOrder: SolveTask[][], singleOrder: SolveTask[]) => {
     const tBusy = new Map<string, Set<string>>();
     const cBusy = new Map<string, Set<string>>();
     const csDays = new Map<string, Set<number>>();
+    const labCount = new Map<string, number>();
     const placements: (SolveTask & { day: number; period_id: string })[] = [];
     const unplaced: SolveTask[] = [];
-    for (const idx of order) {
-      const t = tasks[idx];
-      const tb = tBusy.get(t.member_id) || new Set<string>();
-      const cb = cBusy.get(t.class_id) || new Set<string>();
-      const csKey = `${t.class_id}|${t.subject_id}`;
-      const usedDays = csDays.get(csKey) || new Set<number>();
-      // قيود إلزامية: يوم غير متاح للمعلمة، وحصة ممنوعة عليها
-      const cands = slots.filter(
-        (s) =>
-          !tb.has(key(s.day, s.pid)) &&
-          !cb.has(key(s.day, s.pid)) &&
-          !c.offDay.has(`${t.member_id}|${s.day}`) &&
-          !c.noSlot.has(`${t.member_id}|${s.pid}`)
-      );
-      // تفضيلات (مرنة): يومٌ لا يحمل هذه المادة بعد، وتجنّب آخر حصة لمواد مطلوبة
+    const free = (t: SolveTask, d: number, pid: string) => {
+      if (tBusy.get(t.member_id)?.has(key(d, pid))) return false;
+      if (cBusy.get(t.class_id)?.has(key(d, pid))) return false;
+      if (c.offDay.has(`${t.member_id}|${d}`)) return false;
+      if (c.noSlot.has(`${t.member_id}|${pid}`)) return false;
+      if (t.isLab) { const dp = deptOf(t); const cap = dp ? labCapacity.get(dp) || 0 : 0; if (cap > 0 && (labCount.get(`${dp}|${key(d, pid)}`) || 0) >= cap) return false; }
+      return true;
+    };
+    const place = (t: SolveTask, d: number, pid: string) => {
+      let tb = tBusy.get(t.member_id); if (!tb) { tb = new Set(); tBusy.set(t.member_id, tb); } tb.add(key(d, pid));
+      let cb = cBusy.get(t.class_id); if (!cb) { cb = new Set(); cBusy.set(t.class_id, cb); } cb.add(key(d, pid));
+      const csKey = `${t.class_id}|${t.subject_id}`; let ud = csDays.get(csKey); if (!ud) { ud = new Set(); csDays.set(csKey, ud); } ud.add(d);
+      if (t.isLab) { const dp = deptOf(t); if (dp && (labCapacity.get(dp) || 0) > 0) { const k = `${dp}|${key(d, pid)}`; labCount.set(k, (labCount.get(k) || 0) + 1); } }
+      placements.push({ member_id: t.member_id, subject_id: t.subject_id, class_id: t.class_id, day: d, period_id: pid });
+    };
+
+    // 1) مجموعات البلوك: حصص متلاصقة على نفس اليوم
+    const leftover: SolveTask[] = [];
+    for (const g of grpOrder) {
+      const n = g.length;
+      let placed = false;
+      for (const d of shuffle(workDays.slice())) {
+        for (let start = 0; start + n <= lessonPeriodIds.length; start++) {
+          let ok = true;
+          for (let i = 0; i < n; i++) if (!free(g[i], d, lessonPeriodIds[start + i])) { ok = false; break; }
+          if (ok) { for (let i = 0; i < n; i++) place(g[i], d, lessonPeriodIds[start + i]); placed = true; break; }
+        }
+        if (placed) break;
+      }
+      if (!placed) leftover.push(...g); // تعذّر التلاصق → توضع فرادى
+    }
+
+    // 2) الحصص الفردية + بقايا البلوك
+    for (const t of [...leftover, ...singleOrder]) {
+      const usedDays = csDays.get(`${t.class_id}|${t.subject_id}`) || new Set<number>();
       const avoidLast = c.avoidLast.has(t.subject_id) && c.lastPid;
+      const cands = slots.filter((s) => free(t, s.day, s.pid));
       cands.sort((a, b) => {
         const pa = (usedDays.has(a.day) ? 1 : 0) + (avoidLast && a.pid === c.lastPid ? 2 : 0);
         const pb = (usedDays.has(b.day) ? 1 : 0) + (avoidLast && b.pid === c.lastPid ? 2 : 0);
         return pa - pb;
       });
-      if (cands.length) {
-        const s = cands[0];
-        tb.add(key(s.day, s.pid));
-        tBusy.set(t.member_id, tb);
-        cb.add(key(s.day, s.pid));
-        cBusy.set(t.class_id, cb);
-        usedDays.add(s.day);
-        csDays.set(csKey, usedDays);
-        placements.push({ ...t, day: s.day, period_id: s.pid });
-      } else {
-        unplaced.push(t);
-      }
+      if (cands.length) place(t, cands[0].day, cands[0].pid);
+      else unplaced.push(t);
     }
     return { placements, unplaced };
   };
 
-  let best = attempt(baseOrder);
-  for (let r = 0; r < 60 && best.unplaced.length; r++) {
-    const ord = baseOrder.slice();
-    for (let i = ord.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [ord[i], ord[j]] = [ord[j], ord[i]];
-    }
-    const res = attempt(ord);
+  let best = attempt(groups, baseSingles);
+  for (let r = 0; r < 80 && best.unplaced.length; r++) {
+    const res = attempt(shuffle(groups.slice()), shuffle(baseSingles.slice()));
     if (res.unplaced.length < best.unplaced.length) best = res;
   }
   return best;
@@ -484,7 +525,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const loadMembersDepts = useCallback(
     async (sid: string) => {
       const [dp, mb, su, tc, pd, en, dl, du, sv, nt, pm, gi, gs] = await Promise.all([
-        supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_departments').select('id,name,head_member_id,sort,block,lab_weekly,lab_capacity').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_teaching').select('id,member_id,subject_id,class_id,weekly_hours').eq('school_id', sid),
@@ -642,6 +683,16 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     const { error } = await supabase.from('school_departments').update({ head_member_id: memberId }).eq('id', deptId);
     if (error) return showToast('تعذّر التعيين');
     setDepts((d) => d.map((x) => (x.id === deptId ? { ...x, head_member_id: memberId } : x)));
+  };
+  const updateDept = async (deptId: string, patch: Partial<Dept>) => {
+    const { error } = await supabase.from('school_departments').update(patch).eq('id', deptId);
+    if (error) return showToast('تعذّر الحفظ');
+    setDepts((d) => d.map((x) => (x.id === deptId ? { ...x, ...patch } : x)));
+  };
+  const setMemberBlockOff = async (memberId: string, val: boolean) => {
+    const { error } = await supabase.from('school_members').update({ block_off: val }).eq('id', memberId);
+    if (error) return showToast('تعذّر الحفظ');
+    setMembers((m) => m.map((x) => (x.id === memberId ? { ...x, block_off: val } : x)));
   };
   const addMember = async (name: string, role: string, deptId: string | null) => {
     // إضافة بالاسم مباشرة (بلا حساب). الربط بحساب اختياري لاحقًا.
@@ -945,7 +996,19 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         if (pid) noSlot.add(`${r.member_id}|${pid}`);
       } else if (r.kind === 'avoid_last') avoidLast.add(r.subject_id);
     }
-    const cons: SolveCons = { offDay, noSlot, avoidLast, lastPid: lessonPids[lessonPids.length - 1] || null };
+    // قيود القسم المنظّمة: البلوك + المختبرات
+    const subjectDept = new Map<string, string>();
+    for (const s of subjects) if (s.department_id) subjectDept.set(s.id, s.department_id);
+    const labWeekly = new Map<string, number>();
+    const labCapacity = new Map<string, number>();
+    const blockDepts = new Set<string>();
+    for (const d of depts) {
+      if (d.block) blockDepts.add(d.id);
+      if (d.lab_weekly && d.lab_weekly > 0) labWeekly.set(d.id, d.lab_weekly);
+      if (d.lab_capacity && d.lab_capacity > 0) labCapacity.set(d.id, d.lab_capacity);
+    }
+    const blockOff = new Set(members.filter((m) => m.block_off).map((m) => m.id));
+    const cons: SolveCons = { offDay, noSlot, avoidLast, lastPid: lessonPids[lessonPids.length - 1] || null, subjectDept, labWeekly, labCapacity, blockDepts, blockOff };
     const res = solveTimetable(teaching, lessonPids, wd, cons);
     const { error: delErr } = await supabase.from('school_timetable_entries').delete().eq('school_id', schoolId);
     if (delErr) {
@@ -1204,6 +1267,8 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           linkMember={linkMember}
           unlinkMember={unlinkMember}
           updateMemberNote={updateMemberNote}
+          updateDept={updateDept}
+          setMemberBlockOff={setMemberBlockOff}
         />
       ) : view === 'students' ? (
         <StudentsView
@@ -1673,6 +1738,8 @@ function DepartmentsView({
   linkMember,
   unlinkMember,
   updateMemberNote,
+  updateDept,
+  setMemberBlockOff,
 }: {
   depts: Dept[];
   members: Member[];
@@ -1688,6 +1755,8 @@ function DepartmentsView({
   linkMember: (memberId: string, identifier: string) => void;
   unlinkMember: (memberId: string) => void;
   updateMemberNote: (memberId: string, note: string) => void;
+  updateDept: (deptId: string, patch: Partial<Dept>) => void;
+  setMemberBlockOff: (memberId: string, val: boolean) => void;
 }) {
   const [newDept, setNewDept] = useState('');
   const [openDepts, setOpenDepts] = useState<Set<string>>(new Set());
@@ -1704,6 +1773,15 @@ function DepartmentsView({
       </div>
       {canManage ? (
         <>
+          {depts.find((x) => x.id === m.department_id)?.block ? (
+            <button
+              onClick={() => setMemberBlockOff(m.id, !m.block_off)}
+              title={m.block_off ? 'البلوك متوقف لهذه المعلمة — اضغطي لتفعيله' : 'البلوك مفعّل — اضغطي لإيقافه لهذه المعلمة'}
+              className={`text-[10px] rounded-full px-1.5 py-0.5 border ${m.block_off ? 'bg-white text-ink/45 border-ink/20' : 'bg-sage/10 text-sage-deep border-transparent'}`}
+            >
+              {m.block_off ? 'بلوك ⛔' : 'بلوك ✓'}
+            </button>
+          ) : null}
           <button
             onClick={() => {
               const n = window.prompt(`ملاحظة/قيد جدول لـ«${m.name || 'المعلمة'}» (مثال: ما تأخذ الحصة الأولى):`, m.note || '');
@@ -1814,6 +1892,24 @@ function DepartmentsView({
                     </select>
                   ) : null}
                 </div>
+                {canManage ? (
+                  <div className="rounded-xl bg-sage/5 p-2.5 space-y-1.5">
+                    <div className="text-[11px] font-bold text-sage-deep">إعدادات جدولة القسم</div>
+                    <label className="flex items-center gap-1.5 text-[12px] text-ink cursor-pointer">
+                      <input type="checkbox" checked={!!d.block} onChange={(e) => updateDept(d.id, { block: e.target.checked })} />
+                      حصص المعلمة لنفس الصف متتالية (بلوك)
+                    </label>
+                    <div className="flex flex-wrap gap-3 text-[12px] text-ink">
+                      <label className="flex items-center gap-1">حصص مختبر/أسبوع
+                        <input type="number" min={0} value={d.lab_weekly || 0} onChange={(e) => updateDept(d.id, { lab_weekly: Math.max(0, +e.target.value || 0) })} className="w-14 rounded border border-sage/25 bg-white p-1 text-center" />
+                      </label>
+                      <label className="flex items-center gap-1">عدد المختبرات
+                        <input type="number" min={0} value={d.lab_capacity || 0} onChange={(e) => updateDept(d.id, { lab_capacity: Math.max(0, +e.target.value || 0) })} className="w-14 rounded border border-sage/25 bg-white p-1 text-center" />
+                      </label>
+                    </div>
+                    <div className="text-[10px] text-ink/45">المختبرات = ٠ يعني لا قيد. تُطبَّق عند توليد الجدول الذكي.</div>
+                  </div>
+                ) : null}
                 <div>
                   <div className="text-[12px] font-bold text-sage-deep mb-1">المعلمات ({mm.length})</div>
                   {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} roleText={m.id === d.head_member_id ? 'رئيسة الشعبة' : undefined} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
