@@ -59,6 +59,7 @@ type DutyLoc = { id: string; name: string; sort: number };
 type Duty = { id: string; day: number; period_id: string; location_id: string; member_id: string };
 type Supervision = { id: string; member_id: string; scope_type: 'stage' | 'grade' | 'class'; scope_id: string; note: string | null };
 type Note = { id: string; author_id: string | null; target_type: 'student' | 'member'; target_id: string; target_name: string | null; category: string | null; body: string; created_at: string };
+type Perm = { id: string; user_id: string; module: string; action: string; scope_type: string; scope_id: string | null };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -92,7 +93,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'reports', label: 'التقارير', emoji: '📄' },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼' },
   { key: 'notes', label: 'رصد الملاحظات', emoji: '📝' },
-  { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
+  { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐' },
 ];
 
 type SchoolRow = { id: string; name: string; subscription_until: string | null; role: string };
@@ -366,13 +367,14 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const [duties, setDuties] = useState<Duty[]>([]);
   const [supervisions, setSupervisions] = useState<Supervision[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [permissions, setPermissions] = useState<Perm[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'reports'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'permissions' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
-  const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
+  const canManage = isAdmin || myRole === 'admin' || myRole === 'principal' || myRole === 'deputy';
   const showToast = (t: string) => {
     setToast(t);
     window.setTimeout(() => setToast(''), 2600);
@@ -402,6 +404,13 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const scopeMemberIds = new Set<string>();
   if (isSupervisor) teaching.filter((t) => scopeClassIds.has(t.class_id)).forEach((t) => scopeMemberIds.add(t.member_id));
   const scopeMembers = isSupervisor ? members.filter((m) => scopeMemberIds.has(m.id)) : members;
+
+  // ── وضع صاحبة الصلاحيات (غير الإدارة وغير المشرفة، لها صلاحيات ممنوحة) ──
+  const myPerms = permissions.filter((p) => p.user_id === uid);
+  const permManage = (mod: string) => canManage || myPerms.some((p) => p.module === mod && ['add', 'edit', 'delete', 'approve'].includes(p.action));
+  // خريطة الوحدة ← بطاقة القسم (الوحدات المدعومة بصلاحية دقيقة: الهيكل/الطالبات/الحضور)
+  const MOD_KEY: Record<string, string> = { structure: 'structure', students: 'students', attendance: 'attendance' };
+  const allowedKeys = canManage ? null : Array.from(new Set(myPerms.map((p) => MOD_KEY[p.module]).filter(Boolean)));
 
   // ── قائمة المدارس (الأدمِن: الكل؛ العضو: مدارسه) ──────────────
   const loadSchools = useCallback(async () => {
@@ -447,7 +456,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd, en, dl, du, sv, nt] = await Promise.all([
+      const [dp, mb, su, tc, pd, en, dl, du, sv, nt, pm] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
@@ -458,6 +467,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         supabase.from('school_duties').select('id,day,period_id,location_id,member_id').eq('school_id', sid),
         supabase.from('school_supervisions').select('id,member_id,scope_type,scope_id,note').eq('school_id', sid).order('created_at'),
         supabase.from('school_notes').select('id,author_id,target_type,target_id,target_name,category,body,created_at').eq('school_id', sid).order('created_at', { ascending: false }),
+        supabase.from('school_permissions').select('id,user_id,module,action,scope_type,scope_id').eq('school_id', sid),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
@@ -469,6 +479,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
       setDuties((du.data as Duty[]) || []);
       setSupervisions((sv.data as Supervision[]) || []);
       setNotes((nt.data as Note[]) || []);
+      setPermissions((pm.data as Perm[]) || []);
     },
     [supabase]
   );
@@ -639,6 +650,44 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (error || !data) return showToast('تعذّرت العملية');
     showToast('تم فكّ الربط');
     if (schoolId) loadMembersDepts(schoolId);
+  };
+
+  // ── الأدوار والصلاحيات ────────────────────────────────────────
+  const PRESET_PERMS: Record<string, [string, string][]> = {
+    student_affairs: [
+      ['students', 'view'], ['students', 'add'], ['students', 'edit'],
+      ['attendance', 'view'], ['attendance', 'add'], ['attendance', 'edit'],
+    ],
+  };
+  const applyPreset = async (member: Member, preset: 'deputy' | 'student_affairs' | 'teacher') => {
+    if (!member.user_id) return showToast('اربطي حساب المعلمة أولًا 🔗');
+    const role = preset === 'deputy' ? 'deputy' : preset === 'student_affairs' ? 'student_affairs' : 'teacher';
+    const { error: re } = await supabase.from('school_members').update({ role }).eq('id', member.id);
+    if (re) return showToast('تعذّر تطبيق الدور');
+    await supabase.from('school_permissions').delete().eq('school_id', schoolId).eq('user_id', member.user_id);
+    const set = PRESET_PERMS[preset] || [];
+    if (set.length) {
+      const rows = set.map(([m, a]) => ({ school_id: schoolId, user_id: member.user_id, module: m, action: a, scope_type: 'school', scope_id: null }));
+      const { error } = await supabase.from('school_permissions').insert(rows);
+      if (error) return showToast('تعذّر تطبيق الصلاحيات');
+    }
+    showToast('تم تطبيق الدور ✅');
+    if (schoolId) loadMembersDepts(schoolId);
+  };
+  const addPerm = async (userId: string, module: string, action: string) => {
+    const { data, error } = await supabase
+      .from('school_permissions')
+      .insert({ school_id: schoolId, user_id: userId, module, action, scope_type: 'school', scope_id: null })
+      .select('id,user_id,module,action,scope_type,scope_id')
+      .single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setPermissions((p) => [...p, data as Perm]);
+    showToast('تمت الإضافة ✅');
+  };
+  const delPerm = async (id: string) => {
+    const { error } = await supabase.from('school_permissions').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setPermissions((p) => p.filter((x) => x.id !== id));
   };
 
   // ── المتعلمات ─────────────────────────────────────────────────
@@ -1027,7 +1076,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           stages={stages}
           grades={grades}
           classes={classes}
-          canManage={canManage}
+          canManage={permManage('structure')}
           onBack={() => setView('dash')}
           addStage={addStage}
           addGrade={addGrade}
@@ -1060,7 +1109,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           classes={classes}
           openClass={openClass}
           students={students}
-          canManage={canManage}
+          canManage={permManage('students')}
           onBack={() => (openClass ? setOpenClass(null) : setView('dash'))}
           onOpenClass={openClassStudents}
           addStudent={addStudent}
@@ -1117,7 +1166,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           attDate={attDate}
           attStudents={attStudents}
           attRecords={attRecords}
-          canManage={isSupervisor ? true : canManage}
+          canManage={isSupervisor ? true : permManage('attendance')}
           onBack={() => (attClass ? setAttClass(null) : setView('dash'))}
           onOpenClass={openAttClass}
           onChangeDate={changeAttDate}
@@ -1193,6 +1242,16 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           addNote={addNote}
           delNote={delNote}
         />
+      ) : view === 'permissions' ? (
+        <PermissionsView
+          members={members}
+          permissions={permissions}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          applyPreset={applyPreset}
+          addPerm={addPerm}
+          delPerm={delPerm}
+        />
       ) : view === 'reports' ? (
         <ReportsView
           school={school}
@@ -1224,6 +1283,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
       ) : (
         <Dashboard
           school={school}
+          allowedKeys={allowedKeys}
           counts={{ stages: stages.length, grades: grades.length, classes: classes.length, depts: depts.length, members: members.length }}
           onOpen={(k) => {
             if (k === 'structure') setView('structure');
@@ -1246,6 +1306,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
               setView('substitution');
             } else if (k === 'duty') setView('duty');
             else if (k === 'reports') setView('reports');
+            else if (k === 'permissions') setView('permissions');
           }}
         />
       )}
@@ -3191,6 +3252,126 @@ function StudentsView({
   );
 }
 
+/* ───────────────────────── المستخدمون والصلاحيات ───────────────────────── */
+const PERM_MODULES: { key: string; label: string }[] = [
+  { key: 'students', label: 'الطالبات' },
+  { key: 'attendance', label: 'الحضور' },
+  { key: 'structure', label: 'الهيكل' },
+];
+const PERM_ACTIONS: { key: string; label: string }[] = [
+  { key: 'view', label: 'عرض' },
+  { key: 'add', label: 'إضافة' },
+  { key: 'edit', label: 'تعديل' },
+  { key: 'delete', label: 'حذف' },
+];
+function PermissionsView({
+  members,
+  permissions,
+  canManage,
+  onBack,
+  applyPreset,
+  addPerm,
+  delPerm,
+}: {
+  members: Member[];
+  permissions: Perm[];
+  canManage: boolean;
+  onBack: () => void;
+  applyPreset: (member: Member, preset: 'deputy' | 'student_affairs' | 'teacher') => void;
+  addPerm: (userId: string, module: string, action: string) => void;
+  delPerm: (id: string) => void;
+}) {
+  const [openId, setOpenId] = useState('');
+  const [cm, setCm] = useState('students');
+  const [ca, setCa] = useState('view');
+  const modLabel = (k: string) => PERM_MODULES.find((m) => m.key === k)?.label || k;
+  const actLabel = (k: string) => PERM_ACTIONS.find((a) => a.key === k)?.label || k;
+  const sorted = members
+    .slice()
+    .sort((a, b) => Number(!!b.user_id) - Number(!!a.user_id) || (a.name || '').localeCompare(b.name || '', 'ar'));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">المستخدمون والصلاحيات</div>
+      </div>
+
+      <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
+        امنحي كل معلمة دورها. الأدوار الجاهزة: <b>الوكيلة</b> (كل شيء عدا الاشتراك) و<b>شؤون الطالبات</b> (الطالبات والحضور). أو أضيفي صلاحيات مفصّلة يدويًا. الصلاحيات تعمل فقط بعد <b>ربط حساب المعلمة</b> 🔗 من «الشُّعب».
+      </div>
+
+      {sorted.map((m) => {
+        const mp = m.user_id ? permissions.filter((p) => p.user_id === m.user_id) : [];
+        const open = openId === m.id;
+        return (
+          <div key={m.id} className="card-3d bg-white rounded-2xl p-3">
+            <button onClick={() => setOpenId(open ? '' : m.id)} className="w-full flex items-center gap-2 text-right">
+              <div className="flex-1">
+                <div className="font-bold text-sage-deep text-[13.5px]">{m.name || '—'}</div>
+                <div className="text-[11px] text-ink/50 mt-0.5">
+                  {ROLE_LABEL[m.role] || m.role}
+                  {!m.user_id ? <span className="text-gold-deep"> · غير مربوطة بحساب</span> : mp.length ? <span> · {mp.length} صلاحية</span> : null}
+                </div>
+              </div>
+              <span className="text-ink/30 text-xs">{open ? '▲' : '▼'}</span>
+            </button>
+
+            {open ? (
+              !m.user_id ? (
+                <div className="text-[12px] text-ink/50 mt-2 border-t border-sage/10 pt-2">اربطي حسابها أولًا من «الشُّعب» (زر 🔗) لتُفعَّل الصلاحيات.</div>
+              ) : (
+                <div className="mt-2 border-t border-sage/10 pt-2 space-y-2">
+                  {canManage ? (
+                    <div>
+                      <div className="text-[11px] text-ink/55 mb-1">أدوار جاهزة:</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button onClick={() => applyPreset(m, 'deputy')} className="rounded-lg bg-sage-deep text-white text-[11.5px] font-bold px-2.5 py-1.5">وكيلة</button>
+                        <button onClick={() => applyPreset(m, 'student_affairs')} className="rounded-lg bg-sage-light text-sage-deep text-[11.5px] font-bold px-2.5 py-1.5">شؤون الطالبات</button>
+                        <button onClick={() => applyPreset(m, 'teacher')} className="rounded-lg border border-red-200 text-red-500 text-[11.5px] font-bold px-2.5 py-1.5">إزالة الدور</button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <div className="text-[11px] text-ink/55 mb-1">الصلاحيات الحالية:</div>
+                    {m.role === 'deputy' ? (
+                      <div className="text-[12px] text-sage-deep">✓ وكيلة — كل الصلاحيات عدا الاشتراك</div>
+                    ) : mp.length === 0 ? (
+                      <div className="text-[12px] text-ink/35">— لا صلاحيات —</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {mp.map((p) => (
+                          <span key={p.id} className="inline-flex items-center gap-1 text-[11px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">
+                            {modLabel(p.module)}: {actLabel(p.action)}
+                            {canManage ? <button onClick={() => delPerm(p.id)} aria-label="حذف" className="text-red-400 hover:text-red-600">×</button> : null}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {canManage && m.role !== 'deputy' ? (
+                    <div className="flex gap-1.5 items-center">
+                      <select value={cm} onChange={(e) => setCm(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
+                        {PERM_MODULES.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                      </select>
+                      <select value={ca} onChange={(e) => setCa(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
+                        {PERM_ACTIONS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                      </select>
+                      <button onClick={() => m.user_id && addPerm(m.user_id, cm, ca)} className="rounded-lg bg-sage-deep text-white text-[12px] font-bold px-3 py-1.5">＋</button>
+                    </div>
+                  ) : null}
+                </div>
+              )
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ───────────────────────── لوحة المشرفة (نطاق محصور) ───────────────────────── */
 function SupervisorHome({
   name,
@@ -3259,12 +3440,17 @@ function Dashboard({
   school,
   counts,
   onOpen,
+  allowedKeys,
 }: {
   school: School | null;
   counts: { stages: number; grades: number; classes: number; depts: number; members: number };
   onOpen: (key: string) => void;
+  allowedKeys?: string[] | null;
 }) {
   const today = new Intl.DateTimeFormat('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+  // allowedKeys=null ⇒ الكل (إدارة)؛ قائمة ⇒ صاحبة صلاحيات محدودة
+  const visible = allowedKeys ? SECTIONS.filter((s) => allowedKeys.includes(s.key)) : SECTIONS;
+  const limited = Array.isArray(allowedKeys);
   return (
     <div className="space-y-4">
       {/* ملخص اليوم */}
@@ -3274,17 +3460,25 @@ function Dashboard({
           {school?.academic_year ? `العام ${school.academic_year} · ` : ''}
           {school?.term ? `الفصل ${school.term}` : ''}
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat n={counts.classes} l="فصول" />
-          <Stat n={counts.depts} l="شُعب" />
-          <Stat n={counts.members} l="معلمات" />
+        {limited ? null : (
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <Stat n={counts.classes} l="فصول" />
+            <Stat n={counts.depts} l="شُعب" />
+            <Stat n={counts.members} l="معلمات" />
+          </div>
+        )}
+        <div className="text-[11.5px] text-ink/45 mt-3">
+          {limited ? 'تظهر لك الأقسام المصرَّح لك بها فقط.' : 'الملخص اليومي للحضور والاحتياط والمناوبات يظهر بعد تفعيل تلك الأقسام.'}
         </div>
-        <div className="text-[11.5px] text-ink/45 mt-3">الملخص اليومي للحضور والاحتياط والمناوبات يظهر بعد تفعيل تلك الأقسام.</div>
       </div>
+
+      {limited && visible.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لم تُمنح لك صلاحيات بعد — تواصلي مع إدارة المدرسة.</div>
+      ) : null}
 
       {/* الأقسام */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {SECTIONS.map((s) => (
+        {visible.map((s) => (
           <button
             key={s.key}
             onClick={() => !s.soon && onOpen(s.key)}
