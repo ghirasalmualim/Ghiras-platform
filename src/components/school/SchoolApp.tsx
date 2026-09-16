@@ -378,6 +378,27 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     window.setTimeout(() => setToast(''), 2600);
   };
 
+  // ── وضع المشرفة: نطاق إشراف المستخدمة الحالية (غير الإدارة) ────
+  const myMember = members.find((m) => m.user_id === uid) || null;
+  const myScope = myMember ? supervisions.filter((s) => s.member_id === myMember.id) : [];
+  const isSupervisor = !canManage && myScope.length > 0;
+  const scopeClassIds = new Set<string>();
+  if (isSupervisor) {
+    for (const sv of myScope) {
+      if (sv.scope_type === 'class') scopeClassIds.add(sv.scope_id);
+      else if (sv.scope_type === 'grade') classes.filter((c) => c.grade_id === sv.scope_id).forEach((c) => scopeClassIds.add(c.id));
+      else if (sv.scope_type === 'stage') {
+        const gids = new Set(grades.filter((g) => g.stage_id === sv.scope_id).map((g) => g.id));
+        classes.filter((c) => gids.has(c.grade_id)).forEach((c) => scopeClassIds.add(c.id));
+      }
+    }
+  }
+  const scClasses = isSupervisor ? classes.filter((c) => scopeClassIds.has(c.id)) : classes;
+  const scGradeIds = new Set(scClasses.map((c) => c.grade_id));
+  const scGrades = isSupervisor ? grades.filter((g) => scGradeIds.has(g.id)) : grades;
+  const scStageIds = new Set(scGrades.map((g) => g.stage_id));
+  const scStages = isSupervisor ? stages.filter((s) => scStageIds.has(s.id)) : stages;
+
   // ── قائمة المدارس (الأدمِن: الكل؛ العضو: مدارسه) ──────────────
   const loadSchools = useCallback(async () => {
     if (isAdmin) {
@@ -1085,14 +1106,14 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         />
       ) : view === 'attendance' ? (
         <AttendanceView
-          stages={stages}
-          grades={grades}
-          classes={classes}
+          stages={scStages}
+          grades={scGrades}
+          classes={scClasses}
           attClass={attClass}
           attDate={attDate}
           attStudents={attStudents}
           attRecords={attRecords}
-          canManage={canManage}
+          canManage={isSupervisor ? true : canManage}
           onBack={() => (attClass ? setAttClass(null) : setView('dash'))}
           onOpenClass={openAttClass}
           onChangeDate={changeAttDate}
@@ -1158,10 +1179,11 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           notes={notes}
           members={members}
           students={students}
-          classes={classes}
-          grades={grades}
+          classes={scClasses}
+          grades={scGrades}
           openClass={openClass}
-          canManage={canManage}
+          canManage={isSupervisor ? true : canManage}
+          studentsOnly={isSupervisor}
           onBack={() => setView('dash')}
           loadClassStudents={openClassStudents}
           addNote={addNote}
@@ -1179,6 +1201,21 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           duties={duties}
           dutyLocs={dutyLocs}
           onBack={() => setView('dash')}
+        />
+      ) : isSupervisor ? (
+        <SupervisorHome
+          name={myMember?.name || firstName}
+          scope={myScope}
+          stages={stages}
+          grades={grades}
+          classes={classes}
+          onOpen={(k) => {
+            if (k === 'attendance') {
+              setAttClass(null);
+              setView('attendance');
+            } else if (k === 'notes') setView('notes');
+            else if (k === 'duty') setView('duty');
+          }}
         />
       ) : (
         <Dashboard
@@ -2502,6 +2539,7 @@ function NotesView({
   grades,
   openClass,
   canManage,
+  studentsOnly,
   onBack,
   loadClassStudents,
   addNote,
@@ -2514,6 +2552,7 @@ function NotesView({
   grades: Grade[];
   openClass: Klass | null;
   canManage: boolean;
+  studentsOnly?: boolean;
   onBack: () => void;
   loadClassStudents: (cls: Klass) => void;
   addNote: (targetType: 'student' | 'member', targetId: string, targetName: string, category: string, body: string) => void;
@@ -2565,20 +2604,22 @@ function NotesView({
       {canManage ? (
         <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
           <div className="font-extrabold text-sage-deep mb-1">ملاحظة جديدة</div>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => { setTt('student'); reset(); }}
-              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'student' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
-            >
-              👧 طالبة
-            </button>
-            <button
-              onClick={() => { setTt('member'); reset(); }}
-              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'member' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
-            >
-              👩‍🏫 معلمة
-            </button>
-          </div>
+          {studentsOnly ? null : (
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => { setTt('student'); reset(); }}
+                className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'student' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+              >
+                👧 طالبة
+              </button>
+              <button
+                onClick={() => { setTt('member'); reset(); }}
+                className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'member' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+              >
+                👩‍🏫 معلمة
+              </button>
+            </div>
+          )}
 
           {tt === 'member' ? (
             <select value={memId} onChange={(e) => setMemId(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
@@ -3144,6 +3185,70 @@ function StudentsView({
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+/* ───────────────────────── لوحة المشرفة (نطاق محصور) ───────────────────────── */
+function SupervisorHome({
+  name,
+  scope,
+  stages,
+  grades,
+  classes,
+  onOpen,
+}: {
+  name: string;
+  scope: Supervision[];
+  stages: Stage[];
+  grades: Grade[];
+  classes: Klass[];
+  onOpen: (k: 'attendance' | 'notes' | 'duty') => void;
+}) {
+  const stageName = (id: string) => stages.find((s) => s.id === id)?.name || '—';
+  const gradeLabel = (id: string) => {
+    const g = grades.find((x) => x.id === id);
+    return g ? `${stageName(g.stage_id)} › ${g.name}` : '—';
+  };
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    return c ? `${gradeLabel(c.grade_id)} › ${c.name}` : '—';
+  };
+  const scopeText = (s: Supervision) => (s.scope_type === 'stage' ? stageName(s.scope_id) : s.scope_type === 'grade' ? gradeLabel(s.scope_id) : classLabel(s.scope_id));
+
+  const cards: { key: 'attendance' | 'notes' | 'duty'; label: string; emoji: string; desc: string }[] = [
+    { key: 'attendance', label: 'حضور الطالبات', emoji: '👧', desc: 'متابعة وتسجيل الحضور في نطاقك' },
+    { key: 'notes', label: 'رصد الملاحظات', emoji: '📝', desc: 'ملاحظات على طالبات نطاقك' },
+    { key: 'duty', label: 'المناوبات', emoji: '🔄', desc: 'عرض جدول المناوبات' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep">👩🏻‍💼 لوحة الإشراف — {name}</div>
+        <div className="text-[12px] text-ink/60 mt-1">نطاق إشرافك:</div>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {scope.length ? (
+            scope.map((s) => (
+              <span key={s.id} className="text-[11px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">
+                {s.scope_type === 'stage' ? 'مرحلة' : s.scope_type === 'grade' ? 'صف' : 'فصل'}: {scopeText(s)}
+              </span>
+            ))
+          ) : (
+            <span className="text-[12px] text-ink/40">— لم يُسنَد لك نطاق بعد —</span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        {cards.map((c) => (
+          <button key={c.key} onClick={() => onOpen(c.key)} className="card-3d bg-white border border-sage/15 hover:border-sage/40 rounded-2xl p-3 text-right">
+            <div className="text-2xl mb-1">{c.emoji}</div>
+            <div className="font-extrabold text-sage-deep text-[14px]">{c.label}</div>
+            <div className="text-[11px] text-ink/55 mt-0.5 leading-snug">{c.desc}</div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
