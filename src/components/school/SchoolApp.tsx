@@ -52,6 +52,9 @@ const STAFF_STATES: { k: string; l: string }[] = [
 ];
 const staffLabel = (k: string) => STAFF_STATES.find((x) => x.k === k)?.l || k;
 const STAFF_NEEDS_TIME = new Set(['late', 'permit_start', 'permit_end']);
+const STAFF_ABSENT = new Set(['sick', 'casual']); // غياب يوم كامل يحتاج تغطية
+
+type Sub = { id: string; date: string; period_id: string; class_id: string; subject_id: string | null; absent_member_id: string | null; sub_member_id: string | null };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -78,7 +81,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
-  { key: 'substitution', label: 'الاحتياط', emoji: '🔄', soon: true },
+  { key: 'substitution', label: 'الاحتياط', emoji: '🔄' },
   { key: 'duty', label: 'المناوبات', emoji: '📍', soon: true },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
   { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
@@ -350,10 +353,13 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [attRecords, setAttRecords] = useState<AttRow[]>([]);
   const [staffDate, setStaffDate] = useState<string>(todayISO());
   const [staffRecords, setStaffRecords] = useState<StaffRow[]>([]);
+  const [subDate, setSubDate] = useState<string>(todayISO());
+  const [subStaff, setSubStaff] = useState<{ member_id: string; status: string }[]>([]);
+  const [subsMonth, setSubsMonth] = useState<Sub[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -822,6 +828,39 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setStaffRecords((r) => [...r.filter((x) => !(x.member_id === memberId && x.date === staffDate)), data as StaffRow]);
   };
 
+  // ── الاحتياط ──────────────────────────────────────────────────
+  const loadSub = useCallback(
+    async (date: string) => {
+      if (!schoolId) return;
+      const { start, next } = monthBounds(date);
+      const [sa, sb] = await Promise.all([
+        supabase.from('school_staff_attendance').select('member_id,status').eq('school_id', schoolId).eq('date', date),
+        supabase.from('school_substitutions').select('id,date,period_id,class_id,subject_id,absent_member_id,sub_member_id').eq('school_id', schoolId).gte('date', start).lt('date', next),
+      ]);
+      setSubStaff((sa.data as { member_id: string; status: string }[]) || []);
+      setSubsMonth((sb.data as Sub[]) || []);
+    },
+    [supabase, schoolId]
+  );
+  const changeSubDate = (date: string) => {
+    setSubDate(date);
+    loadSub(date);
+  };
+  const assignSub = async (periodId: string, classId: string, subjectId: string | null, absentId: string | null, subMemberId: string) => {
+    const { data, error } = await supabase
+      .from('school_substitutions')
+      .upsert({ school_id: schoolId, date: subDate, period_id: periodId, class_id: classId, subject_id: subjectId, absent_member_id: absentId, sub_member_id: subMemberId }, { onConflict: 'school_id,date,period_id,class_id' })
+      .select('id,date,period_id,class_id,subject_id,absent_member_id,sub_member_id')
+      .single();
+    if (error || !data) return showToast('تعذّر الاعتماد');
+    setSubsMonth((s) => [...s.filter((x) => !(x.date === subDate && x.period_id === periodId && x.class_id === classId)), data as Sub]);
+    showToast('تم اعتماد البديلة ✅');
+  };
+  const clearSub = async (id: string) => {
+    await supabase.from('school_substitutions').delete().eq('id', id);
+    setSubsMonth((s) => s.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -957,6 +996,23 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           onChangeDate={changeStaffDate}
           setStaffStatus={setStaffStatus}
         />
+      ) : view === 'substitution' ? (
+        <SubstitutionView
+          entries={entries}
+          periods={periods}
+          members={members}
+          subjects={subjects}
+          classes={classes}
+          grades={grades}
+          subDate={subDate}
+          subStaff={subStaff}
+          subsMonth={subsMonth}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          onChangeDate={changeSubDate}
+          assignSub={assignSub}
+          clearSub={clearSub}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -975,6 +1031,9 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
             } else if (k === 'staff') {
               loadStaffAtt(staffDate);
               setView('staff');
+            } else if (k === 'substitution') {
+              loadSub(subDate);
+              setView('substitution');
             }
           }}
         />
@@ -1808,6 +1867,130 @@ function TeachingView({
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── الاحتياط ───────────────────────── */
+function SubstitutionView({
+  entries,
+  periods,
+  members,
+  subjects,
+  classes,
+  grades,
+  subDate,
+  subStaff,
+  subsMonth,
+  canManage,
+  onBack,
+  onChangeDate,
+  assignSub,
+  clearSub,
+}: {
+  entries: Entry[];
+  periods: Period[];
+  members: Member[];
+  subjects: Subject[];
+  classes: Klass[];
+  grades: Grade[];
+  subDate: string;
+  subStaff: { member_id: string; status: string }[];
+  subsMonth: Sub[];
+  canManage: boolean;
+  onBack: () => void;
+  onChangeDate: (d: string) => void;
+  assignSub: (periodId: string, classId: string, subjectId: string | null, absentId: string | null, subMemberId: string) => void;
+  clearSub: (id: string) => void;
+}) {
+  const memberName = (id: string | null) => members.find((m) => m.id === id)?.name || '—';
+  const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name || '—';
+  const periodName = (id: string) => periods.find((p) => p.id === id)?.name || '—';
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    if (!c) return '—';
+    const g = grades.find((x) => x.id === c.grade_id);
+    return g ? `${g.name} · ${c.name}` : c.name;
+  };
+
+  const weekday = new Date(subDate + 'T00:00:00').getDay(); // 0=الأحد
+  const absentIds = new Set(subStaff.filter((r) => STAFF_ABSENT.has(r.status)).map((r) => r.member_id));
+  const monthCount = (mid: string) => subsMonth.filter((s) => s.sub_member_id === mid).length;
+
+  const availableSubs = (periodId: string) => {
+    const busyTeach = new Set(entries.filter((e) => e.day === weekday && e.period_id === periodId).map((e) => e.member_id));
+    const busySub = new Set(subsMonth.filter((s) => s.date === subDate && s.period_id === periodId && s.sub_member_id).map((s) => s.sub_member_id as string));
+    return members
+      .filter((m) => !absentIds.has(m.id) && !busyTeach.has(m.id) && !busySub.has(m.id))
+      .sort((a, b) => monthCount(a.id) - monthCount(b.id));
+  };
+
+  const absentList = members.filter((m) => absentIds.has(m.id));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">الاحتياط</div>
+      </div>
+
+      <div className="rounded-2xl bg-white border border-sage/15 p-3 flex items-center gap-3 flex-wrap">
+        <input type="date" value={subDate} onChange={(e) => onChangeDate(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-1.5" />
+        <div className="text-[12px] text-ink/60">الغائبات اليوم: {absentList.length}</div>
+      </div>
+
+      {absentList.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">
+          لا غياب (مرضي/عرضي) مسجّل لهذا اليوم. سجّلي الغياب من «دوام الهيئة» أولًا.
+        </div>
+      ) : (
+        absentList.map((am) => {
+          const lessons = entries.filter((e) => e.member_id === am.id && e.day === weekday);
+          return (
+            <div key={am.id} className="card-3d bg-white rounded-2xl p-3">
+              <div className="font-extrabold text-sage-deep mb-2">{am.name} — غائبة</div>
+              {lessons.length === 0 ? (
+                <div className="text-[12px] text-ink/40">ما عندها حصص هذا اليوم في الجدول.</div>
+              ) : (
+                <div className="space-y-2">
+                  {lessons.map((L) => {
+                    const existing = subsMonth.find((s) => s.date === subDate && s.period_id === L.period_id && s.class_id === L.class_id && s.sub_member_id);
+                    const opts = availableSubs(L.period_id);
+                    return (
+                      <div key={L.id} className="rounded-xl border border-sage/15 p-2">
+                        <div className="text-[12.5px] font-bold text-ink">
+                          {periodName(L.period_id)} · {classLabel(L.class_id)} · {subjectName(L.subject_id)}
+                        </div>
+                        {existing ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[12px] text-sage-deep font-bold">↦ البديلة: {memberName(existing.sub_member_id)}</span>
+                            {canManage ? <button onClick={() => clearSub(existing.id)} className="text-red-400 hover:text-red-600 text-[11px]">✕ إلغاء</button> : null}
+                          </div>
+                        ) : canManage ? (
+                          opts.length ? (
+                            <select
+                              value=""
+                              onChange={(e) => e.target.value && assignSub(L.period_id, L.class_id, L.subject_id, am.id, e.target.value)}
+                              className="mt-1 w-full rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
+                            >
+                              <option value="">اختاري بديلة متاحة…</option>
+                              {opts.map((o) => (
+                                <option key={o.id} value={o.id}>{o.name} — احتياطها هذا الشهر: {monthCount(o.id)}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="text-[11.5px] text-gold-deep mt-1">⚠️ لا توجد معلمة متاحة لهذه الحصة.</div>
+                          )
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
