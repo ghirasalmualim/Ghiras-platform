@@ -398,6 +398,10 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const scGrades = isSupervisor ? grades.filter((g) => scGradeIds.has(g.id)) : grades;
   const scStageIds = new Set(scGrades.map((g) => g.stage_id));
   const scStages = isSupervisor ? stages.filter((s) => scStageIds.has(s.id)) : stages;
+  // معلمات نطاق المشرفة = من يُدرِّسن في فصولها (للمتابعة)
+  const scopeMemberIds = new Set<string>();
+  if (isSupervisor) teaching.filter((t) => scopeClassIds.has(t.class_id)).forEach((t) => scopeMemberIds.add(t.member_id));
+  const scopeMembers = isSupervisor ? members.filter((m) => scopeMemberIds.has(m.id)) : members;
 
   // ── قائمة المدارس (الأدمِن: الكل؛ العضو: مدارسه) ──────────────
   const loadSchools = useCallback(async () => {
@@ -1183,7 +1187,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           grades={scGrades}
           openClass={openClass}
           canManage={isSupervisor ? true : canManage}
-          studentsOnly={isSupervisor}
+          memberOptions={scopeMembers}
           onBack={() => setView('dash')}
           loadClassStudents={openClassStudents}
           addNote={addNote}
@@ -2539,7 +2543,7 @@ function NotesView({
   grades,
   openClass,
   canManage,
-  studentsOnly,
+  memberOptions,
   onBack,
   loadClassStudents,
   addNote,
@@ -2552,7 +2556,7 @@ function NotesView({
   grades: Grade[];
   openClass: Klass | null;
   canManage: boolean;
-  studentsOnly?: boolean;
+  memberOptions?: Member[];
   onBack: () => void;
   loadClassStudents: (cls: Klass) => void;
   addNote: (targetType: 'student' | 'member', targetId: string, targetName: string, category: string, body: string) => void;
@@ -2565,7 +2569,7 @@ function NotesView({
   const [cat, setCat] = useState('');
   const [body, setBody] = useState('');
 
-  const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+  const sortedMembers = (memberOptions ?? members).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   const gradeName = (id: string) => grades.find((g) => g.id === id)?.name || '';
   const classLabel = (c: Klass) => `${gradeName(c.grade_id)} › ${c.name}`.replace(/^ › /, '');
   const openClasses = classes.filter((c) => !c.archived);
@@ -2604,22 +2608,20 @@ function NotesView({
       {canManage ? (
         <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
           <div className="font-extrabold text-sage-deep mb-1">ملاحظة جديدة</div>
-          {studentsOnly ? null : (
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => { setTt('student'); reset(); }}
-                className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'student' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
-              >
-                👧 طالبة
-              </button>
-              <button
-                onClick={() => { setTt('member'); reset(); }}
-                className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'member' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
-              >
-                👩‍🏫 معلمة
-              </button>
-            </div>
-          )}
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => { setTt('student'); reset(); }}
+              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'student' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+            >
+              👧 طالبة
+            </button>
+            <button
+              onClick={() => { setTt('member'); reset(); }}
+              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'member' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+            >
+              👩‍🏫 معلمة
+            </button>
+          </div>
 
           {tt === 'member' ? (
             <select value={memId} onChange={(e) => setMemId(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
@@ -3218,7 +3220,7 @@ function SupervisorHome({
 
   const cards: { key: 'attendance' | 'notes' | 'duty'; label: string; emoji: string; desc: string }[] = [
     { key: 'attendance', label: 'حضور الطالبات', emoji: '👧', desc: 'متابعة وتسجيل الحضور في نطاقك' },
-    { key: 'notes', label: 'رصد الملاحظات', emoji: '📝', desc: 'ملاحظات على طالبات نطاقك' },
+    { key: 'notes', label: 'رصد الملاحظات', emoji: '📝', desc: 'ملاحظات على طالبات ومعلمات نطاقك' },
     { key: 'duty', label: 'المناوبات', emoji: '🔄', desc: 'عرض جدول المناوبات' },
   ];
 
