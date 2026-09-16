@@ -39,6 +39,20 @@ const ATT_STATES: { k: string; l: string; cls: string }[] = [
   { k: 'excused', l: 'استئذان', cls: 'bg-sage text-white' },
 ];
 
+type StaffRow = { id: string; member_id: string; date: string; status: string; at_time: string | null };
+const STAFF_STATES: { k: string; l: string }[] = [
+  { k: 'present', l: 'حاضرة' },
+  { k: 'sick', l: 'مرضي' },
+  { k: 'casual', l: 'عرضي' },
+  { k: 'late', l: 'تأخير' },
+  { k: 'permit_start', l: 'استئذان بداية' },
+  { k: 'permit_end', l: 'استئذان نهاية' },
+  { k: 'reduction_start', l: 'تخفيف بداية' },
+  { k: 'reduction_end', l: 'تخفيف نهاية' },
+];
+const staffLabel = (k: string) => STAFF_STATES.find((x) => x.k === k)?.l || k;
+const STAFF_NEEDS_TIME = new Set(['late', 'permit_start', 'permit_end']);
+
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
   { k: 'break', l: 'فسحة' },
@@ -68,7 +82,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'duty', label: 'المناوبات', emoji: '📍', soon: true },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
   { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
-  { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️', soon: true },
+  { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️' },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
 ];
 
@@ -334,10 +348,12 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [attDate, setAttDate] = useState<string>(todayISO());
   const [attStudents, setAttStudents] = useState<Student[]>([]);
   const [attRecords, setAttRecords] = useState<AttRow[]>([]);
+  const [staffDate, setStaffDate] = useState<string>(todayISO());
+  const [staffRecords, setStaffRecords] = useState<StaffRow[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -774,6 +790,38 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setAttRecords((r) => [...r.filter((x) => !(x.student_id === studentId && x.date === attDate)), data as AttRow]);
   };
 
+  // ── دوام الهيئة (الإدارة فقط) ──────────────────────────────────
+  const loadStaffAtt = useCallback(
+    async (date: string) => {
+      if (!schoolId) return;
+      const { start, next } = monthBounds(date);
+      const { data } = await supabase.from('school_staff_attendance').select('id,member_id,date,status,at_time').eq('school_id', schoolId).gte('date', start).lt('date', next);
+      setStaffRecords((data as StaffRow[]) || []);
+    },
+    [supabase, schoolId]
+  );
+  const changeStaffDate = (date: string) => {
+    setStaffDate(date);
+    loadStaffAtt(date);
+  };
+  const setStaffStatus = async (memberId: string, status: string, atTime: string | null = null) => {
+    const existing = staffRecords.find((r) => r.member_id === memberId && r.date === staffDate);
+    if (status === 'present') {
+      if (existing) {
+        await supabase.from('school_staff_attendance').delete().eq('id', existing.id);
+        setStaffRecords((r) => r.filter((x) => x.id !== existing.id));
+      }
+      return;
+    }
+    const { data, error } = await supabase
+      .from('school_staff_attendance')
+      .upsert({ school_id: schoolId, member_id: memberId, date: staffDate, status, at_time: atTime }, { onConflict: 'member_id,date' })
+      .select('id,member_id,date,status,at_time')
+      .single();
+    if (error || !data) return showToast('تعذّر الحفظ');
+    setStaffRecords((r) => [...r.filter((x) => !(x.member_id === memberId && x.date === staffDate)), data as StaffRow]);
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -899,6 +947,16 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           onChangeDate={changeAttDate}
           setAttStatus={setAttStatus}
         />
+      ) : view === 'staff' ? (
+        <StaffView
+          members={members}
+          staffDate={staffDate}
+          staffRecords={staffRecords}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          onChangeDate={changeStaffDate}
+          setStaffStatus={setStaffStatus}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -914,6 +972,9 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
             else if (k === 'attendance') {
               setAttClass(null);
               setView('attendance');
+            } else if (k === 'staff') {
+              loadStaffAtt(staffDate);
+              setView('staff');
             }
           }}
         />
@@ -1747,6 +1808,92 @@ function TeachingView({
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── دوام الهيئة (الإدارة فقط) ───────────────────────── */
+function StaffView({
+  members,
+  staffDate,
+  staffRecords,
+  canManage,
+  onBack,
+  onChangeDate,
+  setStaffStatus,
+}: {
+  members: Member[];
+  staffDate: string;
+  staffRecords: StaffRow[];
+  canManage: boolean;
+  onBack: () => void;
+  onChangeDate: (d: string) => void;
+  setStaffStatus: (memberId: string, status: string, atTime?: string | null) => void;
+}) {
+  const [q, setQ] = useState('');
+  const recOf = (mid: string) => staffRecords.find((r) => r.member_id === mid && r.date === staffDate);
+  const monthSummary = (mid: string) => {
+    const rows = staffRecords.filter((r) => r.member_id === mid && r.status !== 'present');
+    const by: Record<string, number> = {};
+    for (const r of rows) by[r.status] = (by[r.status] || 0) + 1;
+    return Object.entries(by).map(([k, n]) => `${staffLabel(k)} ${n}`).join(' · ');
+  };
+  const shown = members.filter((m) => !q.trim() || (m.name || '').includes(q.trim()));
+  const present = members.length - staffRecords.filter((r) => r.date === staffDate && r.status !== 'present').length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">دوام الهيئة التعليمية</div>
+      </div>
+
+      <div className="rounded-2xl bg-gold/10 border border-gold/20 p-2.5 text-[11.5px] text-ink/70">
+        🔒 بيانات إدارية خاصة — تظهر للإدارة فقط، ولا يراها بقية المعلمات.
+      </div>
+
+      <div className="rounded-2xl bg-white border border-sage/15 p-3 flex items-center gap-3 flex-wrap">
+        <input type="date" value={staffDate} onChange={(e) => onChangeDate(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-1.5" />
+        <div className="text-[12px] text-ink/60">حاضرات اليوم: {present} من {members.length}</div>
+      </div>
+
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحثي باسم المعلمة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
+
+      {shown.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">{q ? 'لا نتائج' : 'لا معلمات بعد.'}</div>
+      ) : (
+        shown.map((m) => {
+          const rec = recOf(m.id);
+          const cur = rec?.status || 'present';
+          const sum = monthSummary(m.id);
+          return (
+            <div key={m.id} className="card-3d bg-white rounded-xl p-2.5 flex items-center gap-2 flex-wrap">
+              <div className="flex-1 min-w-[120px]">
+                <div className="font-bold text-ink text-[14px]">{m.name || '—'}</div>
+                {sum ? <div className="text-[10.5px] text-ink/45">الشهر: {sum}</div> : null}
+              </div>
+              <select
+                value={cur}
+                onChange={(e) => canManage && setStaffStatus(m.id, e.target.value, STAFF_NEEDS_TIME.has(e.target.value) ? rec?.at_time || null : null)}
+                disabled={!canManage}
+                className={`rounded-lg border text-[12.5px] p-1.5 ${cur === 'present' ? 'bg-white text-ink/70 border-sage/25' : 'bg-gold/10 text-gold-deep border-gold/30 font-bold'}`}
+              >
+                {STAFF_STATES.map((x) => <option key={x.k} value={x.k}>{x.l}</option>)}
+              </select>
+              {STAFF_NEEDS_TIME.has(cur) ? (
+                <input
+                  defaultValue={rec?.at_time || ''}
+                  onBlur={(e) => setStaffStatus(m.id, cur, e.target.value.trim() || null)}
+                  placeholder="8:12"
+                  dir="ltr"
+                  className="w-16 rounded-lg border border-gold/40 text-[12px] p-1 text-center"
+                  title="الوقت"
+                />
+              ) : null}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
