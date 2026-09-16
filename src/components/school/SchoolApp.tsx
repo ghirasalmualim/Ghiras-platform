@@ -1677,6 +1677,8 @@ function DepartmentsView({
   unlinkMember: (memberId: string) => void;
 }) {
   const [newDept, setNewDept] = useState('');
+  const [openDepts, setOpenDepts] = useState<Set<string>>(new Set());
+  const toggleDept = (id: string) => setOpenDepts((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const noDept = members.filter((m) => !m.department_id).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
 
   const MemberRow = ({ m, roleText }: { m: Member; roleText?: string }) => (
@@ -1751,18 +1753,23 @@ function DepartmentsView({
               return (a.name || '').localeCompare(b.name || '', 'ar'); // ثم أبجديًا
             });
           const head = members.find((m) => m.id === d.head_member_id);
+          const open = openDepts.has(d.id);
           return (
             <div key={d.id} className="card-3d bg-white rounded-2xl p-3">
-              <Row
-                label={d.name}
-                bold
-                canManage={canManage}
-                onRename={() => {
-                  const n = window.prompt('اسم الشعبة', d.name);
-                  if (n && n.trim()) renameDept(d.id, n.trim());
-                }}
-                onDelete={() => delDept(d.id)}
-              />
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => toggleDept(d.id)} className="flex-1 flex items-center gap-2 text-right">
+                  <span className="text-ink/40 text-[11px] w-3">{open ? '▼' : '▶'}</span>
+                  <span className="font-extrabold text-sage-deep text-[14px]">{d.name}</span>
+                  <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">{mm.length} معلمة</span>
+                </button>
+                {canManage ? (
+                  <>
+                    <button onClick={() => { const n = window.prompt('اسم الشعبة', d.name); if (n && n.trim()) renameDept(d.id, n.trim()); }} aria-label="تعديل" className="text-sage-deep/60 hover:text-sage-deep text-sm px-1">✎</button>
+                    <button onClick={() => delDept(d.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+                  </>
+                ) : null}
+              </div>
+              {open ? (
               <div className="mt-2 pr-3 border-r-2 border-sage/10 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[12px] font-bold text-gold-deep">رئيسة الشعبة:</span>
@@ -1787,6 +1794,7 @@ function DepartmentsView({
                 {canManage ? <AddInline placeholder="اسم المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
                 {canManage ? <ImportNames what="معلمات" onAdd={(names) => importMembers(names, d.id)} /> : null}
               </div>
+              ) : null}
             </div>
           );
         })
