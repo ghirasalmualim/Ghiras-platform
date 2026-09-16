@@ -419,6 +419,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const [depts, setDepts] = useState<Dept[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openClass, setOpenClass] = useState<Klass | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teaching, setTeaching] = useState<Teaching[]>([]);
@@ -589,16 +590,18 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const load = useCallback(
     async (sid: string) => {
       setLoading(true);
-      const [s, st, gr, cl] = await Promise.all([
+      const [s, st, gr, cl, al] = await Promise.all([
         supabase.from('schools').select('id,name,academic_year,term,work_days,timetable_status').eq('id', sid).maybeSingle(),
         supabase.from('school_stages').select('id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_grades').select('id,stage_id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_classes').select('id,grade_id,name,sort,archived').eq('school_id', sid).order('sort'),
+        supabase.from('school_students').select('id,class_id,name,sid_no,note,archived,sort').eq('school_id', sid).order('sort'),
       ]);
       setSchool((s.data as School) || null);
       setStages((st.data as Stage[]) || []);
       setGrades((gr.data as Grade[]) || []);
       setClasses((cl.data as Klass[]) || []);
+      setAllStudents((al.data as Student[]) || []);
       await loadMembersDepts(sid);
       setLoading(false);
     },
@@ -882,46 +885,51 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     const { data } = await supabase.from('school_students').select('id,class_id,name,sid_no,note,archived,sort').eq('class_id', cls.id).order('sort');
     setStudents((data as Student[]) || []);
   };
-  const addStudent = async (name: string, sidNo: string) => {
-    if (!openClass) return;
-    if (students.some((s) => normName(s.name) === normName(name))) return showToast(`«${name.trim()}» موجودة مسبقًا في هذا الفصل`);
+  const addStudent = async (classId: string, name: string, sidNo: string) => {
+    const inClass = allStudents.filter((s) => s.class_id === classId);
+    if (inClass.some((s) => normName(s.name) === normName(name))) return showToast(`«${name.trim()}» موجودة مسبقًا في هذا الفصل`);
     const { data, error } = await supabase
       .from('school_students')
-      .insert({ school_id: schoolId, class_id: openClass.id, name, sid_no: sidNo || null, sort: nextSort(students) })
+      .insert({ school_id: schoolId, class_id: classId, name, sid_no: sidNo || null, sort: nextSort(inClass) })
       .select('id,class_id,name,sid_no,note,archived,sort')
       .single();
     if (error || !data) return showToast('تعذّرت الإضافة');
-    setStudents((s) => [...s, data as Student]);
+    setAllStudents((s) => [...s, data as Student]);
+    if (openClass?.id === classId) setStudents((s) => [...s, data as Student]);
   };
   const updateStudent = async (id: string, patch: Partial<Student>) => {
     const { error } = await supabase.from('school_students').update(patch).eq('id', id);
     if (error) return showToast('تعذّر التعديل');
+    setAllStudents((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     setStudents((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   };
   const moveStudent = async (id: string, toClassId: string) => {
     const { error } = await supabase.from('school_students').update({ class_id: toClassId }).eq('id', id);
     if (error) return showToast('تعذّر النقل');
-    setStudents((s) => s.filter((x) => x.id !== id)); // خرجت من الفصل الحالي
+    setAllStudents((s) => s.map((x) => (x.id === id ? { ...x, class_id: toClassId } : x)));
+    setStudents((s) => s.filter((x) => x.id !== id));
     showToast('تم النقل ✅');
   };
   const delStudent = async (id: string) => {
     if (!window.confirm('حذف المتعلمة نهائيًا؟')) return;
     const { error } = await supabase.from('school_students').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
+    setAllStudents((s) => s.filter((x) => x.id !== id));
     setStudents((s) => s.filter((x) => x.id !== id));
   };
-  const importStudents = async (names: string[]) => {
-    if (!openClass) return;
-    const existing = new Set(students.map((s) => normName(s.name)));
+  const importStudents = async (classId: string, names: string[]) => {
+    const inClass = allStudents.filter((s) => s.class_id === classId);
+    const existing = new Set(inClass.map((s) => normName(s.name)));
     const seen = new Set<string>();
     const fresh = names.filter((n) => { const k = normName(n); if (!k || existing.has(k) || seen.has(k)) return false; seen.add(k); return true; });
     const skipped = names.length - fresh.length;
     if (!fresh.length) return showToast(skipped ? `الكل موجود مسبقًا (${skipped}) — لم يُضَف شيء` : 'لا أسماء');
-    const base = students.length;
-    const rows = fresh.map((n, i) => ({ school_id: schoolId, class_id: openClass.id, name: n, sort: base + i + 1 }));
+    const base = inClass.length;
+    const rows = fresh.map((n, i) => ({ school_id: schoolId, class_id: classId, name: n, sort: base + i + 1 }));
     const { data, error } = await supabase.from('school_students').insert(rows).select('id,class_id,name,sid_no,note,archived,sort');
     if (error || !data) return showToast('تعذّر الاستيراد');
-    setStudents((s) => [...s, ...(data as Student[])]);
+    setAllStudents((s) => [...s, ...(data as Student[])]);
+    if (openClass?.id === classId) setStudents((s) => [...s, ...(data as Student[])]);
     showToast(`أُضيفت ${data.length} متعلمة ✅${skipped ? ` · تجاهلت ${skipped} مكرّرة` : ''}`);
   };
 
@@ -1318,11 +1326,9 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           stages={stages}
           grades={grades}
           classes={classes}
-          openClass={openClass}
-          students={students}
+          students={allStudents}
           canManage={permManage('students')}
-          onBack={() => (openClass ? setOpenClass(null) : setView('dash'))}
-          onOpenClass={openClassStudents}
+          onBack={() => setView('dash')}
           addStudent={addStudent}
           updateStudent={updateStudent}
           moveStudent={moveStudent}
@@ -3415,11 +3421,9 @@ function StudentsView({
   stages,
   grades,
   classes,
-  openClass,
   students,
   canManage,
   onBack,
-  onOpenClass,
   addStudent,
   updateStudent,
   moveStudent,
@@ -3429,143 +3433,129 @@ function StudentsView({
   stages: Stage[];
   grades: Grade[];
   classes: Klass[];
-  openClass: Klass | null;
   students: Student[];
   canManage: boolean;
   onBack: () => void;
-  onOpenClass: (c: Klass) => void;
-  addStudent: (name: string, sidNo: string) => void;
+  addStudent: (classId: string, name: string, sidNo: string) => void;
   updateStudent: (id: string, patch: Partial<Student>) => void;
   moveStudent: (id: string, toClassId: string) => void;
   delStudent: (id: string) => void;
-  importStudents: (names: string[]) => void;
+  importStudents: (classId: string, names: string[]) => void;
 }) {
   const [q, setQ] = useState('');
-  const [nm, setNm] = useState('');
-  const [sid, setSid] = useState('');
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [draft, setDraft] = useState<Record<string, { nm: string; sid: string }>>({});
+  const toggle = (id: string) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const classLabel = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? `${g.name} · ${c.name}` : c.name; };
+  const inClass = (cid: string) => students.filter((s) => s.class_id === cid).sort((a, b) => a.sort - b.sort);
+  const t = q.trim();
+  const matches = t ? students.filter((s) => s.name.includes(t) || (s.sid_no || '').includes(t)) : [];
 
-  // اختيار فصل
-  if (!openClass) {
+  const StudentRow = ({ s }: { s: Student }) => {
+    const moveTargets = classes.filter((c) => c.id !== s.class_id && !c.archived);
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
-          <div className="font-extrabold text-sage-deep flex-1">الصفوف والمتعلمات</div>
+      <div className={`flex flex-col gap-0.5 border-t border-sage/10 pt-1.5 first:border-0 ${s.archived ? 'opacity-60' : ''}`}>
+        <div className="flex items-center gap-1.5">
+          <div className="flex-1">
+            <span className={`font-bold text-ink text-[13.5px] ${s.archived ? 'line-through' : ''}`}>{s.name}</span>
+            {s.sid_no ? <span className="text-[11px] text-ink/45"> · رقم {s.sid_no}</span> : null}
+            {s.archived ? <span className="text-[10px] text-gold-deep"> · موقوفة</span> : null}
+          </div>
+          {canManage ? (
+            <>
+              <button
+                onClick={() => { const n = window.prompt(`ملاحظة عن «${s.name}» (حالة خاصة، ظروف أسرية…):`, s.note || ''); if (n !== null) updateStudent(s.id, { note: n.trim() || null }); }}
+                aria-label="ملاحظة" title="ملاحظة"
+                className={`text-sm px-1 ${s.note ? 'text-gold-deep' : 'text-ink/35 hover:text-sage-deep'}`}
+              >📝</button>
+              <button
+                onClick={() => { const name = window.prompt('اسم المتعلمة', s.name); if (name === null) return; const sidNo = window.prompt('الرقم (اختياري)', s.sid_no || '') ?? ''; updateStudent(s.id, { name: name.trim() || s.name, sid_no: sidNo.trim() || null }); }}
+                aria-label="تعديل" className="text-ink/40 hover:text-sage-deep text-sm px-1"
+              >✏️</button>
+              {moveTargets.length ? (
+                <select value="" onChange={(e) => e.target.value && moveStudent(s.id, e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[11px] p-1" title="نقل لفصل آخر">
+                  <option value="">نقل ↦</option>
+                  {moveTargets.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+                </select>
+              ) : null}
+              <button onClick={() => updateStudent(s.id, { archived: !s.archived })} aria-label="أرشفة" className="text-ink/40 hover:text-gold-deep text-sm px-1">{s.archived ? '↩️' : '⏸'}</button>
+              <button onClick={() => delStudent(s.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+            </>
+          ) : null}
         </div>
-        {classes.length === 0 ? (
-          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (مراحل/صفوف/فصول) أولًا من «الهيكل المدرسي».</div>
-        ) : (
-          stages.map((st) => (
-            <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
-              <div className="font-extrabold text-sage-deep mb-2">{st.name}</div>
-              {grades.filter((g) => g.stage_id === st.id).map((g) => (
-                <div key={g.id} className="mb-2">
-                  <div className="text-[12px] font-bold text-ink/70 mb-1">{g.name}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {classes.filter((c) => c.grade_id === g.id).map((c) => (
-                      <button key={c.id} onClick={() => onOpenClass(c)} className="rounded-lg bg-sage-light text-sage-deep text-[13px] font-bold px-3 py-1.5">
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))
-        )}
+        {s.note ? <div className="text-[11px] text-gold-deep pr-1">📝 {s.note}</div> : null}
       </div>
     );
-  }
-
-  // قائمة متعلمات فصل
-  const moveTargets = classes.filter((c) => c.id !== openClass.id);
-  const shown = students.filter((s) => {
-    const t = q.trim();
-    return !t || s.name.includes(t) || (s.sid_no || '').includes(t);
-  });
+  };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ الفصول</button>
-        <div className="font-extrabold text-sage-deep flex-1">الفصل {openClass.name} · {students.length} متعلمة</div>
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">الصفوف والمتعلمات</div>
       </div>
 
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="🔍 ابحثي باسم أو رقم"
-        className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage"
-      />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحثي باسم أو رقم في كل المدرسة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
 
-      {canManage ? (
-        <div className="flex gap-1.5">
-          <input value={nm} onChange={(e) => setNm(e.target.value)} placeholder="اسم المتعلمة" className="flex-1 rounded-lg border border-sage/25 p-2 text-[13px] bg-white focus:outline-none focus:border-sage" />
-          <input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="رقم (اختياري)" className="w-24 rounded-lg border border-sage/25 p-2 text-[13px] bg-white focus:outline-none focus:border-sage" />
-          <button
-            onClick={() => {
-              if (nm.trim()) {
-                addStudent(nm.trim(), sid.trim());
-                setNm('');
-                setSid('');
-              }
-            }}
-            className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3"
-          >
-            ＋
-          </button>
-        </div>
-      ) : null}
-
-      {canManage ? <ImportNames what="طالبات" onAdd={importStudents} /> : null}
-
-      {shown.length === 0 ? (
-        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">{q ? 'لا نتائج' : 'لا متعلمات بعد.'}</div>
-      ) : (
-        shown.map((s) => (
-          <div key={s.id} className={`card-3d bg-white rounded-xl p-3 flex items-center gap-2 ${s.archived ? 'opacity-60' : ''}`}>
-            <div className="flex-1">
-              <div className={`font-bold text-ink text-[14px] ${s.archived ? 'line-through' : ''}`}>{s.name}</div>
-              <div className="text-[11.5px] text-ink/50">
-                {s.sid_no ? `رقم ${s.sid_no}` : ''}
-                {s.note ? ` · ${s.note}` : ''}
-                {s.archived ? ' · موقوفة' : ''}
+      {t ? (
+        matches.length === 0 ? (
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">لا نتائج</div>
+        ) : (
+          <div className="card-3d bg-white rounded-2xl p-3 space-y-1">
+            <div className="text-[11px] text-ink/55 mb-1">{matches.length} نتيجة</div>
+            {matches.map((s) => (
+              <div key={s.id}>
+                <div className="text-[10px] text-sage-deep">{classLabel(classes.find((c) => c.id === s.class_id) as Klass)}</div>
+                <StudentRow s={s} />
               </div>
-            </div>
-            {canManage ? (
-              <>
-                <button
-                  onClick={() => {
-                    const name = window.prompt('اسم المتعلمة', s.name);
-                    if (name === null) return;
-                    const sidNo = window.prompt('الرقم (اختياري)', s.sid_no || '') ?? '';
-                    const note = window.prompt('ملاحظة إدارية (اختياري)', s.note || '') ?? '';
-                    updateStudent(s.id, { name: name.trim() || s.name, sid_no: sidNo.trim() || null, note: note.trim() || null });
-                  }}
-                  aria-label="تعديل"
-                  className="text-ink/40 hover:text-sage-deep text-sm px-1"
-                >
-                  ✏️
-                </button>
-                {moveTargets.length ? (
-                  <select
-                    value=""
-                    onChange={(e) => e.target.value && moveStudent(s.id, e.target.value)}
-                    className="rounded-lg border border-sage/25 bg-white text-[11px] p-1"
-                    title="نقل لفصل آخر"
-                  >
-                    <option value="">نقل ↦</option>
-                    {moveTargets.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                ) : null}
-                <button onClick={() => updateStudent(s.id, { archived: !s.archived })} aria-label="أرشفة" className="text-ink/40 hover:text-gold-deep text-sm px-1">
-                  {s.archived ? '↩️' : '⏸'}
-                </button>
-                <button onClick={() => delStudent(s.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
-              </>
-            ) : null}
+            ))}
+          </div>
+        )
+      ) : classes.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (مراحل/صفوف/فصول) أولًا من «الهيكل المدرسي».</div>
+      ) : (
+        stages.map((st) => (
+          <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
+            <div className="font-extrabold text-sage-deep mb-2">{st.name}</div>
+            {grades.filter((g) => g.stage_id === st.id).map((g) => (
+              <div key={g.id} className="mb-2">
+                <div className="text-[12px] font-bold text-ink/70 mb-1">{g.name}</div>
+                <div className="space-y-1.5">
+                  {classes.filter((c) => c.grade_id === g.id).map((c) => {
+                    const list = inClass(c.id);
+                    const isOpen = open.has(c.id);
+                    const d = draft[c.id] || { nm: '', sid: '' };
+                    return (
+                      <div key={c.id} className="rounded-xl border border-sage/15">
+                        <button onClick={() => toggle(c.id)} className="w-full flex items-center gap-2 p-2 text-right">
+                          <span className="text-ink/40 text-[11px] w-3">{isOpen ? '▼' : '▶'}</span>
+                          <span className="font-bold text-sage-deep text-[13px]">{c.name}</span>
+                          <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">{list.length} متعلمة</span>
+                        </button>
+                        {isOpen ? (
+                          <div className="p-2 pt-0 space-y-1">
+                            {canManage ? (
+                              <div className="flex gap-1.5 mb-1">
+                                <input value={d.nm} onChange={(e) => setDraft((p) => ({ ...p, [c.id]: { ...d, nm: e.target.value } }))} placeholder="اسم المتعلمة" className="flex-1 rounded-lg border border-sage/25 p-1.5 text-[12px] bg-white focus:outline-none focus:border-sage" />
+                                <input value={d.sid} onChange={(e) => setDraft((p) => ({ ...p, [c.id]: { ...d, sid: e.target.value } }))} placeholder="رقم" className="w-16 rounded-lg border border-sage/25 p-1.5 text-[12px] bg-white focus:outline-none focus:border-sage" />
+                                <button onClick={() => { if (d.nm.trim()) { addStudent(c.id, d.nm.trim(), d.sid.trim()); setDraft((p) => ({ ...p, [c.id]: { nm: '', sid: '' } })); } }} className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3">＋</button>
+                              </div>
+                            ) : null}
+                            {canManage ? <ImportNames what="طالبات" onAdd={(names) => importStudents(c.id, names)} /> : null}
+                            {list.length === 0 ? (
+                              <div className="text-[12px] text-ink/35 py-1">— لا متعلمات —</div>
+                            ) : (
+                              <div className="pr-1">{list.map((s) => <StudentRow key={s.id} s={s} />)}</div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                  {classes.filter((c) => c.grade_id === g.id).length === 0 ? <div className="text-[11px] text-ink/35">— لا فصول —</div> : null}
+                </div>
+              </div>
+            ))}
           </div>
         ))
       )}
