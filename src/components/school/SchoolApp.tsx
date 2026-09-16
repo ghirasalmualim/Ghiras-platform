@@ -762,6 +762,10 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     const { data } = await supabase.from('school_period_attendance').select('id,date,period_id,class_id,student_id,status').eq('school_id', schoolId).eq('student_id', studentId).order('date', { ascending: false });
     setPeriodAtt((data as PAtt[]) || []);
   };
+  const loadPeriodByClassRange = async (classId: string, from: string, to: string) => {
+    const { data } = await supabase.from('school_period_attendance').select('id,date,period_id,class_id,student_id,status').eq('school_id', schoolId).eq('class_id', classId).gte('date', from).lte('date', to);
+    setPeriodAtt((data as PAtt[]) || []);
+  };
   const setPeriodStatus = async (date: string, periodId: string, classId: string, studentId: string, status: string | null) => {
     if (!status) {
       const { error } = await supabase.from('school_period_attendance').delete().eq('school_id', schoolId).eq('date', date).eq('period_id', periodId).eq('student_id', studentId);
@@ -1368,6 +1372,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           onOpenClass={openClassStudents}
           loadByClassDate={loadPeriodByClassDate}
           loadByStudent={loadPeriodByStudent}
+          loadByClassRange={loadPeriodByClassRange}
           setPeriodStatus={setPeriodStatus}
         />
       ) : view === 'permissions' ? (
@@ -3592,6 +3597,7 @@ function SmartAttendanceView({
   onOpenClass,
   loadByClassDate,
   loadByStudent,
+  loadByClassRange,
   setPeriodStatus,
 }: {
   entries: Entry[];
@@ -3610,12 +3616,15 @@ function SmartAttendanceView({
   onOpenClass: (cls: Klass) => void;
   loadByClassDate: (classId: string, date: string) => void;
   loadByStudent: (studentId: string) => void;
+  loadByClassRange: (classId: string, from: string, to: string) => void;
   setPeriodStatus: (date: string, periodId: string, classId: string, studentId: string, status: string | null) => void;
 }) {
   const iTeach = entries.some((e) => e.member_id === myMemberId);
-  const [mode, setMode] = useState<'mark' | 'daily' | 'sheet'>(iTeach ? 'mark' : 'daily');
+  const [mode, setMode] = useState<'mark' | 'daily' | 'sheet' | 'stats'>(iTeach ? 'mark' : 'daily');
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
+  const [from, setFrom] = useState(today.slice(0, 8) + '01');
+  const [to, setTo] = useState(today);
   const [selEntry, setSelEntry] = useState('');
   const [selClass, setSelClass] = useState('');
   const [selStudent, setSelStudent] = useState('');
@@ -3667,6 +3676,7 @@ function SmartAttendanceView({
         ) : null}
         <button onClick={() => setMode('daily')} className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${mode === 'daily' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}>كشف اليوم</button>
         <button onClick={() => setMode('sheet')} className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${mode === 'sheet' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}>كشف طالبة</button>
+        <button onClick={() => setMode('stats')} className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${mode === 'stats' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}>إحصائية الفصل</button>
       </div>
 
       {mode === 'mark' ? (
@@ -3756,7 +3766,7 @@ function SmartAttendanceView({
             );
           })()}
         </div>
-      ) : (
+      ) : mode === 'sheet' ? (
         <div className="space-y-2">
           <div className="card-3d bg-white rounded-2xl p-3 grid grid-cols-2 gap-1.5">
             <select value={selClass} onChange={(e) => { setSelClass(e.target.value); setSelStudent(''); const cls = classes.find((c) => c.id === e.target.value); if (cls) onOpenClass(cls); }} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
@@ -3797,6 +3807,55 @@ function SmartAttendanceView({
                     ))}
                   </div>
                 )}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
+            <select value={selClass} onChange={(e) => { const cid = e.target.value; setSelClass(cid); const cls = classes.find((c) => c.id === cid); if (cls) onOpenClass(cls); if (cid) loadByClassRange(cid, from, to); }} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+              <option value="">اختاري الفصل</option>
+              {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-1.5">
+              <label className="text-[11px] text-ink/55">من<input type="date" value={from} onChange={(e) => { setFrom(e.target.value); if (selClass) loadByClassRange(selClass, e.target.value, to); }} className="w-full mt-0.5 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" /></label>
+              <label className="text-[11px] text-ink/55">إلى<input type="date" value={to} onChange={(e) => { setTo(e.target.value); if (selClass) loadByClassRange(selClass, from, e.target.value); }} className="w-full mt-0.5 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" /></label>
+            </div>
+          </div>
+          {!selClass ? (
+            <div className="text-[12px] text-ink/40 text-center py-4">اختاري الفصل والمدة لعرض إحصائية الطالبات.</div>
+          ) : (() => {
+            const list = (openClass && openClass.id === selClass ? students.filter((s) => !s.archived) : [])
+              .map((st) => {
+                const r = periodAtt.filter((x) => x.student_id === st.id);
+                return { st, absent: r.filter((x) => x.status === 'absent').length, late: r.filter((x) => x.status === 'late').length, permission: r.filter((x) => x.status === 'permission').length };
+              })
+              .sort((a, b) => b.absent + b.late + b.permission - (a.absent + a.late + a.permission));
+            return list.length === 0 ? (
+              <div className="text-[12px] text-ink/40 text-center py-4">— لا طالبات —</div>
+            ) : (
+              <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+                <table className="text-[12px] w-full border-collapse">
+                  <thead>
+                    <tr className="text-ink/55">
+                      <th className="text-right p-1.5">الطالبة</th>
+                      <th className="p-1.5" style={{ color: ATT_STAT.absent.c }}>غياب</th>
+                      <th className="p-1.5" style={{ color: ATT_STAT.late.c }}>تأخير</th>
+                      <th className="p-1.5" style={{ color: ATT_STAT.permission.c }}>استئذان</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map(({ st, absent, late, permission }) => (
+                      <tr key={st.id} className="border-t border-sage/10">
+                        <td className="p-1.5 text-right text-ink font-medium">{st.name}</td>
+                        <td className="p-1.5 text-center tabular-nums font-bold">{absent || '—'}</td>
+                        <td className="p-1.5 text-center tabular-nums font-bold">{late || '—'}</td>
+                        <td className="p-1.5 text-center tabular-nums font-bold">{permission || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             );
           })()}
