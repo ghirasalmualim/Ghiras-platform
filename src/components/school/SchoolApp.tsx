@@ -312,7 +312,7 @@ async function compressImg(file: File): Promise<{ mime: string; b64: string }> {
   const img: HTMLImageElement = await new Promise((res, rej) => {
     const im = new Image();
     im.onload = () => res(im);
-    im.onerror = rej;
+    im.onerror = () => rej(new Error('تعذّر فتح الصورة. لو الصورة من الآيفون (صيغة HEIC)، حوّليها إلى JPG أو خذي لها لقطة شاشة ثم ارفعيها.'));
     im.src = dataUrl;
   });
   const scale = Math.min(1, 1700 / Math.max(img.width, img.height));
@@ -340,14 +340,23 @@ async function extractNames(file: File): Promise<string[]> {
     'هذه قائمة أسماء أشخاص (معلمات أو طالبات). استخرج الأسماء فقط، اسمًا واحدًا في كل سطر، بالترتيب، ' +
     'بدون أرقام تسلسل أو رموز أو عناوين أو تواريخ أو أي كلام إضافي. لا تكتب أي شيء غير الأسماء.';
   const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
-  const res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error?.message || 'تعذّرت القراءة');
+  let res: Response;
+  try {
+    res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
+  } catch {
+    throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).');
+  }
+  const raw = await res.text();
+  let json: { error?: { message?: string }; content?: { text?: string }[] } = {};
+  try { json = JSON.parse(raw); } catch { /* غير JSON */ }
+  if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
   const text: string = json?.content?.[0]?.text || '';
-  return text
+  const names = text
     .split('\n')
     .map((s) => s.replace(/^[\s\d\-.،_)(]+/, '').trim())
     .filter((s) => s && s.length <= 60);
+  if (!names.length) throw new Error(`لم تُقرأ أسماء. رد الخدمة: «${(text || raw).slice(0, 180) || 'فارغ'}»`);
+  return names;
 }
 
 function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) => void }) {
