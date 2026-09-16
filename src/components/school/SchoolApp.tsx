@@ -45,19 +45,6 @@ const ROLE_LABEL: Record<string, string> = {
   teacher: 'معلمة',
 };
 
-/** أرقام عربية → إنجليزية + نزع مفتاح 965 (الحسابات مبنية على التلفون). */
-const normLogin = (raw: string) => {
-  const t = (raw || '').trim();
-  if (t.includes('@')) return t.toLowerCase();
-  const en = t.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) - (d.charCodeAt(0) >= 0x06f0 ? 0x06f0 : 0x0660)));
-  if (/^\+?\d[\d\s-]*$/.test(en)) {
-    let d = en.replace(/\D/g, '');
-    if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
-    return d;
-  }
-  return t;
-};
-
 const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] = [
   { key: 'structure', label: 'الهيكل المدرسي', emoji: '🏫' },
   { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫' },
@@ -434,15 +421,12 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     if (error) return showToast('تعذّر التعيين');
     setDepts((d) => d.map((x) => (x.id === deptId ? { ...x, head_member_id: memberId } : x)));
   };
-  const addMember = async (login: string, role: string, deptId: string | null) => {
-    const { data, error } = await supabase.rpc('school_add_member', {
-      p_school: schoolId,
-      p_login: normLogin(login),
-      p_role: role,
-      p_dept: deptId,
-    });
+  const addMember = async (name: string, role: string, deptId: string | null) => {
+    // إضافة بالاسم مباشرة (بلا حساب). الربط بحساب اختياري لاحقًا.
+    const { error } = await supabase
+      .from('school_members')
+      .insert({ school_id: schoolId, member_name: name.trim(), role, department_id: deptId });
     if (error) return showToast('تعذّرت الإضافة');
-    if (data === 'not_found') return showToast('ما لقينا حساب بهذا الرقم/الإيميل');
     showToast('تمت الإضافة ✅');
     if (schoolId) loadMembersDepts(schoolId);
   };
@@ -1035,7 +1019,7 @@ function DepartmentsView({
                   <div className="text-[12px] font-bold text-sage-deep mb-1">المعلمات ({mm.length})</div>
                   {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
                 </div>
-                {canManage ? <AddInline placeholder="رقم/إيميل المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
+                {canManage ? <AddInline placeholder="اسم المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
               </div>
             </div>
           );
@@ -1052,8 +1036,8 @@ function DepartmentsView({
   );
 }
 
-/** إضافة عضو إداري (بدور محدّد) بلا شعبة. */
-function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) {
+/** إضافة عضو إداري (بدور محدّد) بلا شعبة — بالاسم. */
+function AddPerson({ onAdd }: { onAdd: (name: string, role: string) => void }) {
   const [login, setLogin] = useState('');
   const [role, setRole] = useState('principal');
   return (
@@ -1061,7 +1045,7 @@ function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) 
       <input
         value={login}
         onChange={(e) => setLogin(e.target.value)}
-        placeholder="رقم/إيميل الحساب"
+        placeholder="اسم العضو"
         className="flex-1 min-w-[140px] rounded-lg border border-sage/20 p-2 text-[13px] focus:outline-none focus:border-sage bg-white"
       />
       <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
