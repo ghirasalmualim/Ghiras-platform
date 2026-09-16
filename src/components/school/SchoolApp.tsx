@@ -57,6 +57,7 @@ const STAFF_ABSENT = new Set(['sick', 'casual']); // غياب يوم كامل ي
 type Sub = { id: string; date: string; period_id: string; class_id: string; subject_id: string | null; absent_member_id: string | null; sub_member_id: string | null };
 type DutyLoc = { id: string; name: string; sort: number };
 type Duty = { id: string; day: number; period_id: string; location_id: string; member_id: string };
+type Supervision = { id: string; member_id: string; scope_type: 'stage' | 'grade' | 'class'; scope_id: string; note: string | null };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -82,12 +83,13 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
   { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
+  { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨' },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄' },
   { key: 'duty', label: 'المناوبات', emoji: '📍' },
   { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
   { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️' },
   { key: 'reports', label: 'التقارير', emoji: '📄' },
-  { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
+  { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼' },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
 ];
 
@@ -360,10 +362,11 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [subsMonth, setSubsMonth] = useState<Sub[]>([]);
   const [dutyLocs, setDutyLocs] = useState<DutyLoc[]>([]);
   const [duties, setDuties] = useState<Duty[]>([]);
+  const [supervisions, setSupervisions] = useState<Supervision[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'reports'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -416,7 +419,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd, en, dl, du] = await Promise.all([
+      const [dp, mb, su, tc, pd, en, dl, du, sv] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
@@ -425,6 +428,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
         supabase.from('school_timetable_entries').select('id,day,period_id,class_id,member_id,subject_id').eq('school_id', sid),
         supabase.from('school_duty_locations').select('id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_duties').select('id,day,period_id,location_id,member_id').eq('school_id', sid),
+        supabase.from('school_supervisions').select('id,member_id,scope_type,scope_id,note').eq('school_id', sid).order('created_at'),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
@@ -434,6 +438,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
       setEntries((en.data as Entry[]) || []);
       setDutyLocs((dl.data as DutyLoc[]) || []);
       setDuties((du.data as Duty[]) || []);
+      setSupervisions((sv.data as Supervision[]) || []);
     },
     [supabase]
   );
@@ -908,6 +913,23 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setDuties((d) => d.filter((x) => x.id !== id));
   };
 
+  // ── الإشراف الإداري ───────────────────────────────────────────
+  const addSupervision = async (memberId: string, scopeType: 'stage' | 'grade' | 'class', scopeId: string) => {
+    const { data, error } = await supabase
+      .from('school_supervisions')
+      .insert({ school_id: schoolId, member_id: memberId, scope_type: scopeType, scope_id: scopeId })
+      .select('id,member_id,scope_type,scope_id,note')
+      .single();
+    if (error || !data) return showToast(/duplicate|unique/i.test(error?.message || '') ? '⚠️ هذا الإشراف مسجّل مسبقًا' : 'تعذّرت الإضافة');
+    setSupervisions((s) => [...s, data as Supervision]);
+    showToast('تم تعيين الإشراف ✅');
+  };
+  const delSupervision = async (id: string) => {
+    const { error } = await supabase.from('school_supervisions').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setSupervisions((s) => s.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -1078,6 +1100,18 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           addDuty={addDuty}
           delDuty={delDuty}
         />
+      ) : view === 'supervision' ? (
+        <SupervisionView
+          supervisions={supervisions}
+          members={members}
+          stages={stages}
+          grades={grades}
+          classes={classes}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          addSupervision={addSupervision}
+          delSupervision={delSupervision}
+        />
       ) : view === 'reports' ? (
         <ReportsView
           school={school}
@@ -1102,7 +1136,8 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
               setOpenClass(null);
               setView('students');
             } else if (k === 'teaching') setView('teaching');
-            else if (k === 'timetable') setView('timetable');
+            else if (k === 'timetable' || k === 'smart') setView('timetable');
+            else if (k === 'supervision') setView('supervision');
             else if (k === 'attendance') {
               setAttClass(null);
               setView('attendance');
@@ -2238,6 +2273,142 @@ function DutyView({
               </div>
             );
           })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── الإشراف الإداري ───────────────────────── */
+function SupervisionView({
+  supervisions,
+  members,
+  stages,
+  grades,
+  classes,
+  canManage,
+  onBack,
+  addSupervision,
+  delSupervision,
+}: {
+  supervisions: Supervision[];
+  members: Member[];
+  stages: Stage[];
+  grades: Grade[];
+  classes: Klass[];
+  canManage: boolean;
+  onBack: () => void;
+  addSupervision: (memberId: string, scopeType: 'stage' | 'grade' | 'class', scopeId: string) => void;
+  delSupervision: (id: string) => void;
+}) {
+  const [mem, setMem] = useState('');
+  const [scopeType, setScopeType] = useState<'stage' | 'grade' | 'class'>('stage');
+  const [scopeId, setScopeId] = useState('');
+
+  const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+  const stageName = (id: string) => stages.find((s) => s.id === id)?.name || '—';
+  const gradeLabel = (id: string) => {
+    const g = grades.find((x) => x.id === id);
+    return g ? `${stageName(g.stage_id)} › ${g.name}` : '—';
+  };
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    if (!c) return '—';
+    return `${gradeLabel(c.grade_id)} › ${c.name}`;
+  };
+  const scopeLabel = (t: string, id: string) => (t === 'stage' ? stageName(id) : t === 'grade' ? gradeLabel(id) : classLabel(id));
+  const scopeOptions =
+    scopeType === 'stage'
+      ? stages.map((s) => ({ id: s.id, label: s.name }))
+      : scopeType === 'grade'
+      ? grades.map((g) => ({ id: g.id, label: gradeLabel(g.id) }))
+      : classes.filter((c) => !c.archived).map((c) => ({ id: c.id, label: classLabel(c.id) }));
+
+  // تجميع حسب المعلمة
+  const byMember = sortedMembers
+    .map((m) => ({ m, rows: supervisions.filter((s) => s.member_id === m.id) }))
+    .filter((x) => x.rows.length);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">الإشراف الإداري</div>
+      </div>
+
+      <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
+        عيّني معلمةً مشرفةً على مرحلة أو صف أو فصل. يُسجَّل نطاق إشرافها هنا؛ وعند ربط حسابها لتسجيل الدخول يُطبَّق النطاق تلقائيًا فترى بيانات ما تُشرف عليه فقط.
+      </div>
+
+      {canManage ? (
+        <div className="card-3d bg-white rounded-2xl p-3">
+          <div className="font-extrabold text-sage-deep mb-2">تعيين إشراف</div>
+          {stages.length && members.length ? (
+            <div className="space-y-1.5">
+              <select value={mem} onChange={(e) => setMem(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">المعلمة المشرفة</option>
+                {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-1.5">
+                <select
+                  value={scopeType}
+                  onChange={(e) => {
+                    setScopeType(e.target.value as 'stage' | 'grade' | 'class');
+                    setScopeId('');
+                  }}
+                  className="rounded-lg border border-sage/25 bg-white text-[12px] p-2"
+                >
+                  <option value="stage">مرحلة</option>
+                  <option value="grade">صف</option>
+                  <option value="class">فصل</option>
+                </select>
+                <select value={scopeId} onChange={(e) => setScopeId(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                  <option value="">اختاري النطاق</option>
+                  {scopeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              </div>
+              <button
+                onClick={() => {
+                  if (mem && scopeId) {
+                    addSupervision(mem, scopeType, scopeId);
+                    setScopeId('');
+                  }
+                }}
+                disabled={!mem || !scopeId}
+                className="w-full rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2 disabled:opacity-40"
+              >
+                ＋ تعيين
+              </button>
+            </div>
+          ) : (
+            <div className="text-[12px] text-ink/45">أضيفي مراحل ومعلمات أولًا.</div>
+          )}
+        </div>
+      ) : null}
+
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">المشرفات ونطاقاتهن</div>
+        {byMember.length === 0 ? (
+          <div className="text-[12px] text-ink/35">— لا إشراف معيَّن بعد —</div>
+        ) : (
+          <div className="space-y-2.5">
+            {byMember.map(({ m, rows }) => (
+              <div key={m.id}>
+                <div className="font-bold text-sage-deep text-[13px] mb-1">👩🏻‍💼 {m.name}</div>
+                <div className="pr-3 border-r-2 border-sage/10 space-y-1">
+                  {rows.map((r) => (
+                    <div key={r.id} className="flex items-center gap-2 text-[12.5px]">
+                      <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">
+                        {r.scope_type === 'stage' ? 'مرحلة' : r.scope_type === 'grade' ? 'صف' : 'فصل'}
+                      </span>
+                      <div className="flex-1 text-ink">{scopeLabel(r.scope_type, r.scope_id)}</div>
+                      {canManage ? <button onClick={() => delSupervision(r.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
