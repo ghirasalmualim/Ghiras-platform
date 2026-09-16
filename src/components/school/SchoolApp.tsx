@@ -25,6 +25,7 @@ type Student = { id: string; class_id: string; name: string; sid_no: string | nu
 type Subject = { id: string; name: string; department_id: string | null; sort: number };
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
 type Period = { id: string; name: string; kind: string; start_time: string | null; end_time: string | null; sort: number };
+type Entry = { id: string; day: number; period_id: string; class_id: string; member_id: string; subject_id: string };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -92,6 +93,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teaching, setTeaching] = useState<Teaching[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable'>('dash');
   const [toast, setToast] = useState('');
@@ -146,18 +148,20 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd] = await Promise.all([
+      const [dp, mb, su, tc, pd, en] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_teaching').select('id,member_id,subject_id,class_id,weekly_hours').eq('school_id', sid),
         supabase.from('school_periods').select('id,name,kind,start_time,end_time,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_timetable_entries').select('id,day,period_id,class_id,member_id,subject_id').eq('school_id', sid),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
       setSubjects((su.data as Subject[]) || []);
       setTeaching((tc.data as Teaching[]) || []);
       setPeriods((pd.data as Period[]) || []);
+      setEntries((en.data as Entry[]) || []);
     },
     [supabase]
   );
@@ -408,6 +412,27 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setPeriods((p) => p.filter((x) => x.id !== id));
   };
 
+  // ── شبكة الجدول ───────────────────────────────────────────────
+  const addEntry = async (day: number, periodId: string, classId: string, memberId: string, subjectId: string) => {
+    const { data, error } = await supabase
+      .from('school_timetable_entries')
+      .insert({ school_id: schoolId, day, period_id: periodId, class_id: classId, member_id: memberId, subject_id: subjectId })
+      .select('id,day,period_id,class_id,member_id,subject_id')
+      .single();
+    if (error || !data) {
+      // قيد unique في القاعدة يمنع التعارض → رسالة واضحة
+      const busy = /tt_member_slot/.test(error?.message || '');
+      const dup = /tt_class_slot/.test(error?.message || '');
+      return showToast(busy ? '⚠️ المعلمة مشغولة في هذا الوقت بفصل آخر' : dup ? 'الخانة مشغولة' : 'تعذّرت الإضافة');
+    }
+    setEntries((e) => [...e, data as Entry]);
+  };
+  const delEntry = async (id: string) => {
+    const { error } = await supabase.from('school_timetable_entries').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setEntries((e) => e.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -497,12 +522,21 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
         />
       ) : view === 'timetable' ? (
         <TimetableView
+          school={school}
           periods={periods}
+          classes={classes}
+          grades={grades}
+          teaching={teaching}
+          members={members}
+          subjects={subjects}
+          entries={entries}
           canManage={canManage}
           onBack={() => setView('dash')}
           addPeriod={addPeriod}
           updatePeriod={updatePeriod}
           delPeriod={delPeriod}
+          addEntry={addEntry}
+          delEntry={delEntry}
         />
       ) : (
         <Dashboard
@@ -869,26 +903,56 @@ function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) 
   );
 }
 
-/* ───────────────────────── الجدول: أوقات اليوم ───────────────────────── */
+/* ───────────────────────── الجدول: أوقات اليوم + الشبكة ───────────────────────── */
 function TimetableView({
+  school,
   periods,
+  classes,
+  grades,
+  teaching,
+  members,
+  subjects,
+  entries,
   canManage,
   onBack,
   addPeriod,
   updatePeriod,
   delPeriod,
+  addEntry,
+  delEntry,
 }: {
+  school: School | null;
   periods: Period[];
+  classes: Klass[];
+  grades: Grade[];
+  teaching: Teaching[];
+  members: Member[];
+  subjects: Subject[];
+  entries: Entry[];
   canManage: boolean;
   onBack: () => void;
   addPeriod: (name: string, kind: string, start: string, end: string) => void;
   updatePeriod: (id: string, patch: Partial<Period>) => void;
   delPeriod: (id: string) => void;
+  addEntry: (day: number, periodId: string, classId: string, memberId: string, subjectId: string) => void;
+  delEntry: (id: string) => void;
 }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState('lesson');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [gridClass, setGridClass] = useState('');
+
+  const lessonPeriods = periods.filter((p) => p.kind === 'lesson');
+  const workDays = (school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4]).slice().sort((a, b) => a - b);
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
+  const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || '—';
+  const classLabel = (c: Klass) => {
+    const g = grades.find((x) => x.id === c.grade_id);
+    return g ? `${g.name} · ${c.name}` : c.name;
+  };
+  const entryAt = (day: number, pid: string, cid: string) => entries.find((e) => e.day === day && e.period_id === pid && e.class_id === cid);
+  const classTeaching = teaching.filter((t) => t.class_id === gridClass);
 
   const badge = (k: string) => {
     const map: Record<string, string> = { lesson: 'bg-sage-light text-sage-deep', break: 'bg-gold/15 text-gold-deep', assembly: 'bg-sage-light text-sage-deep', other: 'bg-ink/5 text-ink/60' };
@@ -968,6 +1032,80 @@ function TimetableView({
             </button>
           </div>
         ) : null}
+      </div>
+
+      {/* شبكة الجدول */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">الجدول (حسب الفصل)</div>
+        {lessonPeriods.length === 0 || classes.length === 0 ? (
+          <div className="text-[12px] text-ink/45">أضيفي حصصًا (نوع «حصة») وفصولًا أولًا.</div>
+        ) : (
+          <>
+            <select value={gridClass} onChange={(e) => setGridClass(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[13px] p-2 mb-3">
+              <option value="">اختاري الفصل…</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+            </select>
+
+            {gridClass ? (
+              <div className="overflow-x-auto">
+                <table className="border-collapse text-center text-[11px] min-w-full">
+                  <thead>
+                    <tr>
+                      <th className="border border-sage/20 bg-sage-light/40 p-1.5 sticky right-0">الحصة</th>
+                      {workDays.map((d) => (
+                        <th key={d} className="border border-sage/20 bg-sage-light/40 p-1.5 font-bold text-sage-deep whitespace-nowrap">{WEEKDAYS[d]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lessonPeriods.map((p) => (
+                      <tr key={p.id}>
+                        <td className="border border-sage/20 bg-sage-light/20 p-1.5 font-bold text-ink whitespace-nowrap sticky right-0">{p.name}</td>
+                        {workDays.map((d) => {
+                          const en = entryAt(d, p.id, gridClass);
+                          return (
+                            <td key={d} className="border border-sage/15 p-1 align-top" style={{ minWidth: 92 }}>
+                              {en ? (
+                                <div className="rounded-md bg-sage-light/50 p-1 leading-tight">
+                                  <div className="font-bold text-sage-deep">{subjectName(en.subject_id)}</div>
+                                  <div className="text-ink/60 text-[10px]">{memberName(en.member_id)}</div>
+                                  {canManage ? (
+                                    <button onClick={() => delEntry(en.id)} className="text-red-400 hover:text-red-600 text-[10px] mt-0.5">✕ إزالة</button>
+                                  ) : null}
+                                </div>
+                              ) : canManage && classTeaching.length ? (
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    const t = classTeaching.find((x) => x.id === e.target.value);
+                                    if (t) addEntry(d, p.id, gridClass, t.member_id, t.subject_id);
+                                  }}
+                                  className="w-full rounded border border-sage/20 bg-white text-[10px] p-0.5 text-ink/60"
+                                >
+                                  <option value="">＋</option>
+                                  {classTeaching.map((t) => (
+                                    <option key={t.id} value={t.id}>{subjectName(t.subject_id)} - {memberName(t.member_id)}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="text-ink/20">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {canManage && classTeaching.length === 0 ? (
+                  <div className="text-[12px] text-gold-deep mt-2">وزّعي معلمات على هذا الفصل من «المواد والتوزيع» عشان تظهر خيارات الحصص.</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-[12px] text-ink/40">اختاري فصلًا لعرض جدوله.</div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
