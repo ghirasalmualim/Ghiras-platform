@@ -978,7 +978,17 @@ function TimetableView({
           <div className="space-y-1.5 mb-3">
             {periods.map((p) => (
               <div key={p.id} className="flex items-center gap-2 text-[13px]">
-                <span className={`text-[10.5px] rounded-full px-2 py-0.5 ${badge(p.kind)}`}>{kindLabel(p.kind)}</span>
+                {canManage ? (
+                  <select
+                    value={p.kind}
+                    onChange={(e) => updatePeriod(p.id, { kind: e.target.value })}
+                    className={`text-[10.5px] rounded-full px-2 py-0.5 border-0 ${badge(p.kind)}`}
+                  >
+                    {PERIOD_KINDS.map((x) => <option key={x.k} value={x.k}>{x.l}</option>)}
+                  </select>
+                ) : (
+                  <span className={`text-[10.5px] rounded-full px-2 py-0.5 ${badge(p.kind)}`}>{kindLabel(p.kind)}</span>
+                )}
                 <div className="flex-1 font-bold text-ink">{p.name}</div>
                 <div className="text-ink/55 text-[12px] tabular-nums" dir="ltr">
                   {p.start_time || '—'}{p.end_time ? ` – ${p.end_time}` : ''}
