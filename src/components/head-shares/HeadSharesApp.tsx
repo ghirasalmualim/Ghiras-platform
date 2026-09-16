@@ -106,6 +106,29 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
     }
   };
 
+  const copyLink = async () => {
+    const link = `${window.location.origin}/my-file`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast('تم نسخ الرابط ✅ أرسليه للمعلمة');
+    } catch {
+      // متصفّحات قديمة / سياق غير آمن — طريقة بديلة
+      const ta = document.createElement('textarea');
+      ta.value = link;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('تم نسخ الرابط ✅ أرسليه للمعلمة');
+      } catch {
+        window.prompt('انسخي هذا الرابط وأرسليه للمعلمة:', link);
+      }
+      document.body.removeChild(ta);
+    }
+  };
+
   const toggle = (id: string) =>
     setOpen((s) => {
       const n = new Set(s);
@@ -127,6 +150,17 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
       </header>
 
       <div className="mx-auto max-w-2xl p-4 space-y-4">
+        {/* رابط صفحة المعلمة — واحد لكل المعلمات */}
+        <div className="rounded-2xl bg-sage-light/40 border border-sage/15 p-3 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-[12.5px] font-bold text-sage-deep">رابط صفحة المعلمة</div>
+            <div className="text-[11.5px] text-ink/55 leading-relaxed">أرسليه لأي معلمة شاركتِها — كل وحدة تدخل بحسابها وتشوف صفحتها فقط.</div>
+          </div>
+          <button onClick={copyLink} className="shrink-0 rounded-xl bg-sage-deep text-white font-bold text-[12.5px] px-4 py-2.5 shadow-soft">
+            📋 نسخ الرابط
+          </button>
+        </div>
+
         {/* إضافة معلمة */}
         {adding ? (
           <div className="card-3d bg-white rounded-2xl p-4 space-y-3">
