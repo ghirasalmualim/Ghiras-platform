@@ -347,10 +347,11 @@ async function extractNames(file: File): Promise<string[]> {
     throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).');
   }
   const raw = await res.text();
-  let json: { error?: { message?: string }; content?: { text?: string }[] } = {};
+  let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
   try { json = JSON.parse(raw); } catch { /* غير JSON */ }
   if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
-  const text: string = json?.content?.[0]?.text || '';
+  // نلتقط مقاطع النص فقط (نتجاهل مقطع «التفكير» thinking الذي يأتي أولًا)
+  const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
   const names = text
     .split('\n')
     .map((s) => s.replace(/^[\s\d\-.،_)(]+/, '').trim())
