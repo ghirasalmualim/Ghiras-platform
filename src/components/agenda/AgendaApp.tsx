@@ -55,8 +55,11 @@ export interface Achievement {
 /* بيانات ترويسة/تذييل ملف الإنجاز الرسمي (تُحفظ وتُعاد) */
 /** منصب صاحب الملف — يحدّد المسمّى والتواقيع في ملف الإنجاز. */
 export type PortfolioRole = 'teacher' | 'head' | 'deputy' | 'principal';
+/** صيغة المسمّيات: مؤنّثة (افتراضي) أو مذكّرة. */
+export type PortfolioGender = 'female' | 'male';
 export interface PortfolioMeta {
   role?: PortfolioRole; // منصب صاحب الملف (افتراضي: معلمة)
+  gender?: PortfolioGender; // صيغة المسمّيات (افتراضي: نساء)
   region?: string; // المنطقة التعليمية
   school?: string; // المدرسة
   dept?: string; // القسم
@@ -73,22 +76,34 @@ export interface PortfolioMeta {
   experience?: string; // سنوات الخبرة
 }
 
-/** مسمّيات كل منصب + التواقيع تحته (رئيسه المباشر). */
-export const PORTFOLIO_ROLES: Record<
+type SigKey = 'head' | 'principal' | 'eduDirector';
+/** المسمّيات بالصيغتين: [مؤنّث, مذكّر]. */
+const ROLE_DEFS: Record<
   PortfolioRole,
-  { label: string; owner: string; ownerField: string; infoTitle: string; sigs: Array<'head' | 'principal' | 'eduDirector'> }
+  { label: [string, string]; owner: [string, string]; infoTitle: [string, string]; sigs: SigKey[] }
 > = {
-  teacher: { label: 'معلمة', owner: 'المعلمة', ownerField: 'اسم المعلمة', infoTitle: 'بيانات المعلمة الأساسية', sigs: ['head', 'principal'] },
-  head: { label: 'رئيسة شعبة', owner: 'رئيسة الشعبة', ownerField: 'اسم رئيسة الشعبة', infoTitle: 'بيانات رئيسة الشعبة', sigs: ['principal'] },
-  deputy: { label: 'مديرة مساعدة', owner: 'المديرة المساعدة', ownerField: 'اسم المديرة المساعدة', infoTitle: 'بيانات المديرة المساعدة', sigs: ['principal'] },
-  principal: { label: 'مديرة المدرسة', owner: 'مديرة المدرسة', ownerField: 'اسم مديرة المدرسة', infoTitle: 'بيانات مديرة المدرسة', sigs: ['eduDirector'] },
+  teacher: { label: ['معلمة', 'معلم'], owner: ['المعلمة', 'المعلم'], infoTitle: ['بيانات المعلمة الأساسية', 'بيانات المعلم الأساسية'], sigs: ['head', 'principal'] },
+  head: { label: ['رئيسة شعبة', 'رئيس شعبة'], owner: ['رئيسة الشعبة', 'رئيس الشعبة'], infoTitle: ['بيانات رئيسة الشعبة', 'بيانات رئيس الشعبة'], sigs: ['principal'] },
+  deputy: { label: ['مديرة مساعدة', 'مدير مساعد'], owner: ['المديرة المساعدة', 'المدير المساعد'], infoTitle: ['بيانات المديرة المساعدة', 'بيانات المدير المساعد'], sigs: ['principal'] },
+  principal: { label: ['مديرة المدرسة', 'مدير المدرسة'], owner: ['مديرة المدرسة', 'مدير المدرسة'], infoTitle: ['بيانات مديرة المدرسة', 'بيانات مدير المدرسة'], sigs: ['eduDirector'] },
 };
-/** تسميات خانات التوقيع. */
-export const SIG_LABELS: Record<'head' | 'principal' | 'eduDirector', string> = {
-  head: 'رئيسة الشعبة',
-  principal: 'مديرة المدرسة',
-  eduDirector: 'مدير الشؤون التعليمية',
+const SIG_DEFS: Record<SigKey, [string, string]> = {
+  head: ['رئيسة الشعبة', 'رئيس الشعبة'],
+  principal: ['مديرة المدرسة', 'مدير المدرسة'],
+  eduDirector: ['مديرة الشؤون التعليمية', 'مدير الشؤون التعليمية'],
 };
+
+export const PORTFOLIO_ROLE_KEYS: PortfolioRole[] = ['teacher', 'head', 'deputy', 'principal'];
+const gi = (g: PortfolioGender) => (g === 'male' ? 1 : 0);
+
+/** مسمّيات المنصب بالصيغة المطلوبة (مسمّى صاحب الملف، عنوان صفحة البيانات، التواقيع). */
+export function portfolioRoleCfg(role: PortfolioRole, gender: PortfolioGender) {
+  const d = ROLE_DEFS[role];
+  const i = gi(gender);
+  return { label: d.label[i], owner: d.owner[i], ownerField: `اسم ${d.owner[i]}`, infoTitle: d.infoTitle[i], sigs: d.sigs };
+}
+/** تسمية خانة التوقيع بالصيغة المطلوبة. */
+export const sigLabel = (s: SigKey, gender: PortfolioGender) => SIG_DEFS[s][gi(gender)];
 export interface AgendaData {
   _v: number;
   tasks: Task[];
@@ -2035,13 +2050,14 @@ function PortfolioBuilder({
   const list = useMemo(() => data.achievements.filter((a) => inPeriod(a.date)).sort((a, b) => a.date.localeCompare(b.date)), [data.achievements, inPeriod]);
   const included = list.filter((a) => !excluded.has(a.id));
 
-  const roleCfg = PORTFOLIO_ROLES[meta.role || 'teacher'];
+  const gender: PortfolioGender = meta.gender || 'female';
+  const roleCfg = portfolioRoleCfg(meta.role || 'teacher', gender);
 
   // تذييل التواقيع حسب المنصب — توقيعان يمين/يسار، أو توقيع واحد في الوسط
   const renderSigs = (mt = 'mt-4') => {
     const boxes = roleCfg.sigs.map((s) => (
       <div key={s} className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-        <div className="font-bold text-ink">{SIG_LABELS[s]}</div>
+        <div className="font-bold text-ink">{sigLabel(s, gender)}</div>
         <div className="text-ink/80 mt-0.5">{(meta[s] as string) || '…………'}</div>
       </div>
     ));
@@ -2073,22 +2089,44 @@ function PortfolioBuilder({
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-white border border-sage/25 text-sage-deep font-bold">✕</button>
         </div>
         <div className="mx-auto max-w-3xl space-y-3">
-          {/* المنصب — يغيّر مسمّى صاحب الملف والتواقيع */}
-          <div>
-            <label className="block text-[12px] font-bold text-sage-deep mb-1">المنصب</label>
-            <select
-              value={meta.role || 'teacher'}
-              onChange={(e) => {
-                const m = { ...meta, role: e.target.value as PortfolioRole };
-                setMeta(m);
-                commitMeta(m);
-              }}
-              className="w-full rounded-soft border border-sage/25 bg-white p-2.5 text-sm text-ink focus:outline-none focus:border-sage"
-            >
-              {(Object.keys(PORTFOLIO_ROLES) as PortfolioRole[]).map((r) => (
-                <option key={r} value={r}>{PORTFOLIO_ROLES[r].label}</option>
-              ))}
-            </select>
+          {/* الصيغة (نساء/رجال) + المنصب — يغيّران المسمّيات والتواقيع */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[12px] font-bold text-sage-deep mb-1">الصيغة</label>
+              <div className="flex gap-1.5">
+                {([['female', 'نساء'], ['male', 'رجال']] as const).map(([gv, gl]) => (
+                  <button
+                    key={gv}
+                    onClick={() => {
+                      const m = { ...meta, gender: gv as PortfolioGender };
+                      setMeta(m);
+                      commitMeta(m);
+                    }}
+                    className={`flex-1 rounded-soft px-3 py-2.5 text-sm font-bold border ${
+                      gender === gv ? 'bg-sage-deep text-white border-transparent' : 'bg-white text-sage-deep border-sage/25'
+                    }`}
+                  >
+                    {gl}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold text-sage-deep mb-1">المنصب</label>
+              <select
+                value={meta.role || 'teacher'}
+                onChange={(e) => {
+                  const m = { ...meta, role: e.target.value as PortfolioRole };
+                  setMeta(m);
+                  commitMeta(m);
+                }}
+                className="w-full rounded-soft border border-sage/25 bg-white p-2.5 text-sm text-ink focus:outline-none focus:border-sage"
+              >
+                {PORTFOLIO_ROLE_KEYS.map((r) => (
+                  <option key={r} value={r}>{portfolioRoleCfg(r, gender).label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -2096,7 +2134,7 @@ function PortfolioBuilder({
             {field('school', 'المدرسة', 'مثال: مشرف الابتدائية')}
             {field('dept', 'القسم', 'مثال: التربية الإسلامية')}
             {field('teacher', roleCfg.ownerField, 'الاسم')}
-            {roleCfg.sigs.map((s) => field(s, SIG_LABELS[s] + ' (اختياري)', 'الاسم'))}
+            {roleCfg.sigs.map((s) => field(s, sigLabel(s, gender) + ' (اختياري)', 'الاسم'))}
           </div>
 
           {/* بيانات صاحب الملف الأساسية — تُكتب مرة واحدة وتظهر كصفحة تمهيدية */}
