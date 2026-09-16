@@ -77,6 +77,73 @@ type SchoolRow = { id: string; name: string; subscription_until: string | null; 
 
 const subActive = (until: string | null) => !!until && new Date(until) > new Date();
 
+/**
+ * محرّك جدولة قائم على القيود (Constraint-based) — يوزّع الحصص المطلوبة على
+ * (يوم × حصة) بحيث: لا معلمة في مكانين، ولا فصل بحصتين، وكل نصاب يُوضع.
+ * تفضيل مرن: توزيع حصص المادة الواحدة على أيام مختلفة. جشِع + إعادات عشوائية،
+ * ويعيد ما تعذّر وضعه ليُعرض في تقرير الفحص.
+ */
+type SolveTask = { member_id: string; subject_id: string; class_id: string };
+function solveTimetable(
+  teaching: { member_id: string; subject_id: string; class_id: string; weekly_hours: number }[],
+  lessonPeriodIds: string[],
+  workDays: number[]
+): { placements: (SolveTask & { day: number; period_id: string })[]; unplaced: SolveTask[] } {
+  const slots: { day: number; pid: string }[] = [];
+  for (const d of workDays) for (const pid of lessonPeriodIds) slots.push({ day: d, pid });
+
+  const tasks: SolveTask[] = [];
+  for (const t of teaching) for (let i = 0; i < Math.max(0, t.weekly_hours); i++) tasks.push({ member_id: t.member_id, subject_id: t.subject_id, class_id: t.class_id });
+
+  const load: Record<string, number> = {};
+  for (const t of tasks) load[t.member_id] = (load[t.member_id] || 0) + 1;
+  const baseOrder = tasks.map((_, i) => i).sort((a, b) => (load[tasks[b].member_id] || 0) - (load[tasks[a].member_id] || 0));
+
+  const key = (d: number, p: string) => `${d}|${p}`;
+  const attempt = (order: number[]) => {
+    const tBusy = new Map<string, Set<string>>();
+    const cBusy = new Map<string, Set<string>>();
+    const csDays = new Map<string, Set<number>>();
+    const placements: (SolveTask & { day: number; period_id: string })[] = [];
+    const unplaced: SolveTask[] = [];
+    for (const idx of order) {
+      const t = tasks[idx];
+      const tb = tBusy.get(t.member_id) || new Set<string>();
+      const cb = cBusy.get(t.class_id) || new Set<string>();
+      const csKey = `${t.class_id}|${t.subject_id}`;
+      const usedDays = csDays.get(csKey) || new Set<number>();
+      const cands = slots.filter((s) => !tb.has(key(s.day, s.pid)) && !cb.has(key(s.day, s.pid)));
+      // تفضيل: يومٌ لا يحمل هذه المادة لهذا الفصل بعد
+      cands.sort((a, b) => (usedDays.has(a.day) ? 1 : 0) - (usedDays.has(b.day) ? 1 : 0));
+      if (cands.length) {
+        const s = cands[0];
+        tb.add(key(s.day, s.pid));
+        tBusy.set(t.member_id, tb);
+        cb.add(key(s.day, s.pid));
+        cBusy.set(t.class_id, cb);
+        usedDays.add(s.day);
+        csDays.set(csKey, usedDays);
+        placements.push({ ...t, day: s.day, period_id: s.pid });
+      } else {
+        unplaced.push(t);
+      }
+    }
+    return { placements, unplaced };
+  };
+
+  let best = attempt(baseOrder);
+  for (let r = 0; r < 60 && best.unplaced.length; r++) {
+    const ord = baseOrder.slice();
+    for (let i = ord.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ord[i], ord[j]] = [ord[j], ord[i]];
+    }
+    const res = attempt(ord);
+    if (res.unplaced.length < best.unplaced.length) best = res;
+  }
+  return best;
+}
+
 export default function SchoolApp({ firstName, isAdmin }: { firstName: string; isAdmin: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [schoolsList, setSchoolsList] = useState<SchoolRow[] | null>(null);
@@ -94,6 +161,8 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [teaching, setTeaching] = useState<Teaching[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable'>('dash');
   const [toast, setToast] = useState('');
@@ -433,6 +502,34 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setEntries((e) => e.filter((x) => x.id !== id));
   };
 
+  // ── التوليد التلقائي (محرّك القيود) ───────────────────────────
+  const generateTimetable = async () => {
+    if (!schoolId) return;
+    const lessonPids = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort).map((p) => p.id);
+    const wd = school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4];
+    if (!teaching.length || !lessonPids.length) return showToast('أضيفي توزيعًا وحصصًا أولًا');
+    if (!window.confirm('توليد الجدول تلقائيًا؟ سيستبدل الجدول الحالي (مسودة).')) return;
+    setGenerating(true);
+    const res = solveTimetable(teaching, lessonPids, wd);
+    const { error: delErr } = await supabase.from('school_timetable_entries').delete().eq('school_id', schoolId);
+    if (delErr) {
+      setGenerating(false);
+      return showToast('تعذّر مسح الجدول القديم');
+    }
+    if (res.placements.length) {
+      const rows = res.placements.map((p) => ({ school_id: schoolId, day: p.day, period_id: p.period_id, class_id: p.class_id, member_id: p.member_id, subject_id: p.subject_id }));
+      const { error } = await supabase.from('school_timetable_entries').insert(rows);
+      if (error) {
+        setGenerating(false);
+        return showToast('تعذّر حفظ الجدول');
+      }
+    }
+    await loadMembersDepts(schoolId);
+    setGenReport({ placed: res.placements.length, unplaced: res.unplaced });
+    setGenerating(false);
+    showToast(res.unplaced.length ? `⚠️ تعذّر وضع ${res.unplaced.length} حصة` : '✅ جدول بلا تعارضات');
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -537,6 +634,9 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           delPeriod={delPeriod}
           addEntry={addEntry}
           delEntry={delEntry}
+          generateTimetable={generateTimetable}
+          generating={generating}
+          genReport={genReport}
         />
       ) : (
         <Dashboard
@@ -920,6 +1020,9 @@ function TimetableView({
   delPeriod,
   addEntry,
   delEntry,
+  generateTimetable,
+  generating,
+  genReport,
 }: {
   school: School | null;
   periods: Period[];
@@ -936,6 +1039,9 @@ function TimetableView({
   delPeriod: (id: string) => void;
   addEntry: (day: number, periodId: string, classId: string, memberId: string, subjectId: string) => void;
   delEntry: (id: string) => void;
+  generateTimetable: () => void;
+  generating: boolean;
+  genReport: { placed: number; unplaced: SolveTask[] } | null;
 }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState('lesson');
@@ -950,6 +1056,10 @@ function TimetableView({
   const classLabel = (c: Klass) => {
     const g = grades.find((x) => x.id === c.grade_id);
     return g ? `${g.name} · ${c.name}` : c.name;
+  };
+  const classNameById = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    return c ? classLabel(c) : '—';
   };
   const entryAt = (day: number, pid: string, cid: string) => entries.find((e) => e.day === day && e.period_id === pid && e.class_id === cid);
   const classTeaching = teaching.filter((t) => t.class_id === gridClass);
@@ -1043,6 +1153,45 @@ function TimetableView({
           </div>
         ) : null}
       </div>
+
+      {/* التوليد الذكي */}
+      {canManage ? (
+        <div className="card-3d bg-white rounded-2xl p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="font-extrabold text-sage-deep flex-1">✨ إنشاء الجدول تلقائيًا</div>
+            <button
+              onClick={generateTimetable}
+              disabled={generating}
+              className="rounded-xl bg-gold text-white font-extrabold text-[13px] px-4 py-2 shadow-soft disabled:opacity-50"
+            >
+              {generating ? '…جارٍ الحساب' : '✨ توليد الجدول'}
+            </button>
+          </div>
+          <div className="text-[11.5px] text-ink/55">
+            يوزّع الحصص على الأيام من «التوزيع» تلقائيًا، بلا تعارضات (كل معلمة نصابها كامل، ولا تكرار في نفس الوقت).
+          </div>
+          {genReport ? (
+            <div className={`mt-2 rounded-xl p-2.5 text-[12.5px] ${genReport.unplaced.length ? 'bg-gold/10' : 'bg-sage-light/50'}`}>
+              <div className="font-bold text-sage-deep">نتيجة الفحص</div>
+              <div className="text-ink/75 mt-0.5">✓ وُضعت {genReport.placed} حصة</div>
+              {genReport.unplaced.length ? (
+                <div className="mt-1">
+                  <div className="font-bold text-gold-deep">⚠️ تعذّر وضع {genReport.unplaced.length} حصة (ازدحام أو قلّة أوقات):</div>
+                  <div className="text-ink/70 mt-0.5 space-y-0.5">
+                    {genReport.unplaced.slice(0, 12).map((u, i) => (
+                      <div key={i}>• {subjectName(u.subject_id)} — {memberName(u.member_id)} — {classNameById(u.class_id)}</div>
+                    ))}
+                    {genReport.unplaced.length > 12 ? <div>…و{genReport.unplaced.length - 12} غيرها</div> : null}
+                  </div>
+                  <div className="text-[11.5px] text-ink/50 mt-1">جرّبي: زيادة الحصص في اليوم، أو تقليل نصاب المعلمة، أو إعادة التوليد.</div>
+                </div>
+              ) : (
+                <div className="text-sage-deep mt-0.5">كل النُّصُب مكتملة بلا تعارضات ✅</div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* شبكة الجدول */}
       <div className="card-3d bg-white rounded-2xl p-3">
