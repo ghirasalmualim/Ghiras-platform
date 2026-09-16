@@ -682,10 +682,10 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     showToast('تم تطبيق الدور ✅');
     if (schoolId) loadMembersDepts(schoolId);
   };
-  const addPerm = async (userId: string, module: string, action: string) => {
+  const addPerm = async (userId: string, module: string, action: string, scopeType: string, scopeId: string | null) => {
     const { data, error } = await supabase
       .from('school_permissions')
-      .insert({ school_id: schoolId, user_id: userId, module, action, scope_type: 'school', scope_id: null })
+      .insert({ school_id: schoolId, user_id: userId, module, action, scope_type: scopeType, scope_id: scopeType === 'school' ? null : scopeId })
       .select('id,user_id,module,action,scope_type,scope_id')
       .single();
     if (error || !data) return showToast('تعذّرت الإضافة');
@@ -1255,6 +1255,9 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         <PermissionsView
           members={members}
           permissions={permissions}
+          stages={stages}
+          grades={grades}
+          classes={classes}
           canManage={canManage}
           onBack={() => setView('dash')}
           applyPreset={applyPreset}
@@ -3285,6 +3288,9 @@ const PERM_ACTIONS: { key: string; label: string }[] = [
 function PermissionsView({
   members,
   permissions,
+  stages,
+  grades,
+  classes,
   canManage,
   onBack,
   applyPreset,
@@ -3293,17 +3299,38 @@ function PermissionsView({
 }: {
   members: Member[];
   permissions: Perm[];
+  stages: Stage[];
+  grades: Grade[];
+  classes: Klass[];
   canManage: boolean;
   onBack: () => void;
   applyPreset: (member: Member, preset: 'deputy' | 'student_affairs' | 'teacher') => void;
-  addPerm: (userId: string, module: string, action: string) => void;
+  addPerm: (userId: string, module: string, action: string, scopeType: string, scopeId: string | null) => void;
   delPerm: (id: string) => void;
 }) {
   const [openId, setOpenId] = useState('');
   const [cm, setCm] = useState('students');
   const [ca, setCa] = useState('view');
+  const [cscope, setCscope] = useState('school');
+  const [cscopeId, setCscopeId] = useState('');
   const modLabel = (k: string) => PERM_MODULES.find((m) => m.key === k)?.label || k;
   const actLabel = (k: string) => PERM_ACTIONS.find((a) => a.key === k)?.label || k;
+  const stageName = (id: string) => stages.find((s) => s.id === id)?.name || '—';
+  const gradeLabel = (id: string) => {
+    const g = grades.find((x) => x.id === id);
+    return g ? `${stageName(g.stage_id)} › ${g.name}` : '—';
+  };
+  const classLabel = (id: string) => {
+    const c = classes.find((x) => x.id === id);
+    return c ? `${gradeLabel(c.grade_id)} › ${c.name}` : '—';
+  };
+  const scopeLabel = (t: string, id: string | null) =>
+    t === 'school' ? 'كل المدرسة' : !id ? '—' : t === 'stage' ? stageName(id) : t === 'grade' ? gradeLabel(id) : classLabel(id);
+  const scopeOptions =
+    cscope === 'stage' ? stages.map((s) => ({ id: s.id, label: s.name }))
+    : cscope === 'grade' ? grades.map((g) => ({ id: g.id, label: gradeLabel(g.id) }))
+    : cscope === 'class' ? classes.filter((c) => !c.archived).map((c) => ({ id: c.id, label: classLabel(c.id) }))
+    : [];
   const sorted = members
     .slice()
     .sort((a, b) => Number(!!b.user_id) - Number(!!a.user_id) || (a.name || '').localeCompare(b.name || '', 'ar'));
@@ -3362,6 +3389,7 @@ function PermissionsView({
                         {mp.map((p) => (
                           <span key={p.id} className="inline-flex items-center gap-1 text-[11px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">
                             {modLabel(p.module)}: {actLabel(p.action)}
+                            <span className="text-ink/45">· {scopeLabel(p.scope_type, p.scope_id)}</span>
                             {canManage ? <button onClick={() => delPerm(p.id)} aria-label="حذف" className="text-red-400 hover:text-red-600">×</button> : null}
                           </span>
                         ))}
@@ -3370,14 +3398,43 @@ function PermissionsView({
                   </div>
 
                   {canManage && m.role !== 'deputy' ? (
-                    <div className="flex gap-1.5 items-center">
-                      <select value={cm} onChange={(e) => setCm(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
-                        {PERM_MODULES.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
-                      </select>
-                      <select value={ca} onChange={(e) => setCa(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
-                        {PERM_ACTIONS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
-                      </select>
-                      <button onClick={() => m.user_id && addPerm(m.user_id, cm, ca)} className="rounded-lg bg-sage-deep text-white text-[12px] font-bold px-3 py-1.5">＋</button>
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] text-ink/55">منح صلاحية مفصّلة:</div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <select value={cm} onChange={(e) => setCm(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
+                          {PERM_MODULES.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        </select>
+                        <select value={ca} onChange={(e) => setCa(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
+                          {PERM_ACTIONS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        </select>
+                        <select
+                          value={cscope}
+                          onChange={(e) => { setCscope(e.target.value); setCscopeId(''); }}
+                          className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
+                        >
+                          <option value="school">كل المدرسة</option>
+                          <option value="stage">مرحلة</option>
+                          <option value="grade">صف</option>
+                          <option value="class">فصل</option>
+                        </select>
+                        {cscope === 'school' ? (
+                          <button onClick={() => m.user_id && addPerm(m.user_id, cm, ca, 'school', null)} className="rounded-lg bg-sage-deep text-white text-[12px] font-bold px-3 py-1.5">＋ منح</button>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            <select value={cscopeId} onChange={(e) => setCscopeId(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5">
+                              <option value="">النطاق</option>
+                              {scopeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                            </select>
+                            <button
+                              onClick={() => m.user_id && cscopeId && addPerm(m.user_id, cm, ca, cscope, cscopeId)}
+                              disabled={!cscopeId}
+                              className="rounded-lg bg-sage-deep text-white text-[12px] font-bold px-3 py-1.5 disabled:opacity-40"
+                            >
+                              ＋
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : null}
                 </div>
