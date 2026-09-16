@@ -21,6 +21,7 @@ type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
 type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
 type Member = { id: string; user_id: string; name: string | null; role: string; department_id: string | null };
+type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'مسؤولة المدرسة',
@@ -48,7 +49,7 @@ const normLogin = (raw: string) => {
 const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] = [
   { key: 'structure', label: 'الهيكل المدرسي', emoji: '🏫' },
   { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫' },
-  { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻', soon: true },
+  { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅', soon: true },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄', soon: true },
@@ -74,8 +75,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [classes, setClasses] = useState<Klass[]>([]);
   const [depts, setDepts] = useState<Dept[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [openClass, setOpenClass] = useState<Klass | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -286,6 +289,40 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setDepts((d) => d.map((x) => (x.head_member_id === id ? { ...x, head_member_id: null } : x)));
   };
 
+  // ── المتعلمات ─────────────────────────────────────────────────
+  const openClassStudents = async (cls: Klass) => {
+    setOpenClass(cls);
+    const { data } = await supabase.from('school_students').select('id,class_id,name,sid_no,note,archived,sort').eq('class_id', cls.id).order('sort');
+    setStudents((data as Student[]) || []);
+  };
+  const addStudent = async (name: string, sidNo: string) => {
+    if (!openClass) return;
+    const { data, error } = await supabase
+      .from('school_students')
+      .insert({ school_id: schoolId, class_id: openClass.id, name, sid_no: sidNo || null, sort: nextSort(students) })
+      .select('id,class_id,name,sid_no,note,archived,sort')
+      .single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setStudents((s) => [...s, data as Student]);
+  };
+  const updateStudent = async (id: string, patch: Partial<Student>) => {
+    const { error } = await supabase.from('school_students').update(patch).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setStudents((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
+  const moveStudent = async (id: string, toClassId: string) => {
+    const { error } = await supabase.from('school_students').update({ class_id: toClassId }).eq('id', id);
+    if (error) return showToast('تعذّر النقل');
+    setStudents((s) => s.filter((x) => x.id !== id)); // خرجت من الفصل الحالي
+    showToast('تم النقل ✅');
+  };
+  const delStudent = async (id: string) => {
+    if (!window.confirm('حذف المتعلمة نهائيًا؟')) return;
+    const { error } = await supabase.from('school_students').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setStudents((s) => s.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -342,6 +379,21 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           addMember={addMember}
           removeMember={removeMember}
         />
+      ) : view === 'students' ? (
+        <StudentsView
+          stages={stages}
+          grades={grades}
+          classes={classes}
+          openClass={openClass}
+          students={students}
+          canManage={canManage}
+          onBack={() => (openClass ? setOpenClass(null) : setView('dash'))}
+          onOpenClass={openClassStudents}
+          addStudent={addStudent}
+          updateStudent={updateStudent}
+          moveStudent={moveStudent}
+          delStudent={delStudent}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -349,6 +401,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           onOpen={(k) => {
             if (k === 'structure') setView('structure');
             else if (k === 'departments') setView('departments');
+            else if (k === 'students') {
+              setOpenClass(null);
+              setView('students');
+            }
           }}
         />
       )}
@@ -698,6 +754,165 @@ function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) 
       >
         ＋ إضافة
       </button>
+    </div>
+  );
+}
+
+/* ───────────────────────── الصفوف والمتعلمات ───────────────────────── */
+function StudentsView({
+  stages,
+  grades,
+  classes,
+  openClass,
+  students,
+  canManage,
+  onBack,
+  onOpenClass,
+  addStudent,
+  updateStudent,
+  moveStudent,
+  delStudent,
+}: {
+  stages: Stage[];
+  grades: Grade[];
+  classes: Klass[];
+  openClass: Klass | null;
+  students: Student[];
+  canManage: boolean;
+  onBack: () => void;
+  onOpenClass: (c: Klass) => void;
+  addStudent: (name: string, sidNo: string) => void;
+  updateStudent: (id: string, patch: Partial<Student>) => void;
+  moveStudent: (id: string, toClassId: string) => void;
+  delStudent: (id: string) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [nm, setNm] = useState('');
+  const [sid, setSid] = useState('');
+
+  // اختيار فصل
+  if (!openClass) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+          <div className="font-extrabold text-sage-deep flex-1">الصفوف والمتعلمات</div>
+        </div>
+        {classes.length === 0 ? (
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (مراحل/صفوف/فصول) أولًا من «الهيكل المدرسي».</div>
+        ) : (
+          stages.map((st) => (
+            <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
+              <div className="font-extrabold text-sage-deep mb-2">{st.name}</div>
+              {grades.filter((g) => g.stage_id === st.id).map((g) => (
+                <div key={g.id} className="mb-2">
+                  <div className="text-[12px] font-bold text-ink/70 mb-1">{g.name}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {classes.filter((c) => c.grade_id === g.id).map((c) => (
+                      <button key={c.id} onClick={() => onOpenClass(c)} className="rounded-lg bg-sage-light text-sage-deep text-[13px] font-bold px-3 py-1.5">
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  // قائمة متعلمات فصل
+  const moveTargets = classes.filter((c) => c.id !== openClass.id);
+  const shown = students.filter((s) => {
+    const t = q.trim();
+    return !t || s.name.includes(t) || (s.sid_no || '').includes(t);
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ الفصول</button>
+        <div className="font-extrabold text-sage-deep flex-1">الفصل {openClass.name} · {students.length} متعلمة</div>
+      </div>
+
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="🔍 ابحثي باسم أو رقم"
+        className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage"
+      />
+
+      {canManage ? (
+        <div className="flex gap-1.5">
+          <input value={nm} onChange={(e) => setNm(e.target.value)} placeholder="اسم المتعلمة" className="flex-1 rounded-lg border border-sage/25 p-2 text-[13px] bg-white focus:outline-none focus:border-sage" />
+          <input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="رقم (اختياري)" className="w-24 rounded-lg border border-sage/25 p-2 text-[13px] bg-white focus:outline-none focus:border-sage" />
+          <button
+            onClick={() => {
+              if (nm.trim()) {
+                addStudent(nm.trim(), sid.trim());
+                setNm('');
+                setSid('');
+              }
+            }}
+            className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3"
+          >
+            ＋
+          </button>
+        </div>
+      ) : null}
+
+      {shown.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">{q ? 'لا نتائج' : 'لا متعلمات بعد.'}</div>
+      ) : (
+        shown.map((s) => (
+          <div key={s.id} className={`card-3d bg-white rounded-xl p-3 flex items-center gap-2 ${s.archived ? 'opacity-60' : ''}`}>
+            <div className="flex-1">
+              <div className={`font-bold text-ink text-[14px] ${s.archived ? 'line-through' : ''}`}>{s.name}</div>
+              <div className="text-[11.5px] text-ink/50">
+                {s.sid_no ? `رقم ${s.sid_no}` : ''}
+                {s.note ? ` · ${s.note}` : ''}
+                {s.archived ? ' · موقوفة' : ''}
+              </div>
+            </div>
+            {canManage ? (
+              <>
+                <button
+                  onClick={() => {
+                    const name = window.prompt('اسم المتعلمة', s.name);
+                    if (name === null) return;
+                    const sidNo = window.prompt('الرقم (اختياري)', s.sid_no || '') ?? '';
+                    const note = window.prompt('ملاحظة إدارية (اختياري)', s.note || '') ?? '';
+                    updateStudent(s.id, { name: name.trim() || s.name, sid_no: sidNo.trim() || null, note: note.trim() || null });
+                  }}
+                  aria-label="تعديل"
+                  className="text-ink/40 hover:text-sage-deep text-sm px-1"
+                >
+                  ✏️
+                </button>
+                {moveTargets.length ? (
+                  <select
+                    value=""
+                    onChange={(e) => e.target.value && moveStudent(s.id, e.target.value)}
+                    className="rounded-lg border border-sage/25 bg-white text-[11px] p-1"
+                    title="نقل لفصل آخر"
+                  >
+                    <option value="">نقل ↦</option>
+                    {moveTargets.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                ) : null}
+                <button onClick={() => updateStudent(s.id, { archived: !s.archived })} aria-label="أرشفة" className="text-ink/40 hover:text-gold-deep text-sm px-1">
+                  {s.archived ? '↩️' : '⏸'}
+                </button>
+                <button onClick={() => delStudent(s.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+              </>
+            ) : null}
+          </div>
+        ))
+      )}
     </div>
   );
 }
