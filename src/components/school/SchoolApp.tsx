@@ -20,7 +20,7 @@ type Stage = { id: string; name: string; sort: number };
 type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
 type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
-type Member = { id: string; user_id: string | null; name: string | null; role: string; department_id: string | null };
+type Member = { id: string; user_id: string | null; name: string | null; role: string; department_id: string | null; note?: string | null };
 type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
 type Subject = { id: string; name: string; department_id: string | null; sort: number };
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
@@ -682,6 +682,12 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     showToast('تم فكّ الربط');
     if (schoolId) loadMembersDepts(schoolId);
   };
+  const updateMemberNote = async (memberId: string, note: string) => {
+    const { error } = await supabase.from('school_members').update({ note: note.trim() || null }).eq('id', memberId);
+    if (error) return showToast('تعذّر حفظ الملاحظة');
+    setMembers((m) => m.map((x) => (x.id === memberId ? { ...x, note: note.trim() || null } : x)));
+    showToast('تم حفظ الملاحظة ✅');
+  };
 
   // ── الأدوار والصلاحيات ────────────────────────────────────────
   const PRESET_PERMS: Record<string, [string, string][]> = {
@@ -924,11 +930,15 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (!teaching.length || !lessonPids.length) return showToast('أضيفي توزيعًا وحصصًا أولًا');
     if (!window.confirm('توليد الجدول تلقائيًا؟ سيستبدل الجدول الحالي (مسودة).')) return;
     setGenerating(true);
+    // ضمّ ملاحظات المعلمات كقيود (تُقرأ بنفس محلّل العربي)
+    const noteText = members.filter((m) => m.note && m.note.trim()).map((m) => `${m.name} ${m.note}`).join('\n');
+    const noteRules = noteText ? parseRules(noteText, members, subjects).rules : [];
+    const allRules = [...rules, ...noteRules];
     // بناء القيود للمحرّك
     const offDay = new Set<string>();
     const noSlot = new Set<string>();
     const avoidLast = new Set<string>();
-    for (const r of rules) {
+    for (const r of allRules) {
       if (r.kind === 'off_day') offDay.add(`${r.member_id}|${r.day}`);
       else if (r.kind === 'no_period') {
         const pid = lessonPids[r.periodIndex];
@@ -1193,6 +1203,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           importMembers={importMembers}
           linkMember={linkMember}
           unlinkMember={unlinkMember}
+          updateMemberNote={updateMemberNote}
         />
       ) : view === 'students' ? (
         <StudentsView
@@ -1661,6 +1672,7 @@ function DepartmentsView({
   importMembers,
   linkMember,
   unlinkMember,
+  updateMemberNote,
 }: {
   depts: Dept[];
   members: Member[];
@@ -1675,6 +1687,7 @@ function DepartmentsView({
   importMembers: (names: string[], deptId: string | null) => void;
   linkMember: (memberId: string, identifier: string) => void;
   unlinkMember: (memberId: string) => void;
+  updateMemberNote: (memberId: string, note: string) => void;
 }) {
   const [newDept, setNewDept] = useState('');
   const [openDepts, setOpenDepts] = useState<Set<string>>(new Set());
@@ -1682,7 +1695,8 @@ function DepartmentsView({
   const noDept = members.filter((m) => !m.department_id).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
 
   const MemberRow = ({ m, roleText }: { m: Member; roleText?: string }) => (
-    <div className="flex items-center gap-2 py-1">
+    <div className="flex flex-col gap-0.5 py-1">
+     <div className="flex items-center gap-2">
       <span className="w-6 text-center text-sage/40">•</span>
       <div className="flex-1 text-[13px] text-ink">
         {m.name || '—'} <span className="text-[11px] text-ink/45">({roleText || ROLE_LABEL[m.role] || m.role})</span>
@@ -1690,6 +1704,17 @@ function DepartmentsView({
       </div>
       {canManage ? (
         <>
+          <button
+            onClick={() => {
+              const n = window.prompt(`ملاحظة/قيد جدول لـ«${m.name || 'المعلمة'}» (مثال: ما تأخذ الحصة الأولى):`, m.note || '');
+              if (n !== null) updateMemberNote(m.id, n);
+            }}
+            aria-label="ملاحظة"
+            title="ملاحظة/قيد جدول"
+            className={`text-sm px-1 ${m.note ? 'text-gold-deep' : 'text-ink/35 hover:text-sage-deep'}`}
+          >
+            📝
+          </button>
           {m.user_id ? (
             <button onClick={() => unlinkMember(m.id)} aria-label="فكّ الربط" title="فكّ ربط الحساب" className="text-ink/40 hover:text-ink/70 text-xs px-1">⛓️‍💥</button>
           ) : (
@@ -1708,6 +1733,8 @@ function DepartmentsView({
           <button onClick={() => removeMember(m.id)} aria-label="إزالة" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
         </>
       ) : null}
+     </div>
+     {m.note ? <div className="text-[11px] text-gold-deep pr-8">📝 {m.note}</div> : null}
     </div>
   );
 
