@@ -58,7 +58,7 @@ export interface PortfolioMeta {
   school?: string; // المدرسة
   dept?: string; // القسم
   teacher?: string; // اسم المعلم/ة
-  head?: string; // رئيسة القسم
+  head?: string; // رئيسة الشعبة
   principal?: string; // مديرة المدرسة
   logo?: string; // شعار المدرسة (dataURL اختياري)
   // بيانات المعلمة الأساسية (صفحة تمهيدية تُكتب مرة واحدة)
@@ -2044,7 +2044,7 @@ function PortfolioBuilder({
             {field('school', 'المدرسة', 'مثال: مشرف الابتدائية')}
             {field('dept', 'القسم', 'مثال: التربية الإسلامية')}
             {field('teacher', 'اسم المعلم/ة', 'الاسم')}
-            {field('head', 'رئيسة القسم (اختياري)', 'الاسم')}
+            {field('head', 'رئيسة الشعبة (اختياري)', 'الاسم')}
             {field('principal', 'مديرة المدرسة (اختياري)', 'الاسم')}
           </div>
 
@@ -2135,10 +2135,10 @@ function PortfolioBuilder({
             </tbody>
           </table>
 
-          {/* التذييل — رئيسة القسم يمين، مديرة المدرسة يسار */}
+          {/* التذييل — رئيسة الشعبة يمين، مديرة المدرسة يسار */}
           <div className="flex items-end justify-between mt-10 text-[12.5px]">
             <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-              <div className="font-bold text-ink">رئيسة القسم</div>
+              <div className="font-bold text-ink">رئيسة الشعبة</div>
               <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
             </div>
             <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
@@ -2219,10 +2219,10 @@ function PortfolioBuilder({
                 </div>
               </div>
 
-              {/* التذييل — رئيسة القسم يمين، مديرة المدرسة يسار */}
+              {/* التذييل — رئيسة الشعبة يمين، مديرة المدرسة يسار */}
               <div className="flex items-end justify-between mt-4 text-[12.5px]">
                 <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-                  <div className="font-bold text-ink">رئيسة القسم</div>
+                  <div className="font-bold text-ink">رئيسة الشعبة</div>
                   <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
                 </div>
                 <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
