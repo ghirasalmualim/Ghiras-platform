@@ -939,11 +939,11 @@ function DepartmentsView({
   const [newDept, setNewDept] = useState('');
   const noDept = members.filter((m) => !m.department_id);
 
-  const MemberRow = ({ m }: { m: Member }) => (
+  const MemberRow = ({ m, roleText }: { m: Member; roleText?: string }) => (
     <div className="flex items-center gap-2 py-1">
       <span className="w-6 text-center text-sage/40">•</span>
       <div className="flex-1 text-[13px] text-ink">
-        {m.name || '—'} <span className="text-[11px] text-ink/45">({ROLE_LABEL[m.role] || m.role})</span>
+        {m.name || '—'} <span className="text-[11px] text-ink/45">({roleText || ROLE_LABEL[m.role] || m.role})</span>
       </div>
       {canManage ? (
         <button onClick={() => removeMember(m.id)} aria-label="إزالة" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
@@ -1017,7 +1017,7 @@ function DepartmentsView({
                 </div>
                 <div>
                   <div className="text-[12px] font-bold text-sage-deep mb-1">المعلمات ({mm.length})</div>
-                  {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
+                  {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} roleText={m.id === d.head_member_id ? 'رئيسة الشعبة' : undefined} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
                 </div>
                 {canManage ? <AddInline placeholder="اسم المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
               </div>
