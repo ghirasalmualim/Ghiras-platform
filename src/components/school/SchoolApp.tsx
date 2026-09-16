@@ -20,7 +20,7 @@ type Stage = { id: string; name: string; sort: number };
 type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
 type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
-type Member = { id: string; user_id: string; name: string | null; role: string; department_id: string | null };
+type Member = { id: string; user_id: string | null; name: string | null; role: string; department_id: string | null };
 type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
 type Subject = { id: string; name: string; department_id: string | null; sort: number };
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
@@ -594,6 +594,22 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     showToast(`تمت إضافة ${rows.length} معلمة ✅`);
     if (schoolId) loadMembersDepts(schoolId);
   };
+  // ── ربط عضو بحساب (ليدخل بنفسه) ───────────────────────────────
+  const linkMember = async (memberId: string, identifier: string) => {
+    const { data, error } = await supabase.rpc('school_link_member', { p_member: memberId, p_identifier: identifier });
+    const res = Array.isArray(data) ? data[0] : data;
+    if (error || !res) return showToast('تعذّرت العملية');
+    if (!res.ok) return showToast(res.msg || 'تعذّر الربط');
+    showToast(`تم ربط الحساب: ${res.linked_name} 🔗`);
+    if (schoolId) loadMembersDepts(schoolId);
+  };
+  const unlinkMember = async (memberId: string) => {
+    if (!window.confirm('فكّ ربط الحساب؟ (يبقى العضو بالاسم فقط)')) return;
+    const { data, error } = await supabase.rpc('school_unlink_member', { p_member: memberId });
+    if (error || !data) return showToast('تعذّرت العملية');
+    showToast('تم فكّ الربط');
+    if (schoolId) loadMembersDepts(schoolId);
+  };
 
   // ── المتعلمات ─────────────────────────────────────────────────
   const openClassStudents = async (cls: Klass) => {
@@ -986,6 +1002,8 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           addMember={addMember}
           removeMember={removeMember}
           importMembers={importMembers}
+          linkMember={linkMember}
+          unlinkMember={unlinkMember}
         />
       ) : view === 'students' ? (
         <StudentsView
@@ -1357,6 +1375,8 @@ function DepartmentsView({
   addMember,
   removeMember,
   importMembers,
+  linkMember,
+  unlinkMember,
 }: {
   depts: Dept[];
   members: Member[];
@@ -1369,6 +1389,8 @@ function DepartmentsView({
   addMember: (login: string, role: string, deptId: string | null) => void;
   removeMember: (id: string) => void;
   importMembers: (names: string[], deptId: string | null) => void;
+  linkMember: (memberId: string, identifier: string) => void;
+  unlinkMember: (memberId: string) => void;
 }) {
   const [newDept, setNewDept] = useState('');
   const noDept = members.filter((m) => !m.department_id).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
@@ -1378,9 +1400,27 @@ function DepartmentsView({
       <span className="w-6 text-center text-sage/40">•</span>
       <div className="flex-1 text-[13px] text-ink">
         {m.name || '—'} <span className="text-[11px] text-ink/45">({roleText || ROLE_LABEL[m.role] || m.role})</span>
+        {m.user_id ? <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-1.5 py-0.5 mr-1">🔗 حساب مربوط</span> : null}
       </div>
       {canManage ? (
-        <button onClick={() => removeMember(m.id)} aria-label="إزالة" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+        <>
+          {m.user_id ? (
+            <button onClick={() => unlinkMember(m.id)} aria-label="فكّ الربط" title="فكّ ربط الحساب" className="text-ink/40 hover:text-ink/70 text-xs px-1">⛓️‍💥</button>
+          ) : (
+            <button
+              onClick={() => {
+                const id = window.prompt(`ربط «${m.name || 'العضو'}» بحساب — أدخلي اسم المستخدم أو رقم الهاتف:`);
+                if (id && id.trim()) linkMember(m.id, id.trim());
+              }}
+              aria-label="ربط بحساب"
+              title="ربط بحساب ليدخل بنفسه"
+              className="text-sage-deep hover:text-sage text-xs px-1"
+            >
+              🔗
+            </button>
+          )}
+          <button onClick={() => removeMember(m.id)} aria-label="إزالة" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+        </>
       ) : null}
     </div>
   );
