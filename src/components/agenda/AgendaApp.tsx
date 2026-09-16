@@ -53,21 +53,42 @@ export interface Achievement {
   createdAt: number;
 }
 /* بيانات ترويسة/تذييل ملف الإنجاز الرسمي (تُحفظ وتُعاد) */
+/** منصب صاحب الملف — يحدّد المسمّى والتواقيع في ملف الإنجاز. */
+export type PortfolioRole = 'teacher' | 'head' | 'deputy' | 'principal';
 export interface PortfolioMeta {
+  role?: PortfolioRole; // منصب صاحب الملف (افتراضي: معلمة)
   region?: string; // المنطقة التعليمية
   school?: string; // المدرسة
   dept?: string; // القسم
-  teacher?: string; // اسم المعلم/ة
+  teacher?: string; // اسم صاحب الملف (معلمة/رئيسة شعبة/مديرة مساعدة/مديرة مدرسة)
   head?: string; // رئيسة الشعبة
   principal?: string; // مديرة المدرسة
+  eduDirector?: string; // مدير الشؤون التعليمية (توقيع مديرة المدرسة)
   logo?: string; // شعار المدرسة (dataURL اختياري)
-  // بيانات المعلمة الأساسية (صفحة تمهيدية تُكتب مرة واحدة)
+  // بيانات صاحب الملف الأساسية (صفحة تمهيدية تُكتب مرة واحدة)
   civilId?: string; // الرقم المدني
   fileNo?: string; // رقم الملف
   specialty?: string; // التخصص
   appointYear?: string; // سنة التعيين
   experience?: string; // سنوات الخبرة
 }
+
+/** مسمّيات كل منصب + التواقيع تحته (رئيسه المباشر). */
+export const PORTFOLIO_ROLES: Record<
+  PortfolioRole,
+  { label: string; owner: string; ownerField: string; infoTitle: string; sigs: Array<'head' | 'principal' | 'eduDirector'> }
+> = {
+  teacher: { label: 'معلمة', owner: 'المعلمة', ownerField: 'اسم المعلمة', infoTitle: 'بيانات المعلمة الأساسية', sigs: ['head', 'principal'] },
+  head: { label: 'رئيسة شعبة', owner: 'رئيسة الشعبة', ownerField: 'اسم رئيسة الشعبة', infoTitle: 'بيانات رئيسة الشعبة', sigs: ['principal'] },
+  deputy: { label: 'مديرة مساعدة', owner: 'المديرة المساعدة', ownerField: 'اسم المديرة المساعدة', infoTitle: 'بيانات المديرة المساعدة', sigs: ['principal'] },
+  principal: { label: 'مديرة المدرسة', owner: 'مديرة المدرسة', ownerField: 'اسم مديرة المدرسة', infoTitle: 'بيانات مديرة المدرسة', sigs: ['eduDirector'] },
+};
+/** تسميات خانات التوقيع. */
+export const SIG_LABELS: Record<'head' | 'principal' | 'eduDirector', string> = {
+  head: 'رئيسة الشعبة',
+  principal: 'مديرة المدرسة',
+  eduDirector: 'مدير الشؤون التعليمية',
+};
 export interface AgendaData {
   _v: number;
   tasks: Task[];
@@ -2014,6 +2035,19 @@ function PortfolioBuilder({
   const list = useMemo(() => data.achievements.filter((a) => inPeriod(a.date)).sort((a, b) => a.date.localeCompare(b.date)), [data.achievements, inPeriod]);
   const included = list.filter((a) => !excluded.has(a.id));
 
+  const roleCfg = PORTFOLIO_ROLES[meta.role || 'teacher'];
+
+  // تذييل التواقيع حسب المنصب — توقيعان يمين/يسار، أو توقيع واحد في الوسط
+  const renderSigs = (mt = 'mt-4') => {
+    const boxes = roleCfg.sigs.map((s) => (
+      <div key={s} className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
+        <div className="font-bold text-ink">{SIG_LABELS[s]}</div>
+        <div className="text-ink/80 mt-0.5">{(meta[s] as string) || '…………'}</div>
+      </div>
+    ));
+    return <div className={`flex items-end ${mt} text-[12.5px] ${boxes.length > 1 ? 'justify-between' : 'justify-center'}`}>{boxes}</div>;
+  };
+
   const field = (k: keyof PortfolioMeta, label: string, ph: string) => (
     <div>
       <label className="block text-[12px] font-bold text-sage-deep mb-1">{label}</label>
@@ -2039,18 +2073,35 @@ function PortfolioBuilder({
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-white border border-sage/25 text-sage-deep font-bold">✕</button>
         </div>
         <div className="mx-auto max-w-3xl space-y-3">
+          {/* المنصب — يغيّر مسمّى صاحب الملف والتواقيع */}
+          <div>
+            <label className="block text-[12px] font-bold text-sage-deep mb-1">المنصب</label>
+            <select
+              value={meta.role || 'teacher'}
+              onChange={(e) => {
+                const m = { ...meta, role: e.target.value as PortfolioRole };
+                setMeta(m);
+                commitMeta(m);
+              }}
+              className="w-full rounded-soft border border-sage/25 bg-white p-2.5 text-sm text-ink focus:outline-none focus:border-sage"
+            >
+              {(Object.keys(PORTFOLIO_ROLES) as PortfolioRole[]).map((r) => (
+                <option key={r} value={r}>{PORTFOLIO_ROLES[r].label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {field('region', 'المنطقة التعليمية', 'مثال: حولي')}
             {field('school', 'المدرسة', 'مثال: مشرف الابتدائية')}
             {field('dept', 'القسم', 'مثال: التربية الإسلامية')}
-            {field('teacher', 'اسم المعلم/ة', 'الاسم')}
-            {field('head', 'رئيسة الشعبة (اختياري)', 'الاسم')}
-            {field('principal', 'مديرة المدرسة (اختياري)', 'الاسم')}
+            {field('teacher', roleCfg.ownerField, 'الاسم')}
+            {roleCfg.sigs.map((s) => field(s, SIG_LABELS[s] + ' (اختياري)', 'الاسم'))}
           </div>
 
-          {/* بيانات المعلمة الأساسية — تُكتب مرة واحدة وتظهر كصفحة تمهيدية */}
+          {/* بيانات صاحب الملف الأساسية — تُكتب مرة واحدة وتظهر كصفحة تمهيدية */}
           <div className="rounded-xl bg-sage-light/40 border border-sage/15 p-3">
-            <div className="text-[12px] font-extrabold text-sage-deep mb-2">🪪 بيانات المعلمة الأساسية <span className="font-normal text-ink/55">(تُكتب مرة واحدة — تظهر أول صفحة في السجل)</span></div>
+            <div className="text-[12px] font-extrabold text-sage-deep mb-2">🪪 {roleCfg.infoTitle} <span className="font-normal text-ink/55">(تُكتب مرة واحدة — تظهر أول صفحة في السجل)</span></div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {field('civilId', 'الرقم المدني', 'مثال: 2xxxxxxxxxxx')}
               {field('fileNo', 'رقم الملف', 'مثال: 12345')}
@@ -2113,7 +2164,7 @@ function PortfolioBuilder({
             </div>
           </div>
 
-          <div className="text-center font-bold text-ink text-base mb-4">بيانات المعلمة الأساسية</div>
+          <div className="text-center font-bold text-ink text-base mb-4">{roleCfg.infoTitle}</div>
 
           {/* جدول البيانات */}
           <table className="w-full border-collapse text-[13.5px] mx-auto" dir="rtl" style={{ maxWidth: 560 }}>
@@ -2135,17 +2186,8 @@ function PortfolioBuilder({
             </tbody>
           </table>
 
-          {/* التذييل — رئيسة الشعبة يمين، مديرة المدرسة يسار */}
-          <div className="flex items-end justify-between mt-10 text-[12.5px]">
-            <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-              <div className="font-bold text-ink">رئيسة الشعبة</div>
-              <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
-            </div>
-            <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-              <div className="font-bold text-ink">مديرة المدرسة</div>
-              <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
-            </div>
-          </div>
+          {/* التذييل — التواقيع حسب المنصب */}
+          {renderSigs('mt-10')}
         </div>
 
         {included.length === 0 ? (
@@ -2181,7 +2223,7 @@ function PortfolioBuilder({
               <table className="w-full border-collapse text-center text-[12.5px]" dir="rtl">
                 <thead>
                   <tr style={{ background: '#FAFAF4' }}>
-                    {['اسم المعلم', 'عنوان الفعالية', 'اليوم والتاريخ', 'مكان الفعالية', 'الفئة المستهدفة'].map((h) => (
+                    {[roleCfg.ownerField, 'عنوان الفعالية', 'اليوم والتاريخ', 'مكان الفعالية', 'الفئة المستهدفة'].map((h) => (
                       <th key={h} className="border border-ink/40 p-2 font-bold text-ink">{h}</th>
                     ))}
                   </tr>
@@ -2219,17 +2261,8 @@ function PortfolioBuilder({
                 </div>
               </div>
 
-              {/* التذييل — رئيسة الشعبة يمين، مديرة المدرسة يسار */}
-              <div className="flex items-end justify-between mt-4 text-[12.5px]">
-                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-                  <div className="font-bold text-ink">رئيسة الشعبة</div>
-                  <div className="text-ink/80 mt-0.5">{meta.head || '…………'}</div>
-                </div>
-                <div className="text-center rounded-xl px-5 py-2" style={{ background: '#F3F1DC', border: '1px solid #D8D3A8' }}>
-                  <div className="font-bold text-ink">مديرة المدرسة</div>
-                  <div className="text-ink/80 mt-0.5">{meta.principal || '…………'}</div>
-                </div>
-              </div>
+              {/* التذييل — التواقيع حسب المنصب */}
+              {renderSigs('mt-4')}
             </div>
           ))
         )}
