@@ -33,6 +33,29 @@ const EXT: Record<string, string> = {
 
 const uuid = () => Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 
+/** أرقام عربية/فارسية → إنجليزية (نسخة مضمّنة تفاديًا لاستيراد ملف 'use client'). */
+const toEnglishDigits = (s: string): string =>
+  (s || '').replace(/[٠-٩۰-۹]/g, (d) => {
+    const code = d.charCodeAt(0);
+    return String(code - (code >= 0x06f0 ? 0x06f0 : 0x0660));
+  });
+
+/**
+ * تطبيع مُدخَل رئيسة الشعبة للبحث عن المعلمة: الإيميل كما هو؛ الرقم (الحسابات مبنية
+ * على التلفون فـ username = الرقم) يُحوَّل لأرقام إنجليزية ويُنزع مفتاح 965.
+ */
+function normalizeLogin(raw: string): string {
+  const t = (raw || '').trim();
+  if (t.includes('@')) return t.toLowerCase();
+  const en = toEnglishDigits(t);
+  if (/^\+?\d[\d\s-]*$/.test(en)) {
+    let d = en.replace(/\D/g, '');
+    if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
+    return d;
+  }
+  return t;
+}
+
 type FileRow = {
   id: string;
   share_id: string;
@@ -187,7 +210,7 @@ export async function POST(req: NextRequest) {
 
   // ── رئيسة الشعبة: إضافة مشاركة (الدالة تفرض الاشتراك واللقب) ────────
   if (action === 'add') {
-    const login = (body.login || '').trim();
+    const login = normalizeLogin(body.login || '');
     if (!login) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
     const { data, error } = await supabase.rpc('head_share_add', { p_login: login, p_label: (body.label || '').trim() });
     if (error) {

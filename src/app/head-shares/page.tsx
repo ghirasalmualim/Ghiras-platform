@@ -29,7 +29,17 @@ export default async function HeadSharesPage() {
       profile.status !== 'suspended' &&
       profile.head_records_until &&
       new Date(profile.head_records_until as string) > new Date());
-  if (!active) redirect('/head-records-locked');
+
+  // ليست رئيسة شعبة مشترِكة: إن كانت معلمةً شُورِكت (لها صف كـteacher) نوجّهها
+  // لصفحتها «ملفّي» بدل قفلٍ محيّر — فقد تصل هنا من تبويب «مشاركة الملفات».
+  if (!active) {
+    const { count } = await supabase
+      .from('head_shares')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', user.id);
+    if ((count || 0) > 0) redirect('/my-file');
+    redirect('/head-records-locked');
+  }
 
   const firstName = ((profile?.full_name as string) || '').trim().split(/\s+/)[0] || '';
   return <HeadSharesApp firstName={firstName} />;
