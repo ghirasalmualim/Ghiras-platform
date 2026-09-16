@@ -55,6 +55,8 @@ const STAFF_NEEDS_TIME = new Set(['late', 'permit_start', 'permit_end']);
 const STAFF_ABSENT = new Set(['sick', 'casual']); // غياب يوم كامل يحتاج تغطية
 
 type Sub = { id: string; date: string; period_id: string; class_id: string; subject_id: string | null; absent_member_id: string | null; sub_member_id: string | null };
+type DutyLoc = { id: string; name: string; sort: number };
+type Duty = { id: string; day: number; period_id: string; location_id: string; member_id: string };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -82,7 +84,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄' },
-  { key: 'duty', label: 'المناوبات', emoji: '📍', soon: true },
+  { key: 'duty', label: 'المناوبات', emoji: '📍' },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
   { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
   { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️' },
@@ -356,10 +358,12 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [subDate, setSubDate] = useState<string>(todayISO());
   const [subStaff, setSubStaff] = useState<{ member_id: string; status: string }[]>([]);
   const [subsMonth, setSubsMonth] = useState<Sub[]>([]);
+  const [dutyLocs, setDutyLocs] = useState<DutyLoc[]>([]);
+  const [duties, setDuties] = useState<Duty[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -412,13 +416,15 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd, en] = await Promise.all([
+      const [dp, mb, su, tc, pd, en, dl, du] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_teaching').select('id,member_id,subject_id,class_id,weekly_hours').eq('school_id', sid),
         supabase.from('school_periods').select('id,name,kind,start_time,end_time,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_timetable_entries').select('id,day,period_id,class_id,member_id,subject_id').eq('school_id', sid),
+        supabase.from('school_duty_locations').select('id,name,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_duties').select('id,day,period_id,location_id,member_id').eq('school_id', sid),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
@@ -426,6 +432,8 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
       setTeaching((tc.data as Teaching[]) || []);
       setPeriods((pd.data as Period[]) || []);
       setEntries((en.data as Entry[]) || []);
+      setDutyLocs((dl.data as DutyLoc[]) || []);
+      setDuties((du.data as Duty[]) || []);
     },
     [supabase]
   );
@@ -861,6 +869,39 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setSubsMonth((s) => s.filter((x) => x.id !== id));
   };
 
+  // ── المناوبات ─────────────────────────────────────────────────
+  const addDutyLoc = async (name: string) => {
+    const { data, error } = await supabase.from('school_duty_locations').insert({ school_id: schoolId, name, sort: nextSort(dutyLocs) }).select('id,name,sort').single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setDutyLocs((l) => [...l, data as DutyLoc]);
+  };
+  const renameDutyLoc = async (id: string, name: string) => {
+    const { error } = await supabase.from('school_duty_locations').update({ name }).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setDutyLocs((l) => l.map((x) => (x.id === id ? { ...x, name } : x)));
+  };
+  const delDutyLoc = async (id: string) => {
+    if (!window.confirm('حذف المكان؟ (تُحذف مناوباته)')) return;
+    const { error } = await supabase.from('school_duty_locations').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setDutyLocs((l) => l.filter((x) => x.id !== id));
+    setDuties((d) => d.filter((x) => x.location_id !== id));
+  };
+  const addDuty = async (day: number, periodId: string, locationId: string, memberId: string) => {
+    // فحص تعارض: هل عندها حصة في هذا (اليوم، الفترة)؟
+    if (entries.some((e) => e.member_id === memberId && e.day === day && e.period_id === periodId)) {
+      return showToast('⚠️ المعلمة عندها حصة في هذا الوقت');
+    }
+    const { data, error } = await supabase.from('school_duties').insert({ school_id: schoolId, day, period_id: periodId, location_id: locationId, member_id: memberId }).select('id,day,period_id,location_id,member_id').single();
+    if (error || !data) return showToast(/duplicate|unique/i.test(error?.message || '') ? '⚠️ المعلمة مكلّفة مناوبة أخرى بنفس الوقت' : 'تعذّرت الإضافة');
+    setDuties((d) => [...d, data as Duty]);
+  };
+  const delDuty = async (id: string) => {
+    const { error } = await supabase.from('school_duties').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setDuties((d) => d.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -1013,6 +1054,22 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           assignSub={assignSub}
           clearSub={clearSub}
         />
+      ) : view === 'duty' ? (
+        <DutyView
+          dutyLocs={dutyLocs}
+          duties={duties}
+          periods={periods}
+          members={members}
+          entries={entries}
+          workDays={school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4]}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          addDutyLoc={addDutyLoc}
+          renameDutyLoc={renameDutyLoc}
+          delDutyLoc={delDutyLoc}
+          addDuty={addDuty}
+          delDuty={delDuty}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -1034,7 +1091,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
             } else if (k === 'substitution') {
               loadSub(subDate);
               setView('substitution');
-            }
+            } else if (k === 'duty') setView('duty');
           }}
         />
       )}
@@ -1859,6 +1916,144 @@ function TeachingView({
                       {canManage ? (
                         <button onClick={() => delTeaching(t.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
                       ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── المناوبات ───────────────────────── */
+function DutyView({
+  dutyLocs,
+  duties,
+  periods,
+  members,
+  entries,
+  workDays,
+  canManage,
+  onBack,
+  addDutyLoc,
+  renameDutyLoc,
+  delDutyLoc,
+  addDuty,
+  delDuty,
+}: {
+  dutyLocs: DutyLoc[];
+  duties: Duty[];
+  periods: Period[];
+  members: Member[];
+  entries: Entry[];
+  workDays: number[];
+  canManage: boolean;
+  onBack: () => void;
+  addDutyLoc: (name: string) => void;
+  renameDutyLoc: (id: string, name: string) => void;
+  delDutyLoc: (id: string) => void;
+  addDuty: (day: number, periodId: string, locationId: string, memberId: string) => void;
+  delDuty: (id: string) => void;
+}) {
+  const [day, setDay] = useState(String(workDays[0] ?? 0));
+  const [pid, setPid] = useState('');
+  const [loc, setLoc] = useState('');
+  const [mem, setMem] = useState('');
+
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
+  const periodName = (id: string) => periods.find((p) => p.id === id)?.name || '—';
+  const locName = (id: string) => dutyLocs.find((l) => l.id === id)?.name || '—';
+  const wd = workDays.slice().sort((a, b) => a - b);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">المناوبات</div>
+      </div>
+
+      {/* أماكن المناوبة */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">أماكن المناوبة</div>
+        {dutyLocs.length ? (
+          <div className="space-y-1 mb-2">
+            {dutyLocs.map((l) => (
+              <Row
+                key={l.id}
+                label={l.name}
+                small
+                canManage={canManage}
+                onRename={() => {
+                  const n = window.prompt('اسم المكان', l.name);
+                  if (n && n.trim()) renameDutyLoc(l.id, n.trim());
+                }}
+                onDelete={() => delDutyLoc(l.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-[12px] text-ink/35 mb-2">— لا أماكن بعد —</div>
+        )}
+        {canManage ? <AddInline placeholder="مكان جديد (مثال: الساحة)" onAdd={addDutyLoc} /> : null}
+      </div>
+
+      {/* توزيع المناوبات */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">توزيع المناوبات</div>
+        {canManage ? (
+          dutyLocs.length && periods.length && members.length ? (
+            <div className="grid grid-cols-2 gap-1.5 mb-3">
+              <select value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                {wd.map((d) => <option key={d} value={d}>{WEEKDAYS[d]}</option>)}
+              </select>
+              <select value={pid} onChange={(e) => setPid(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">الفترة</option>
+                {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select value={loc} onChange={(e) => setLoc(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                <option value="">المكان</option>
+                {dutyLocs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              <div className="flex gap-1.5">
+                <select value={mem} onChange={(e) => setMem(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                  <option value="">المعلمة</option>
+                  {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+                <button
+                  onClick={() => {
+                    if (pid && loc && mem) {
+                      addDuty(Number(day), pid, loc, mem);
+                      setMem('');
+                    }
+                  }}
+                  className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-2"
+                >
+                  ＋
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[12px] text-ink/45 mb-2">أضيفي أماكن ومعلمات وحدّدي أوقات اليوم أولًا.</div>
+          )
+        ) : null}
+
+        {duties.length === 0 ? (
+          <div className="text-[12px] text-ink/35">— لا مناوبات بعد —</div>
+        ) : (
+          wd.map((d) => {
+            const dd = duties.filter((x) => x.day === d);
+            if (!dd.length) return null;
+            return (
+              <div key={d} className="mb-2">
+                <div className="font-bold text-sage-deep text-[13px] mb-1">{WEEKDAYS[d]}</div>
+                <div className="pr-3 border-r-2 border-sage/10 space-y-1">
+                  {dd.map((x) => (
+                    <div key={x.id} className="flex items-center gap-2 text-[12.5px]">
+                      <div className="flex-1 text-ink">{periodName(x.period_id)} · {locName(x.location_id)} · <b>{memberName(x.member_id)}</b></div>
+                      {canManage ? <button onClick={() => delDuty(x.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button> : null}
                     </div>
                   ))}
                 </div>
