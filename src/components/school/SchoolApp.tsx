@@ -360,6 +360,55 @@ async function extractNames(file: File): Promise<string[]> {
   return names;
 }
 
+/** قراءة أعمدة سجل الدرجات من صورة: يعيد [{name, max}]. (الأعمدة فقط لا الدرجات) */
+async function extractGradeColumns(file: File): Promise<{ name: string; max: number }[]> {
+  let contentBlock: unknown;
+  if (file.type === 'application/pdf') {
+    const dataUrl = await fileToDataURL(file);
+    contentBlock = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: dataUrl.split(',')[1] } };
+  } else {
+    const { mime, b64 } = await compressImg(file);
+    contentBlock = { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } };
+  }
+  const prompt =
+    'هذه صورة سجل درجات. استخرج أعمدة التقييم فقط (لا الدرجات ولا أسماء الطالبات). ' +
+    'لكل عمود: اسمه، ودرجته العظمى (الرقم الذي يُحسب منه، مثل ٢٠ أو ١٠). ' +
+    'تجاهل عمود اسم الطالبة والرقم/التسلسل وعمود المجموع/الإجمالي. ' +
+    'أعِد JSON صِرفًا بدون أي نص آخر بهذا الشكل: [{"name":"اختبار ١","max":20},{"name":"واجب","max":10}]. ' +
+    'إن لم تظهر الدرجة العظمى لعمود فاجعلها 10.';
+  const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
+  let res: Response;
+  try {
+    res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
+  } catch {
+    throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).');
+  }
+  const raw = await res.text();
+  let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
+  try { json = JSON.parse(raw); } catch { /* غير JSON */ }
+  if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
+  const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
+  let arr: { name?: string; max?: number | string }[] = [];
+  const m = text.match(/\[[\s\S]*\]/);
+  if (m) { try { arr = JSON.parse(m[0]); } catch { /* تجاهل */ } }
+  if (!arr.length) {
+    // احتياط: أسطر مثل «اختبار ١ /٢٠»
+    arr = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+      const mm = l.match(/^(.+?)[\s/：:]+([0-9٠-٩]{1,3})\s*$/);
+      return mm ? { name: mm[1], max: mm[2] } : null;
+    }).filter(Boolean) as { name?: string; max?: number | string }[];
+  }
+  const toNum = (v: number | string | undefined) => {
+    const s = String(v ?? '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    return Math.max(1, Math.min(1000, parseInt(s, 10) || 10));
+  };
+  const cols = arr
+    .map((c) => ({ name: String(c?.name ?? '').trim(), max: toNum(c?.max) }))
+    .filter((c) => c.name && c.name.length <= 40);
+  if (!cols.length) throw new Error(`لم تُقرأ أعمدة. رد الخدمة: «${(text || raw).slice(0, 180) || 'فارغ'}»`);
+  return cols;
+}
+
 function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) => void }) {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -829,6 +878,18 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (error || !data) return showToast('تعذّرت إضافة التقييم');
     setGradeItems((g) => [...g, data as GItem]);
     showToast('تمت الإضافة ✅');
+  };
+  const addGradeItems = async (memberId: string, subjectId: string, classId: string, items: { name: string; max: number }[]) => {
+    const existing = new Set(gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).map((x) => normName(x.name)));
+    const seen = new Set<string>();
+    const fresh = items.filter((it) => { const k = normName(it.name); if (!k || existing.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+    if (!fresh.length) return showToast('الأعمدة موجودة مسبقًا');
+    const base = gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).length;
+    const rows = fresh.map((it, i) => ({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name: it.name, max_score: it.max, sort: base + i + 1 }));
+    const { data, error } = await supabase.from('school_grade_items').insert(rows).select('id,member_id,subject_id,class_id,name,max_score,sort');
+    if (error || !data) return showToast('تعذّرت إضافة الأعمدة');
+    setGradeItems((g) => [...g, ...(data as GItem[])]);
+    showToast(`أُضيفت ${data.length} أعمدة ✅`);
   };
   const delGradeItem = async (id: string) => {
     if (!window.confirm('حذف التقييم ودرجاته؟')) return;
@@ -1476,6 +1537,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           onBack={() => setView('dash')}
           onOpenClass={openClassStudents}
           addGradeItem={addGradeItem}
+          addGradeItems={addGradeItems}
           delGradeItem={delGradeItem}
           setScore={setScore}
         />
@@ -4080,6 +4142,7 @@ function GradebookView({
   onBack,
   onOpenClass,
   addGradeItem,
+  addGradeItems,
   delGradeItem,
   setScore,
 }: {
@@ -4097,12 +4160,16 @@ function GradebookView({
   onBack: () => void;
   onOpenClass: (cls: Klass) => void;
   addGradeItem: (memberId: string, subjectId: string, classId: string, name: string, maxScore: number) => void;
+  addGradeItems: (memberId: string, subjectId: string, classId: string, items: { name: string; max: number }[]) => void;
   delGradeItem: (id: string) => void;
   setScore: (itemId: string, studentId: string, score: number | null) => void;
 }) {
   const [sel, setSel] = useState('');
   const [newName, setNewName] = useState('');
   const [newMax, setNewMax] = useState('10');
+  const [imgBusy, setImgBusy] = useState(false);
+  const [colDraft, setColDraft] = useState<string | null>(null);
+  const colRef = useRef<HTMLInputElement>(null);
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || '—';
@@ -4172,15 +4239,50 @@ function GradebookView({
           </div>
 
           {selGroup.canEdit ? (
-            <div className="card-3d bg-white rounded-2xl p-3 flex gap-1.5 items-center">
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="تقييم جديد (اختبار ١)" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
-              <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(e.target.value)} title="الدرجة العظمى" className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
-              <button
-                onClick={() => { if (newName.trim()) { addGradeItem(selGroup.member_id, selGroup.subject_id, selGroup.class_id, newName.trim(), Math.max(1, +newMax || 10)); setNewName(''); } }}
-                className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-2"
-              >
-                ＋ عمود
-              </button>
+            <div className="card-3d bg-white rounded-2xl p-3 space-y-2">
+              <div className="flex gap-1.5 items-center">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="تقييم جديد (اختبار ١)" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(e.target.value)} title="الدرجة العظمى" className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
+                <button
+                  onClick={() => { if (newName.trim()) { addGradeItem(selGroup.member_id, selGroup.subject_id, selGroup.class_id, newName.trim(), Math.max(1, +newMax || 10)); setNewName(''); } }}
+                  className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-2"
+                >
+                  ＋ عمود
+                </button>
+              </div>
+              {/* تصوير الأعمدة من سجل ورقي */}
+              <input ref={colRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={async (e) => {
+                const f = e.target.files?.[0]; if (!f) return; setImgBusy(true);
+                try { const cols = await extractGradeColumns(f); setColDraft(cols.map((c) => `${c.name} /${c.max}`).join('\n')); }
+                catch (err) { window.alert((err as Error).message || 'تعذّرت القراءة'); }
+                setImgBusy(false); if (colRef.current) colRef.current.value = '';
+              }} />
+              {colDraft === null ? (
+                <button onClick={() => colRef.current?.click()} disabled={imgBusy} className="w-full rounded-lg border border-sage/30 text-sage-deep font-bold text-[12px] py-2 disabled:opacity-50">
+                  {imgBusy ? '…جارٍ قراءة الصورة' : '📸 تصوير الأعمدة من سجلك'}
+                </button>
+              ) : (
+                <div className="rounded-lg bg-sage/5 p-2 space-y-1.5">
+                  <div className="text-[11px] text-ink/60">راجعي الأعمدة (كل سطر: الاسم /الدرجة العظمى) ثم أضيفيها:</div>
+                  <textarea value={colDraft} onChange={(e) => setColDraft(e.target.value)} rows={Math.min(8, colDraft.split('\n').length + 1)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => {
+                        const items = colDraft.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+                          const mm = l.match(/^(.+?)[\s/：:]+([0-9]{1,3})\s*$/);
+                          return mm ? { name: mm[1].trim(), max: Math.max(1, +mm[2] || 10) } : { name: l, max: 10 };
+                        }).filter((c) => c.name);
+                        if (items.length) addGradeItems(selGroup.member_id, selGroup.subject_id, selGroup.class_id, items);
+                        setColDraft(null);
+                      }}
+                      className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2"
+                    >
+                      ＋ أضيفي الأعمدة
+                    </button>
+                    <button onClick={() => setColDraft(null)} className="rounded-lg border border-sage/25 text-ink/60 text-[12px] px-3">إلغاء</button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
 
