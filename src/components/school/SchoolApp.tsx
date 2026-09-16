@@ -24,6 +24,15 @@ type Member = { id: string; user_id: string; name: string | null; role: string; 
 type Student = { id: string; class_id: string; name: string; sid_no: string | null; note: string | null; archived: boolean; sort: number };
 type Subject = { id: string; name: string; department_id: string | null; sort: number };
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
+type Period = { id: string; name: string; kind: string; start_time: string | null; end_time: string | null; sort: number };
+
+const PERIOD_KINDS: { k: string; l: string }[] = [
+  { k: 'lesson', l: 'حصة' },
+  { k: 'break', l: 'فسحة' },
+  { k: 'assembly', l: 'تجمّع' },
+  { k: 'other', l: 'غير تدريسي' },
+];
+const kindLabel = (k: string) => PERIOD_KINDS.find((x) => x.k === k)?.l || k;
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'مسؤولة المدرسة',
@@ -53,7 +62,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫' },
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
   { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
-  { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅', soon: true },
+  { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄', soon: true },
   { key: 'duty', label: 'المناوبات', emoji: '📍', soon: true },
@@ -82,8 +91,9 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [openClass, setOpenClass] = useState<Klass | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teaching, setTeaching] = useState<Teaching[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -136,16 +146,18 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc] = await Promise.all([
+      const [dp, mb, su, tc, pd] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_teaching').select('id,member_id,subject_id,class_id,weekly_hours').eq('school_id', sid),
+        supabase.from('school_periods').select('id,name,kind,start_time,end_time,sort').eq('school_id', sid).order('sort'),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
       setSubjects((su.data as Subject[]) || []);
       setTeaching((tc.data as Teaching[]) || []);
+      setPeriods((pd.data as Period[]) || []);
     },
     [supabase]
   );
@@ -374,6 +386,28 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setTeaching((t) => t.filter((x) => x.id !== id));
   };
 
+  // ── أوقات اليوم (الحصص) ───────────────────────────────────────
+  const addPeriod = async (name: string, kind: string, start: string, end: string) => {
+    const { data, error } = await supabase
+      .from('school_periods')
+      .insert({ school_id: schoolId, name, kind, start_time: start || null, end_time: end || null, sort: nextSort(periods) })
+      .select('id,name,kind,start_time,end_time,sort')
+      .single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setPeriods((p) => [...p, data as Period]);
+  };
+  const updatePeriod = async (id: string, patch: Partial<Period>) => {
+    const { error } = await supabase.from('school_periods').update(patch).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setPeriods((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
+  const delPeriod = async (id: string) => {
+    if (!window.confirm('حذف هذا الوقت؟')) return;
+    const { error } = await supabase.from('school_periods').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setPeriods((p) => p.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -461,6 +495,15 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           updateHours={updateHours}
           delTeaching={delTeaching}
         />
+      ) : view === 'timetable' ? (
+        <TimetableView
+          periods={periods}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          addPeriod={addPeriod}
+          updatePeriod={updatePeriod}
+          delPeriod={delPeriod}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -472,6 +515,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
               setOpenClass(null);
               setView('students');
             } else if (k === 'teaching') setView('teaching');
+            else if (k === 'timetable') setView('timetable');
           }}
         />
       )}
@@ -821,6 +865,110 @@ function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) 
       >
         ＋ إضافة
       </button>
+    </div>
+  );
+}
+
+/* ───────────────────────── الجدول: أوقات اليوم ───────────────────────── */
+function TimetableView({
+  periods,
+  canManage,
+  onBack,
+  addPeriod,
+  updatePeriod,
+  delPeriod,
+}: {
+  periods: Period[];
+  canManage: boolean;
+  onBack: () => void;
+  addPeriod: (name: string, kind: string, start: string, end: string) => void;
+  updatePeriod: (id: string, patch: Partial<Period>) => void;
+  delPeriod: (id: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState('lesson');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+
+  const badge = (k: string) => {
+    const map: Record<string, string> = { lesson: 'bg-sage-light text-sage-deep', break: 'bg-gold/15 text-gold-deep', assembly: 'bg-sage-light text-sage-deep', other: 'bg-ink/5 text-ink/60' };
+    return map[k] || 'bg-ink/5 text-ink/60';
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">الجدول المدرسي</div>
+      </div>
+
+      <div className="rounded-2xl bg-sage-light/40 border border-sage/15 p-3 text-[12.5px] text-ink/70">
+        الخطوة الأولى: حدّدي <b>أوقات اليوم الدراسي</b> (الحصص والفسح والتجمّع). بعد ضبطها، نبني <b>شبكة الجدول</b> ثم <b>الجدول الذكي</b>.
+      </div>
+
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">أوقات اليوم</div>
+        {periods.length === 0 ? (
+          <div className="text-[12px] text-ink/35 mb-2">— لم تُحدَّد أوقات بعد —</div>
+        ) : (
+          <div className="space-y-1.5 mb-3">
+            {periods.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 text-[13px]">
+                <span className={`text-[10.5px] rounded-full px-2 py-0.5 ${badge(p.kind)}`}>{kindLabel(p.kind)}</span>
+                <div className="flex-1 font-bold text-ink">{p.name}</div>
+                <div className="text-ink/55 text-[12px] tabular-nums" dir="ltr">
+                  {p.start_time || '—'}{p.end_time ? ` – ${p.end_time}` : ''}
+                </div>
+                {canManage ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        const nn = window.prompt('الاسم', p.name);
+                        if (nn === null) return;
+                        const st = window.prompt('من (HH:MM)', p.start_time || '') ?? '';
+                        const en = window.prompt('إلى (HH:MM)', p.end_time || '') ?? '';
+                        updatePeriod(p.id, { name: nn.trim() || p.name, start_time: st.trim() || null, end_time: en.trim() || null });
+                      }}
+                      aria-label="تعديل"
+                      className="text-ink/40 hover:text-sage-deep text-sm px-1"
+                    >
+                      ✏️
+                    </button>
+                    <button onClick={() => delPeriod(p.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {canManage ? (
+          <div className="grid grid-cols-2 gap-1.5 border-t border-sage/10 pt-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم (مثال: الحصة الأولى)" className="rounded-lg border border-sage/25 bg-white text-[12px] p-2 col-span-2" />
+            <select value={kind} onChange={(e) => setKind(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+              {PERIOD_KINDS.map((x) => <option key={x.k} value={x.k}>{x.l}</option>)}
+            </select>
+            <div className="flex gap-1 items-center" dir="ltr">
+              <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
+              <span className="text-ink/40 text-xs">–</span>
+              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
+            </div>
+            <button
+              onClick={() => {
+                if (name.trim()) {
+                  addPeriod(name.trim(), kind, start, end);
+                  setName('');
+                  setStart('');
+                  setEnd('');
+                }
+              }}
+              className="col-span-2 rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2"
+            >
+              ＋ إضافة وقت
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
