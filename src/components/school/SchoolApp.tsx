@@ -553,7 +553,13 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         supabase.from('school_grade_items').select('id,member_id,subject_id,class_id,name,max_score,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_grade_scores').select('id,item_id,student_id,score').eq('school_id', sid),
       ]);
-      setDepts((dp.data as Dept[]) || []);
+      // احتياط: لو أعمدة قيود الجدولة غير موجودة بعد (لم يُشغَّل ملف SQL) نُعيد الجلب بالأعمدة الأساسية حتى لا تختفي الشُّعب
+      let deptData = dp.data as Dept[] | null;
+      if (dp.error) {
+        const base = await supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort');
+        deptData = base.data as Dept[] | null;
+      }
+      setDepts(deptData || []);
       setMembers((mb.data as Member[]) || []);
       setSubjects((su.data as Subject[]) || []);
       setTeaching((tc.data as Teaching[]) || []);
