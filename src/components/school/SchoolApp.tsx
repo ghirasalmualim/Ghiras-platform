@@ -949,9 +949,9 @@ function TimetableView({
               {PERIOD_KINDS.map((x) => <option key={x.k} value={x.k}>{x.l}</option>)}
             </select>
             <div className="flex gap-1 items-center" dir="ltr">
-              <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
+              <input value={start} onChange={(e) => setStart(e.target.value)} placeholder="7:30" inputMode="numeric" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
               <span className="text-ink/40 text-xs">–</span>
-              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
+              <input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="8:15" inputMode="numeric" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
             </div>
             <button
               onClick={() => {
