@@ -26,6 +26,18 @@ type Subject = { id: string; name: string; department_id: string | null; sort: n
 type Teaching = { id: string; member_id: string; subject_id: string; class_id: string; weekly_hours: number };
 type Period = { id: string; name: string; kind: string; start_time: string | null; end_time: string | null; sort: number };
 type Entry = { id: string; day: number; period_id: string; class_id: string; member_id: string; subject_id: string };
+type AttRow = { id: string; student_id: string; date: string; status: string; arrived_at: string | null };
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const ATT_STATES: { k: string; l: string; cls: string }[] = [
+  { k: 'present', l: 'حاضرة', cls: 'bg-sage-deep text-white' },
+  { k: 'absent', l: 'غائبة', cls: 'bg-red-500 text-white' },
+  { k: 'late', l: 'متأخرة', cls: 'bg-gold text-white' },
+  { k: 'excused', l: 'استئذان', cls: 'bg-sage text-white' },
+];
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -55,7 +67,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄', soon: true },
   { key: 'duty', label: 'المناوبات', emoji: '📍', soon: true },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼', soon: true },
-  { key: 'attendance', label: 'الحضور والغياب والتأخير', emoji: '✅', soon: true },
+  { key: 'attendance', label: 'حضور المتعلمات', emoji: '✅' },
   { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️', soon: true },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
 ];
@@ -318,10 +330,14 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [teaching, setTeaching] = useState<Teaching[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [attClass, setAttClass] = useState<Klass | null>(null);
+  const [attDate, setAttDate] = useState<string>(todayISO());
+  const [attStudents, setAttStudents] = useState<Student[]>([]);
+  const [attRecords, setAttRecords] = useState<AttRow[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -712,6 +728,52 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     showToast(res.unplaced.length ? `⚠️ تعذّر وضع ${res.unplaced.length} حصة` : '✅ جدول بلا تعارضات');
   };
 
+  // ── حضور المتعلمات ────────────────────────────────────────────
+  const monthBounds = (iso: string) => {
+    const [y, m] = iso.split('-').map(Number);
+    const start = `${y}-${String(m).padStart(2, '0')}-01`;
+    const nm = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    return { start, next: nm };
+  };
+  const loadAtt = useCallback(
+    async (cls: Klass, date: string) => {
+      const { start, next } = monthBounds(date);
+      const [st, rec] = await Promise.all([
+        supabase.from('school_students').select('id,class_id,name,sid_no,note,archived,sort').eq('class_id', cls.id).eq('archived', false).order('sort'),
+        supabase.from('school_attendance').select('id,student_id,date,status,arrived_at').eq('class_id', cls.id).gte('date', start).lt('date', next),
+      ]);
+      setAttStudents((st.data as Student[]) || []);
+      setAttRecords((rec.data as AttRow[]) || []);
+    },
+    [supabase]
+  );
+  const openAttClass = (cls: Klass) => {
+    setAttClass(cls);
+    loadAtt(cls, attDate);
+  };
+  const changeAttDate = (date: string) => {
+    setAttDate(date);
+    if (attClass) loadAtt(attClass, date);
+  };
+  const setAttStatus = async (studentId: string, status: string, arrivedAt: string | null = null) => {
+    if (!attClass) return;
+    const existing = attRecords.find((r) => r.student_id === studentId && r.date === attDate);
+    if (status === 'present') {
+      if (existing) {
+        await supabase.from('school_attendance').delete().eq('id', existing.id);
+        setAttRecords((r) => r.filter((x) => x.id !== existing.id));
+      }
+      return;
+    }
+    const { data, error } = await supabase
+      .from('school_attendance')
+      .upsert({ school_id: schoolId, student_id: studentId, class_id: attClass.id, date: attDate, status, arrived_at: arrivedAt }, { onConflict: 'student_id,date' })
+      .select('id,student_id,date,status,arrived_at')
+      .single();
+    if (error || !data) return showToast('تعذّر الحفظ');
+    setAttRecords((r) => [...r.filter((x) => !(x.student_id === studentId && x.date === attDate)), data as AttRow]);
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -822,6 +884,21 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           generating={generating}
           genReport={genReport}
         />
+      ) : view === 'attendance' ? (
+        <AttendanceView
+          stages={stages}
+          grades={grades}
+          classes={classes}
+          attClass={attClass}
+          attDate={attDate}
+          attStudents={attStudents}
+          attRecords={attRecords}
+          canManage={canManage}
+          onBack={() => (attClass ? setAttClass(null) : setView('dash'))}
+          onOpenClass={openAttClass}
+          onChangeDate={changeAttDate}
+          setAttStatus={setAttStatus}
+        />
       ) : (
         <Dashboard
           school={school}
@@ -834,6 +911,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
               setView('students');
             } else if (k === 'teaching') setView('teaching');
             else if (k === 'timetable') setView('timetable');
+            else if (k === 'attendance') {
+              setAttClass(null);
+              setView('attendance');
+            }
           }}
         />
       )}
@@ -1666,6 +1747,131 @@ function TeachingView({
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── حضور المتعلمات ───────────────────────── */
+function AttendanceView({
+  stages,
+  grades,
+  classes,
+  attClass,
+  attDate,
+  attStudents,
+  attRecords,
+  canManage,
+  onBack,
+  onOpenClass,
+  onChangeDate,
+  setAttStatus,
+}: {
+  stages: Stage[];
+  grades: Grade[];
+  classes: Klass[];
+  attClass: Klass | null;
+  attDate: string;
+  attStudents: Student[];
+  attRecords: AttRow[];
+  canManage: boolean;
+  onBack: () => void;
+  onOpenClass: (c: Klass) => void;
+  onChangeDate: (d: string) => void;
+  setAttStatus: (studentId: string, status: string, arrivedAt?: string | null) => void;
+}) {
+  if (!attClass) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+          <div className="font-extrabold text-sage-deep flex-1">حضور المتعلمات</div>
+        </div>
+        {classes.length === 0 ? (
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (فصول) والمتعلمات أولًا.</div>
+        ) : (
+          stages.map((st) => (
+            <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
+              <div className="font-extrabold text-sage-deep mb-2">{st.name}</div>
+              {grades.filter((g) => g.stage_id === st.id).map((g) => (
+                <div key={g.id} className="mb-2">
+                  <div className="text-[12px] font-bold text-ink/70 mb-1">{g.name}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {classes.filter((c) => c.grade_id === g.id).map((c) => (
+                      <button key={c.id} onClick={() => onOpenClass(c)} className="rounded-lg bg-sage-light text-sage-deep text-[13px] font-bold px-3 py-1.5">{c.name}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  const recOf = (sid: string) => attRecords.find((r) => r.student_id === sid && r.date === attDate);
+  const monthCount = (sid: string, status: string) => attRecords.filter((r) => r.student_id === sid && r.status === status).length;
+  const todayCount = (status: string) => attRecords.filter((r) => r.date === attDate && r.status === status).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ الفصول</button>
+        <div className="font-extrabold text-sage-deep flex-1">الفصل {attClass.name}</div>
+      </div>
+
+      <div className="rounded-2xl bg-white border border-sage/15 p-3 flex items-center gap-3 flex-wrap">
+        <input type="date" value={attDate} onChange={(e) => onChangeDate(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-1.5" />
+        <div className="flex gap-2 text-[12px] flex-wrap">
+          <span className="text-ink/60">حاضرات: {attStudents.length - todayCount('absent') - todayCount('late') - todayCount('excused')}</span>
+          <span className="text-red-500">غائبات: {todayCount('absent')}</span>
+          <span className="text-gold-deep">متأخرات: {todayCount('late')}</span>
+          <span className="text-sage-deep">استئذان: {todayCount('excused')}</span>
+        </div>
+      </div>
+
+      {attStudents.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">لا متعلمات في هذا الفصل.</div>
+      ) : (
+        attStudents.map((s) => {
+          const rec = recOf(s.id);
+          const cur = rec?.status || 'present';
+          const g = monthCount(s.id, 'absent');
+          const t = monthCount(s.id, 'late');
+          return (
+            <div key={s.id} className="card-3d bg-white rounded-xl p-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex-1">
+                  <div className="font-bold text-ink text-[14px]">{s.name}</div>
+                  {g || t ? <div className="text-[10.5px] text-ink/45">الشهر: غياب {g} · تأخير {t}</div> : null}
+                </div>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {ATT_STATES.map((a) => (
+                  <button
+                    key={a.k}
+                    onClick={() => canManage && setAttStatus(s.id, a.k)}
+                    disabled={!canManage}
+                    className={`rounded-lg px-2.5 py-1 text-[12px] font-bold border ${cur === a.k ? a.cls + ' border-transparent' : 'bg-white text-ink/60 border-sage/20'}`}
+                  >
+                    {a.l}
+                  </button>
+                ))}
+                {cur === 'late' ? (
+                  <input
+                    defaultValue={rec?.arrived_at || ''}
+                    onBlur={(e) => setAttStatus(s.id, 'late', e.target.value.trim() || null)}
+                    placeholder="8:12"
+                    className="w-16 rounded-lg border border-gold/40 text-[12px] p-1 text-center"
+                    dir="ltr"
+                    title="وقت الوصول"
+                  />
+                ) : null}
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
