@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
-import LaunchOffer from '@/components/LaunchOffer';
 import AccountBar from '@/components/AccountBar';
 
 export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين مؤقت للسرعة
@@ -36,11 +35,6 @@ export default function HomePage() {
           <br />
           للمعلمين والمعلمات — اختر قسمك وابدأ
         </p>
-
-        {/* عرض الانطلاقة */}
-        <div className="w-full mt-8">
-          <LaunchOffer />
-        </div>
 
         {/* كرتان رئيسيان: ألعاب · المعلّم ورئيس الشعبة */}
         <div
