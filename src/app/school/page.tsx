@@ -35,5 +35,5 @@ export default async function SchoolPage() {
   }
 
   const firstName = ((profile?.full_name as string) || '').trim().split(/\s+/)[0] || '';
-  return <SchoolApp firstName={firstName} isAdmin={Boolean(isAdmin)} />;
+  return <SchoolApp firstName={firstName} isAdmin={Boolean(isAdmin)} uid={user.id} />;
 }

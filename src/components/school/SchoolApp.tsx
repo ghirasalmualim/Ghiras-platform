@@ -58,6 +58,7 @@ type Sub = { id: string; date: string; period_id: string; class_id: string; subj
 type DutyLoc = { id: string; name: string; sort: number };
 type Duty = { id: string; day: number; period_id: string; location_id: string; member_id: string };
 type Supervision = { id: string; member_id: string; scope_type: 'stage' | 'grade' | 'class'; scope_id: string; note: string | null };
+type Note = { id: string; author_id: string | null; target_type: 'student' | 'member'; target_id: string; target_name: string | null; category: string | null; body: string; created_at: string };
 
 const PERIOD_KINDS: { k: string; l: string }[] = [
   { k: 'lesson', l: 'حصة' },
@@ -90,6 +91,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'staff', label: 'دوام الهيئة التعليمية', emoji: '🗓️' },
   { key: 'reports', label: 'التقارير', emoji: '📄' },
   { key: 'supervision', label: 'الإشراف الإداري', emoji: '👩🏻‍💼' },
+  { key: 'notes', label: 'رصد الملاحظات', emoji: '📝' },
   { key: 'permissions', label: 'المستخدمون والصلاحيات', emoji: '🔐', soon: true },
 ];
 
@@ -334,7 +336,7 @@ function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) =
   );
 }
 
-export default function SchoolApp({ firstName, isAdmin }: { firstName: string; isAdmin: boolean }) {
+export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: string; isAdmin: boolean; uid: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [schoolsList, setSchoolsList] = useState<SchoolRow[] | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
@@ -363,10 +365,11 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [dutyLocs, setDutyLocs] = useState<DutyLoc[]>([]);
   const [duties, setDuties] = useState<Duty[]>([]);
   const [supervisions, setSupervisions] = useState<Supervision[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'reports'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -419,7 +422,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
 
   const loadMembersDepts = useCallback(
     async (sid: string) => {
-      const [dp, mb, su, tc, pd, en, dl, du, sv] = await Promise.all([
+      const [dp, mb, su, tc, pd, en, dl, du, sv, nt] = await Promise.all([
         supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
         supabase.rpc('school_members_of', { p_school: sid }),
         supabase.from('school_subjects').select('id,name,department_id,sort').eq('school_id', sid).order('sort'),
@@ -429,6 +432,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
         supabase.from('school_duty_locations').select('id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_duties').select('id,day,period_id,location_id,member_id').eq('school_id', sid),
         supabase.from('school_supervisions').select('id,member_id,scope_type,scope_id,note').eq('school_id', sid).order('created_at'),
+        supabase.from('school_notes').select('id,author_id,target_type,target_id,target_name,category,body,created_at').eq('school_id', sid).order('created_at', { ascending: false }),
       ]);
       setDepts((dp.data as Dept[]) || []);
       setMembers((mb.data as Member[]) || []);
@@ -439,6 +443,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
       setDutyLocs((dl.data as DutyLoc[]) || []);
       setDuties((du.data as Duty[]) || []);
       setSupervisions((sv.data as Supervision[]) || []);
+      setNotes((nt.data as Note[]) || []);
     },
     [supabase]
   );
@@ -946,6 +951,24 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setSupervisions((s) => s.filter((x) => x.id !== id));
   };
 
+  // ── رصد الملاحظات ─────────────────────────────────────────────
+  const addNote = async (targetType: 'student' | 'member', targetId: string, targetName: string, category: string, body: string) => {
+    const { data, error } = await supabase
+      .from('school_notes')
+      .insert({ school_id: schoolId, author_id: uid, target_type: targetType, target_id: targetId, target_name: targetName || null, category: category || null, body })
+      .select('id,author_id,target_type,target_id,target_name,category,body,created_at')
+      .single();
+    if (error || !data) return showToast('تعذّر حفظ الملاحظة');
+    setNotes((n) => [data as Note, ...n]);
+    showToast('تم حفظ الملاحظة ✅');
+  };
+  const delNote = async (id: string) => {
+    if (!window.confirm('حذف الملاحظة؟')) return;
+    const { error } = await supabase.from('school_notes').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setNotes((n) => n.filter((x) => x.id !== id));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -1130,6 +1153,20 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           addSupervision={addSupervision}
           delSupervision={delSupervision}
         />
+      ) : view === 'notes' ? (
+        <NotesView
+          notes={notes}
+          members={members}
+          students={students}
+          classes={classes}
+          grades={grades}
+          openClass={openClass}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          loadClassStudents={openClassStudents}
+          addNote={addNote}
+          delNote={delNote}
+        />
       ) : view === 'reports' ? (
         <ReportsView
           school={school}
@@ -1156,6 +1193,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
             } else if (k === 'teaching') setView('teaching');
             else if (k === 'timetable' || k === 'smart') setView('timetable');
             else if (k === 'supervision') setView('supervision');
+            else if (k === 'notes') setView('notes');
             else if (k === 'attendance') {
               setAttClass(null);
               setView('attendance');
@@ -2446,6 +2484,162 @@ function SupervisionView({
                     </div>
                   ))}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── رصد الملاحظات ───────────────────────── */
+function NotesView({
+  notes,
+  members,
+  students,
+  classes,
+  grades,
+  openClass,
+  canManage,
+  onBack,
+  loadClassStudents,
+  addNote,
+  delNote,
+}: {
+  notes: Note[];
+  members: Member[];
+  students: Student[];
+  classes: Klass[];
+  grades: Grade[];
+  openClass: Klass | null;
+  canManage: boolean;
+  onBack: () => void;
+  loadClassStudents: (cls: Klass) => void;
+  addNote: (targetType: 'student' | 'member', targetId: string, targetName: string, category: string, body: string) => void;
+  delNote: (id: string) => void;
+}) {
+  const [tt, setTt] = useState<'student' | 'member'>('student');
+  const [clsId, setClsId] = useState('');
+  const [stuId, setStuId] = useState('');
+  const [memId, setMemId] = useState('');
+  const [cat, setCat] = useState('');
+  const [body, setBody] = useState('');
+
+  const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+  const gradeName = (id: string) => grades.find((g) => g.id === id)?.name || '';
+  const classLabel = (c: Klass) => `${gradeName(c.grade_id)} › ${c.name}`.replace(/^ › /, '');
+  const openClasses = classes.filter((c) => !c.archived);
+
+  const reset = () => {
+    setStuId('');
+    setMemId('');
+    setCat('');
+    setBody('');
+  };
+  const submit = () => {
+    if (!body.trim()) return;
+    if (tt === 'member') {
+      if (!memId) return;
+      const nm = members.find((m) => m.id === memId)?.name || '';
+      addNote('member', memId, nm, cat.trim(), body.trim());
+    } else {
+      if (!stuId) return;
+      const nm = students.find((s) => s.id === stuId)?.name || '';
+      addNote('student', stuId, nm, cat.trim(), body.trim());
+    }
+    reset();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">رصد الملاحظات</div>
+      </div>
+
+      <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
+        سجّلي ملاحظة على طالبة (سلوك/متابعة) أو على معلمة (متابعة أداء). الملاحظات خاصة — تظهر للإدارة فقط، وللمشرفة ضمن نطاقها لاحقًا.
+      </div>
+
+      {canManage ? (
+        <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
+          <div className="font-extrabold text-sage-deep mb-1">ملاحظة جديدة</div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => { setTt('student'); reset(); }}
+              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'student' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+            >
+              👧 طالبة
+            </button>
+            <button
+              onClick={() => { setTt('member'); reset(); }}
+              className={`flex-1 rounded-lg text-[12px] font-bold py-1.5 border ${tt === 'member' ? 'bg-sage-deep text-white border-sage-deep' : 'bg-white text-sage-deep border-sage/25'}`}
+            >
+              👩‍🏫 معلمة
+            </button>
+          </div>
+
+          {tt === 'member' ? (
+            <select value={memId} onChange={(e) => setMemId(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+              <option value="">اختاري المعلمة</option>
+              {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          ) : (
+            <div className="grid grid-cols-2 gap-1.5">
+              <select
+                value={clsId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setClsId(id);
+                  setStuId('');
+                  const c = classes.find((x) => x.id === id);
+                  if (c) loadClassStudents(c);
+                }}
+                className="rounded-lg border border-sage/25 bg-white text-[12px] p-2"
+              >
+                <option value="">الفصل</option>
+                {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+              </select>
+              <select value={stuId} onChange={(e) => setStuId(e.target.value)} disabled={!clsId || !openClass || openClass.id !== clsId} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2 disabled:opacity-50">
+                <option value="">الطالبة</option>
+                {openClass && openClass.id === clsId
+                  ? students.filter((s) => !s.archived).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+                  : null}
+              </select>
+            </div>
+          )}
+
+          <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder="التصنيف (اختياري): سلوك / متابعة / تميّز…" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder="نص الملاحظة…" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+          <button
+            onClick={submit}
+            disabled={!body.trim() || (tt === 'member' ? !memId : !stuId)}
+            className="w-full rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2 disabled:opacity-40"
+          >
+            ＋ حفظ الملاحظة
+          </button>
+        </div>
+      ) : null}
+
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">الملاحظات المسجّلة</div>
+        {notes.length === 0 ? (
+          <div className="text-[12px] text-ink/35">— لا ملاحظات بعد —</div>
+        ) : (
+          <div className="space-y-2">
+            {notes.map((n) => (
+              <div key={n.id} className="border-b border-sage/10 pb-2 last:border-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] rounded-full px-1.5 py-0.5" style={{ background: n.target_type === 'member' ? 'rgba(120,140,90,.12)' : 'rgba(210,170,90,.15)' }}>
+                    {n.target_type === 'member' ? '👩‍🏫 معلمة' : '👧 طالبة'}
+                  </span>
+                  <span className="font-bold text-sage-deep text-[13px]">{n.target_name || '—'}</span>
+                  {n.category ? <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-1.5 py-0.5">{n.category}</span> : null}
+                  <span className="text-[10px] text-ink/40 flex-1 text-left">{new Date(n.created_at).toLocaleDateString('ar')}</span>
+                  {canManage ? <button onClick={() => delNote(n.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button> : null}
+                </div>
+                <div className="text-[12.5px] text-ink leading-relaxed whitespace-pre-wrap">{n.body}</div>
               </div>
             ))}
           </div>
