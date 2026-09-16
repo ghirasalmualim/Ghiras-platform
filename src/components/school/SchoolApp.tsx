@@ -254,6 +254,20 @@ const ORD_WORDS: [RegExp, number][] = [
 ];
 const firstWord = (n: string | null) => (n || '').trim().split(/\s+/)[0];
 
+/** تطبيع الاسم لكشف التكرار: مسافات، وحروف عربية متشابهة، وتشكيل. */
+const normName = (s: string | null | undefined): string =>
+  (s || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ـ/g, '')
+    .replace(/[ً-ْ]/g, '');
+
 function parseRules(
   text: string,
   members: { id: string; name: string | null }[],
@@ -619,6 +633,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
   const addClass = async (gradeId: string, name: string) => {
     const sib = classes.filter((c) => c.grade_id === gradeId);
+    if (sib.some((c) => normName(c.name) === normName(name))) return showToast(`«${name.trim()}» موجود مسبقًا في هذا الصف`);
     const { data, error } = await supabase
       .from('school_classes')
       .insert({ school_id: schoolId, grade_id: gradeId, name, sort: nextSort(sib) })
@@ -695,6 +710,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     setMembers((m) => m.map((x) => (x.id === memberId ? { ...x, block_off: val } : x)));
   };
   const addMember = async (name: string, role: string, deptId: string | null) => {
+    if (members.some((m) => normName(m.name) === normName(name))) return showToast(`«${name.trim()}» موجودة مسبقًا`);
     // إضافة بالاسم مباشرة (بلا حساب). الربط بحساب اختياري لاحقًا.
     const { error } = await supabase
       .from('school_members')
@@ -711,10 +727,15 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     setDepts((d) => d.map((x) => (x.head_member_id === id ? { ...x, head_member_id: null } : x)));
   };
   const importMembers = async (names: string[], deptId: string | null) => {
-    const rows = names.map((n) => ({ school_id: schoolId, member_name: n, role: 'teacher', department_id: deptId }));
+    const existing = new Set(members.map((m) => normName(m.name)));
+    const seen = new Set<string>();
+    const fresh = names.filter((n) => { const k = normName(n); if (!k || existing.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+    const skipped = names.length - fresh.length;
+    if (!fresh.length) return showToast(skipped ? `الكل موجود مسبقًا (${skipped}) — لم يُضَف شيء` : 'لا أسماء');
+    const rows = fresh.map((n) => ({ school_id: schoolId, member_name: n, role: 'teacher', department_id: deptId }));
     const { error } = await supabase.from('school_members').insert(rows);
     if (error) return showToast('تعذّر الاستيراد');
-    showToast(`تمت إضافة ${rows.length} معلمة ✅`);
+    showToast(`أُضيفت ${fresh.length} معلمة ✅${skipped ? ` · تجاهلت ${skipped} مكرّرة` : ''}`);
     if (schoolId) loadMembersDepts(schoolId);
   };
   // ── ربط عضو بحساب (ليدخل بنفسه) ───────────────────────────────
@@ -847,6 +868,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
   const addStudent = async (name: string, sidNo: string) => {
     if (!openClass) return;
+    if (students.some((s) => normName(s.name) === normName(name))) return showToast(`«${name.trim()}» موجودة مسبقًا في هذا الفصل`);
     const { data, error } = await supabase
       .from('school_students')
       .insert({ school_id: schoolId, class_id: openClass.id, name, sid_no: sidNo || null, sort: nextSort(students) })
@@ -874,12 +896,17 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
   const importStudents = async (names: string[]) => {
     if (!openClass) return;
+    const existing = new Set(students.map((s) => normName(s.name)));
+    const seen = new Set<string>();
+    const fresh = names.filter((n) => { const k = normName(n); if (!k || existing.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+    const skipped = names.length - fresh.length;
+    if (!fresh.length) return showToast(skipped ? `الكل موجود مسبقًا (${skipped}) — لم يُضَف شيء` : 'لا أسماء');
     const base = students.length;
-    const rows = names.map((n, i) => ({ school_id: schoolId, class_id: openClass.id, name: n, sort: base + i + 1 }));
+    const rows = fresh.map((n, i) => ({ school_id: schoolId, class_id: openClass.id, name: n, sort: base + i + 1 }));
     const { data, error } = await supabase.from('school_students').insert(rows).select('id,class_id,name,sid_no,note,archived,sort');
     if (error || !data) return showToast('تعذّر الاستيراد');
     setStudents((s) => [...s, ...(data as Student[])]);
-    showToast(`تمت إضافة ${data.length} متعلمة ✅`);
+    showToast(`أُضيفت ${data.length} متعلمة ✅${skipped ? ` · تجاهلت ${skipped} مكرّرة` : ''}`);
   };
 
   // ── المواد والتوزيع ───────────────────────────────────────────
