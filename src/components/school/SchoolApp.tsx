@@ -984,7 +984,14 @@ function DepartmentsView({
         <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">لا شُعب بعد.{canManage ? ' أضيفي أول شعبة.' : ''}</div>
       ) : (
         depts.map((d) => {
-          const mm = members.filter((m) => m.department_id === d.id);
+          const mm = members
+            .filter((m) => m.department_id === d.id)
+            .slice()
+            .sort((a, b) => {
+              if (a.id === d.head_member_id) return -1; // رئيسة الشعبة أولًا
+              if (b.id === d.head_member_id) return 1;
+              return (a.name || '').localeCompare(b.name || '', 'ar'); // ثم أبجديًا
+            });
           const head = members.find((m) => m.id === d.head_member_id);
           return (
             <div key={d.id} className="card-3d bg-white rounded-2xl p-3">
