@@ -60,7 +60,7 @@ type Duty = { id: string; day: number; period_id: string; location_id: string; m
 type Supervision = { id: string; member_id: string; scope_type: 'stage' | 'grade' | 'class'; scope_id: string; note: string | null };
 type Note = { id: string; author_id: string | null; target_type: 'student' | 'member'; target_id: string; target_name: string | null; category: string | null; body: string; created_at: string };
 type Perm = { id: string; user_id: string; module: string; action: string; scope_type: string; scope_id: string | null };
-type GItem = { id: string; member_id: string; subject_id: string; class_id: string; name: string; max_score: number; sort: number };
+type GItem = { id: string; member_id: string; subject_id: string; class_id: string; name: string; max_score: number; sort: number; grp?: string };
 type GScore = { id: string; item_id: string; student_id: string; score: number | null };
 type PAtt = { id: string; date: string; period_id: string; class_id: string; student_id: string; status: string };
 
@@ -360,8 +360,8 @@ async function extractNames(file: File): Promise<string[]> {
   return names;
 }
 
-/** قراءة أعمدة سجل الدرجات من صورة: يعيد [{name, max}]. (الأعمدة فقط لا الدرجات) */
-async function extractGradeColumns(file: File): Promise<{ name: string; max: number }[]> {
+/** قراءة أعمدة سجل الدرجات من صورة: يعيد [{name, max, grp}]. (الأعمدة فقط لا الدرجات) */
+async function extractGradeColumns(file: File): Promise<{ name: string; max: number; grp: string }[]> {
   let contentBlock: unknown;
   if (file.type === 'application/pdf') {
     const dataUrl = await fileToDataURL(file);
@@ -374,10 +374,11 @@ async function extractGradeColumns(file: File): Promise<{ name: string; max: num
     'هذا نموذج تقييم تحصيلي (من وزارة التربية غالبًا). استخرج أعمدة بنود التقييم ودرجة كل بند الكاملة (صف الدرجات العلوي).\n' +
     'قواعد مهمة:\n' +
     '- تجاهل تمامًا: رقم الطالب، اسم الطالب/الطالبة، وأعمدة المجموع والمجموع الكلي.\n' +
+    '- البنود التي اسمها من نوع "ورقة التقييم 1/2/3/4" اجعل group = "papers"، وما عداها group = "period".\n' +
     '- رتّب البنود من اليمين إلى اليسار كما تظهر في الجدول.\n' +
     '- إن لم تظهر الدرجة العظمى لبند فاجعلها 10.\n' +
     'أعد النتيجة كمصفوفة JSON فقط بلا أي شرح أو Markdown، بهذا الشكل:\n' +
-    '[{"name":"التزام وسلوك","max":4},{"name":"ورقة التقييم 1","max":10}]';
+    '[{"name":"التزام وسلوك","max":4,"group":"period"},{"name":"ورقة التقييم 1","max":10,"group":"papers"}]';
   const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
   let res: Response;
   try {
@@ -390,7 +391,7 @@ async function extractGradeColumns(file: File): Promise<{ name: string; max: num
   try { json = JSON.parse(raw); } catch { /* غير JSON */ }
   if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
   const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
-  let arr: { name?: string; max?: number | string }[] = [];
+  let arr: { name?: string; max?: number | string; group?: string }[] = [];
   const m = text.match(/\[[\s\S]*\]/);
   if (m) { try { arr = JSON.parse(m[0]); } catch { /* تجاهل */ } }
   if (!arr.length) {
@@ -404,8 +405,9 @@ async function extractGradeColumns(file: File): Promise<{ name: string; max: num
     const s = String(v ?? '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
     return Math.max(1, Math.min(1000, parseInt(s, 10) || 10));
   };
+  const isPaper = (nm: string) => /ورقة\s*التقييم|ورقة\s*تقييم/.test(nm);
   const cols = arr
-    .map((c) => ({ name: String(c?.name ?? '').trim(), max: toNum(c?.max) }))
+    .map((c) => { const name = String(c?.name ?? '').trim(); return { name, max: toNum(c?.max), grp: c?.group === 'papers' || isPaper(name) ? 'papers' : 'period' }; })
     .filter((c) => c.name && c.name.length <= 40);
   if (!cols.length) throw new Error(`لم تُقرأ أعمدة. رد الخدمة: «${(text || raw).slice(0, 180) || 'فارغ'}»`);
   return cols;
@@ -612,7 +614,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         supabase.from('school_supervisions').select('id,member_id,scope_type,scope_id,note').eq('school_id', sid).order('created_at'),
         supabase.from('school_notes').select('id,author_id,target_type,target_id,target_name,category,body,created_at').eq('school_id', sid).order('created_at', { ascending: false }),
         supabase.from('school_permissions').select('id,user_id,module,action,scope_type,scope_id').eq('school_id', sid),
-        supabase.from('school_grade_items').select('id,member_id,subject_id,class_id,name,max_score,sort').eq('school_id', sid).order('sort'),
+        supabase.from('school_grade_items').select('id,member_id,subject_id,class_id,name,max_score,sort,grp').eq('school_id', sid).order('sort'),
         supabase.from('school_grade_scores').select('id,item_id,student_id,score').eq('school_id', sid),
       ]);
       // احتياط: لو أعمدة قيود الجدولة غير موجودة بعد (لم يُشغَّل ملف SQL) نُعيد الجلب بالأعمدة الأساسية حتى لا تختفي الشُّعب
@@ -632,7 +634,12 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
       setSupervisions((sv.data as Supervision[]) || []);
       setNotes((nt.data as Note[]) || []);
       setPermissions((pm.data as Perm[]) || []);
-      setGradeItems((gi.data as GItem[]) || []);
+      let giData = gi.data as GItem[] | null;
+      if (gi.error) {
+        const base = await supabase.from('school_grade_items').select('id,member_id,subject_id,class_id,name,max_score,sort').eq('school_id', sid).order('sort');
+        giData = base.data as GItem[] | null;
+      }
+      setGradeItems(giData || []);
       setGradeScores((gs.data as GScore[]) || []);
     },
     [supabase]
@@ -870,25 +877,25 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
 
   // ── سجل الدرجات ───────────────────────────────────────────────
-  const addGradeItem = async (memberId: string, subjectId: string, classId: string, name: string, maxScore: number) => {
+  const addGradeItem = async (memberId: string, subjectId: string, classId: string, name: string, maxScore: number, grp: string) => {
     const sort = gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).length + 1;
     const { data, error } = await supabase
       .from('school_grade_items')
-      .insert({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name, max_score: maxScore, sort })
-      .select('id,member_id,subject_id,class_id,name,max_score,sort')
+      .insert({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name, max_score: maxScore, sort, grp })
+      .select('id,member_id,subject_id,class_id,name,max_score,sort,grp')
       .single();
     if (error || !data) return showToast('تعذّرت إضافة التقييم');
     setGradeItems((g) => [...g, data as GItem]);
     showToast('تمت الإضافة ✅');
   };
-  const addGradeItems = async (memberId: string, subjectId: string, classId: string, items: { name: string; max: number }[]) => {
+  const addGradeItems = async (memberId: string, subjectId: string, classId: string, items: { name: string; max: number; grp: string }[]) => {
     const existing = new Set(gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).map((x) => normName(x.name)));
     const seen = new Set<string>();
     const fresh = items.filter((it) => { const k = normName(it.name); if (!k || existing.has(k) || seen.has(k)) return false; seen.add(k); return true; });
     if (!fresh.length) return showToast('الأعمدة موجودة مسبقًا');
     const base = gradeItems.filter((x) => x.member_id === memberId && x.subject_id === subjectId && x.class_id === classId).length;
-    const rows = fresh.map((it, i) => ({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name: it.name, max_score: it.max, sort: base + i + 1 }));
-    const { data, error } = await supabase.from('school_grade_items').insert(rows).select('id,member_id,subject_id,class_id,name,max_score,sort');
+    const rows = fresh.map((it, i) => ({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, name: it.name, max_score: it.max, sort: base + i + 1, grp: it.grp }));
+    const { data, error } = await supabase.from('school_grade_items').insert(rows).select('id,member_id,subject_id,class_id,name,max_score,sort,grp');
     if (error || !data) return showToast('تعذّرت إضافة الأعمدة');
     setGradeItems((g) => [...g, ...(data as GItem[])]);
     showToast(`أُضيفت ${data.length} أعمدة ✅`);
@@ -4129,6 +4136,19 @@ function StatBtn({ active, label, color, onClick }: { active: boolean; label: st
 }
 
 /* ───────────────────────── سجل الدرجات ───────────────────────── */
+// نماذج جاهزة (نموذج وزارة التربية) — مطابقة لـ«دفتر التقييم الذكي»
+const GB_PRESETS: Record<string, { label: string; items: [string, number][]; papers: [string, number][] }> = {
+  islamic_p2: {
+    label: 'التربية الإسلامية — التحصيلي للفترة الثانية (ابتدائي)',
+    items: [['التزام وسلوك', 4], ['تفاعل وفهم', 12], ['الواجبات', 10], ['حل الأنشطة الصفية', 10], ['قراءة النصوص الشرعية والتطبيقات العملية', 10], ['المشروع', 4], ['تسميع الأحاديث المقررة حفظاً', 10]],
+    papers: [['ورقة التقييم 1', 10], ['ورقة التقييم 2', 10], ['ورقة التقييم 3', 10], ['ورقة التقييم 4', 10]],
+  },
+  general: {
+    label: 'نموذج عام (لغة عربية / رياضيات / علوم)',
+    items: [['التزام وسلوك', 4], ['تفاعل وفهم', 12], ['الواجبات', 10], ['حل الأنشطة الصفية', 14], ['المشروع', 10], ['قواعد الأمن والسلامة', 10]],
+    papers: [['ورقة التقييم 1', 10], ['ورقة التقييم 2', 10], ['ورقة التقييم 3', 10], ['ورقة التقييم 4', 10]],
+  },
+};
 function GradebookView({
   teaching,
   members,
@@ -4161,16 +4181,17 @@ function GradebookView({
   canManage: boolean;
   onBack: () => void;
   onOpenClass: (cls: Klass) => void;
-  addGradeItem: (memberId: string, subjectId: string, classId: string, name: string, maxScore: number) => void;
-  addGradeItems: (memberId: string, subjectId: string, classId: string, items: { name: string; max: number }[]) => void;
+  addGradeItem: (memberId: string, subjectId: string, classId: string, name: string, maxScore: number, grp: string) => void;
+  addGradeItems: (memberId: string, subjectId: string, classId: string, items: { name: string; max: number; grp: string }[]) => void;
   delGradeItem: (id: string) => void;
   setScore: (itemId: string, studentId: string, score: number | null) => void;
 }) {
   const [sel, setSel] = useState('');
   const [newName, setNewName] = useState('');
   const [newMax, setNewMax] = useState('10');
+  const [newGrp, setNewGrp] = useState('period');
   const [imgBusy, setImgBusy] = useState(false);
-  const [colDraft, setColDraft] = useState<string | null>(null);
+  const [scanned, setScanned] = useState<{ name: string; max: number; grp: string }[] | null>(null);
   const colRef = useRef<HTMLInputElement>(null);
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
@@ -4197,11 +4218,18 @@ function GradebookView({
 
   const selGroup = groups.find((g) => key(g.member_id, g.subject_id, g.class_id) === sel) || null;
   const selCls = selGroup ? classes.find((c) => c.id === selGroup.class_id) || null : null;
-  const cols = selGroup
+  const allCols = selGroup
     ? gradeItems.filter((i) => i.member_id === selGroup.member_id && i.subject_id === selGroup.subject_id && i.class_id === selGroup.class_id).sort((a, b) => a.sort - b.sort)
     : [];
+  const periodCols = allCols.filter((c) => c.grp !== 'papers');
+  const paperCols = allCols.filter((c) => c.grp === 'papers');
+  const cols = [...periodCols, ...paperCols];
+  const maxPeriod = periodCols.reduce((a, c) => a + Number(c.max_score), 0);
+  const maxPapers = paperCols.reduce((a, c) => a + Number(c.max_score), 0);
+  const grandMax = maxPeriod + maxPapers;
   const rows = selGroup && openClass && openClass.id === selGroup.class_id ? students.filter((s) => !s.archived) : [];
   const scoreOf = (itemId: string, studentId: string) => gradeScores.find((x) => x.item_id === itemId && x.student_id === studentId)?.score ?? null;
+  const sumCols = (list: GItem[], sid: string) => list.reduce((a, c) => a + (Number(scoreOf(c.id, sid)) || 0), 0);
 
   const openGroup = (g: { member_id: string; subject_id: string; class_id: string }) => {
     setSel(key(g.member_id, g.subject_id, g.class_id));
@@ -4235,53 +4263,88 @@ function GradebookView({
         )
       ) : (
         <div className="space-y-2">
-          <div className="card-3d bg-white rounded-2xl p-3">
-            <div className="font-extrabold text-sage-deep">{subjectName(selGroup.subject_id)} · {classLabel(selGroup.class_id)}</div>
-            {selGroup.member_id !== myMemberId ? <div className="text-[11px] text-ink/50">{memberName(selGroup.member_id)}</div> : null}
+          <style>{`@media print { body * { visibility: hidden } .gb-report, .gb-report * { visibility: visible } .gb-report { position: absolute; top: 0; right: 0; left: 0; width: 100% } .no-print { display: none !important } @page { size: A4 landscape; margin: 8mm } }`}</style>
+          <div className="card-3d bg-white rounded-2xl p-3 no-print flex items-center gap-2">
+            <div className="flex-1">
+              <div className="font-extrabold text-sage-deep">{subjectName(selGroup.subject_id)} · {classLabel(selGroup.class_id)}</div>
+              {selGroup.member_id !== myMemberId ? <div className="text-[11px] text-ink/50">{memberName(selGroup.member_id)}</div> : null}
+            </div>
+            {cols.length && rows.length ? (
+              <>
+                <button onClick={() => window.print()} className="rounded-lg border border-sage/25 text-sage-deep text-[11.5px] font-bold px-2.5 py-1.5">🖨 طباعة</button>
+                <button
+                  onClick={() => {
+                    const esc = (s: unknown) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c));
+                    let h = '<table border="1" cellspacing="0"><tr><th>الطالبة</th>' + cols.map((c) => `<th>${esc(c.name)} /${c.max_score}</th>`).join('') + '<th>الفترة</th><th>الأوراق</th><th>الكلي</th></tr>';
+                    rows.forEach((st) => { h += '<tr><td>' + esc(st.name) + '</td>' + cols.map((c) => `<td>${scoreOf(c.id, st.id) ?? ''}</td>`).join('') + `<td>${sumCols(periodCols, st.id)}</td><td>${sumCols(paperCols, st.id)}</td><td>${sumCols(cols, st.id)}</td></tr>`; });
+                    h += '</table>';
+                    const blob = new Blob(['﻿<html><head><meta charset="utf-8"></head><body dir="rtl">' + h + '</body></html>'], { type: 'application/vnd.ms-excel' });
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `درجات-${subjectName(selGroup.subject_id)}-${classLabel(selGroup.class_id)}.xls`; a.click(); URL.revokeObjectURL(a.href);
+                  }}
+                  className="rounded-lg border border-sage/25 text-sage-deep text-[11.5px] font-bold px-2.5 py-1.5"
+                >⬇ Excel</button>
+              </>
+            ) : null}
           </div>
 
           {selGroup.canEdit ? (
-            <div className="card-3d bg-white rounded-2xl p-3 space-y-2">
-              <div className="flex gap-1.5 items-center">
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="تقييم جديد (اختبار ١)" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
-                <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(e.target.value)} title="الدرجة العظمى" className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
-                <button
-                  onClick={() => { if (newName.trim()) { addGradeItem(selGroup.member_id, selGroup.subject_id, selGroup.class_id, newName.trim(), Math.max(1, +newMax || 10)); setNewName(''); } }}
-                  className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-2"
+            <div className="card-3d bg-white rounded-2xl p-3 space-y-2 no-print">
+              {/* نموذج جاهز */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-ink/55 whitespace-nowrap">نموذج جاهز:</span>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const p = GB_PRESETS[e.target.value]; e.target.value = '';
+                    if (!p) return;
+                    if (!window.confirm(`إضافة بنود «${p.label}»؟`)) return;
+                    const items = [...p.items.map(([name, max]) => ({ name, max, grp: 'period' })), ...p.papers.map(([name, max]) => ({ name, max, grp: 'papers' }))];
+                    addGradeItems(selGroup.member_id, selGroup.subject_id, selGroup.class_id, items);
+                  }}
+                  className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
                 >
-                  ＋ عمود
-                </button>
+                  <option value="">اختاري نموذجًا…</option>
+                  {Object.entries(GB_PRESETS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+                </select>
               </div>
-              {/* تصوير الأعمدة من سجل ورقي */}
+              {/* إضافة بند يدوي */}
+              <div className="flex gap-1.5 items-center">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="بند جديد (مثال: الواجبات)" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(e.target.value)} title="الدرجة العظمى" className="w-14 rounded-lg border border-sage/25 bg-white text-[12px] p-2 text-center" />
+                <select value={newGrp} onChange={(e) => setNewGrp(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[11px] p-2">
+                  <option value="period">فترة</option>
+                  <option value="papers">ورقة</option>
+                </select>
+                <button
+                  onClick={() => { if (newName.trim()) { addGradeItem(selGroup.member_id, selGroup.subject_id, selGroup.class_id, newName.trim(), Math.max(1, +newMax || 10), newGrp); setNewName(''); } }}
+                  className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-3 py-2"
+                >＋</button>
+              </div>
+              {/* تصوير الأعمدة */}
               <input ref={colRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={async (e) => {
                 const f = e.target.files?.[0]; if (!f) return; setImgBusy(true);
-                try { const cols = await extractGradeColumns(f); setColDraft(cols.map((c) => `${c.name} /${c.max}`).join('\n')); }
+                try { const c = await extractGradeColumns(f); setScanned(c); }
                 catch (err) { window.alert((err as Error).message || 'تعذّرت القراءة'); }
                 setImgBusy(false); if (colRef.current) colRef.current.value = '';
               }} />
-              {colDraft === null ? (
+              {scanned === null ? (
                 <button onClick={() => colRef.current?.click()} disabled={imgBusy} className="w-full rounded-lg border border-sage/30 text-sage-deep font-bold text-[12px] py-2 disabled:opacity-50">
-                  {imgBusy ? '…جارٍ قراءة الصورة' : '📸 تصوير الأعمدة من سجلك'}
+                  {imgBusy ? '…جارٍ قراءة النموذج' : '📸 تصوير نموذج التقييم'}
                 </button>
               ) : (
                 <div className="rounded-lg bg-sage/5 p-2 space-y-1.5">
-                  <div className="text-[11px] text-ink/60">راجعي الأعمدة (كل سطر: الاسم /الدرجة العظمى) ثم أضيفيها:</div>
-                  <textarea value={colDraft} onChange={(e) => setColDraft(e.target.value)} rows={Math.min(8, colDraft.split('\n').length + 1)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                  <div className="text-[11px] text-ink/60">قُرئ {scanned.length} بندًا (المجموع {scanned.reduce((a, c) => a + c.max, 0)}) — راجعيها واحذفي الخطأ ثم اعتمدي:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {scanned.map((c, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 text-[11px] bg-white border border-sage/20 rounded-full px-2 py-0.5">
+                        <b className="text-sage-deep">{c.grp === 'papers' ? 'ورقة' : 'فترة'}</b> {c.name} · {c.max}
+                        <button onClick={() => setScanned((s) => (s || []).filter((_, j) => j !== i))} className="text-red-400">✕</button>
+                      </span>
+                    ))}
+                  </div>
                   <div className="flex gap-1.5">
-                    <button
-                      onClick={() => {
-                        const items = colDraft.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-                          const mm = l.match(/^(.+?)[\s/：:]+([0-9]{1,3})\s*$/);
-                          return mm ? { name: mm[1].trim(), max: Math.max(1, +mm[2] || 10) } : { name: l, max: 10 };
-                        }).filter((c) => c.name);
-                        if (items.length) addGradeItems(selGroup.member_id, selGroup.subject_id, selGroup.class_id, items);
-                        setColDraft(null);
-                      }}
-                      className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2"
-                    >
-                      ＋ أضيفي الأعمدة
-                    </button>
-                    <button onClick={() => setColDraft(null)} className="rounded-lg border border-sage/25 text-ink/60 text-[12px] px-3">إلغاء</button>
+                    <button onClick={() => { if (scanned.length) addGradeItems(selGroup.member_id, selGroup.subject_id, selGroup.class_id, scanned); setScanned(null); }} className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2">اعتماد البنود</button>
+                    <button onClick={() => setScanned(null)} className="rounded-lg border border-sage/25 text-ink/60 text-[12px] px-3">إلغاء</button>
                   </div>
                 </div>
               )}
@@ -4291,57 +4354,52 @@ function GradebookView({
           {rows.length === 0 ? (
             <div className="text-[12px] text-ink/40 text-center py-4">— لا طالبات في هذا الفصل —</div>
           ) : cols.length === 0 ? (
-            <div className="text-[12px] text-ink/40 text-center py-4">أضيفي عمود تقييم لتبدئي التسجيل.</div>
+            <div className="text-[12px] text-ink/40 text-center py-4">أضيفي بنودًا (نموذج جاهز، أو تصوير، أو يدويًا) لتبدئي التسجيل.</div>
           ) : (
-            <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+            <div className="gb-report card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+              <div className="px-1 pb-1 mb-1 border-b border-sage/15">
+                <div className="font-extrabold text-sage-deep text-[14px]">سجل الدرجات — {subjectName(selGroup.subject_id)} · {classLabel(selGroup.class_id)}</div>
+                <div className={`text-[11px] ${grandMax !== 100 ? 'text-red-500' : 'text-ink/55'}`}>أعمال الفترة {maxPeriod} · أوراق التقييم {maxPapers} · الكلي {grandMax}{grandMax !== 100 ? ' ⚠️ (المعتاد 100)' : ''}</div>
+              </div>
               <table className="text-[12px] w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-right p-1.5 sticky right-0 bg-white">الطالبة</th>
+                    <th rowSpan={2} className="text-right p-1.5 sticky right-0 bg-white align-bottom">الطالبة</th>
+                    {periodCols.length ? <th colSpan={periodCols.length} className="p-1 text-center text-[10px] bg-sage/5 text-sage-deep">أعمال الفترة</th> : null}
+                    {paperCols.length ? <th colSpan={paperCols.length} className="p-1 text-center text-[10px] bg-gold/10 text-gold-deep">أوراق التقييم</th> : null}
+                    <th rowSpan={2} className="p-1.5 text-center align-bottom">الفترة</th>
+                    <th rowSpan={2} className="p-1.5 text-center align-bottom">الأوراق</th>
+                    <th rowSpan={2} className="p-1.5 text-center align-bottom">الكلي</th>
+                  </tr>
+                  <tr>
                     {cols.map((c) => (
-                      <th key={c.id} className="p-1.5 text-center whitespace-nowrap">
-                        <div className="font-bold text-sage-deep">{c.name}</div>
+                      <th key={c.id} className="p-1 text-center whitespace-nowrap align-bottom">
+                        <div className="font-bold text-sage-deep text-[11px]">{c.name}</div>
                         <div className="text-[10px] text-ink/45 font-normal">/{c.max_score}</div>
-                        {selGroup.canEdit ? <button onClick={() => delGradeItem(c.id)} aria-label="حذف العمود" className="text-red-300 hover:text-red-500 text-[10px]">حذف</button> : null}
+                        {selGroup.canEdit ? <button onClick={() => delGradeItem(c.id)} aria-label="حذف" className="no-print text-red-300 hover:text-red-500 text-[10px]">حذف</button> : null}
                       </th>
                     ))}
-                    <th className="p-1.5 text-center">المجموع</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((st) => {
-                    const total = cols.reduce((a, c) => a + (Number(scoreOf(c.id, st.id)) || 0), 0);
-                    const max = cols.reduce((a, c) => a + Number(c.max_score), 0);
-                    return (
-                      <tr key={st.id} className="border-t border-sage/10">
-                        <td className="p-1.5 text-right sticky right-0 bg-white font-medium text-ink">{st.name}</td>
-                        {cols.map((c) => {
-                          const v = scoreOf(c.id, st.id);
-                          return (
-                            <td key={c.id} className="p-1 text-center">
-                              {selGroup.canEdit ? (
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={c.max_score}
-                                  defaultValue={v ?? ''}
-                                  onBlur={(e) => {
-                                    const raw = e.target.value.trim();
-                                    const val = raw === '' ? null : Math.max(0, Math.min(c.max_score, +raw || 0));
-                                    if (val !== v) setScore(c.id, st.id, val);
-                                  }}
-                                  className="w-14 rounded border border-sage/25 bg-white text-[12px] p-1 text-center"
-                                />
-                              ) : (
-                                <span className="text-ink">{v ?? '—'}</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="p-1.5 text-center font-bold text-sage-deep tabular-nums">{total}<span className="text-[10px] text-ink/40">/{max}</span></td>
-                      </tr>
-                    );
-                  })}
+                  {rows.map((st) => (
+                    <tr key={st.id} className="border-t border-sage/10">
+                      <td className="p-1.5 text-right sticky right-0 bg-white font-medium text-ink">{st.name}</td>
+                      {cols.map((c) => {
+                        const v = scoreOf(c.id, st.id);
+                        return (
+                          <td key={c.id} className="p-1 text-center">
+                            {selGroup.canEdit ? (
+                              <input type="number" min={0} max={c.max_score} defaultValue={v ?? ''} onBlur={(e) => { const raw = e.target.value.trim(); const val = raw === '' ? null : Math.max(0, Math.min(c.max_score, +raw || 0)); if (val !== v) setScore(c.id, st.id, val); }} className="w-12 rounded border border-sage/25 bg-white text-[12px] p-1 text-center" />
+                            ) : (<span className="text-ink">{v ?? '—'}</span>)}
+                          </td>
+                        );
+                      })}
+                      <td className="p-1.5 text-center tabular-nums text-sage-deep">{sumCols(periodCols, st.id)}</td>
+                      <td className="p-1.5 text-center tabular-nums text-gold-deep">{sumCols(paperCols, st.id)}</td>
+                      <td className="p-1.5 text-center font-bold tabular-nums text-sage-deep">{sumCols(cols, st.id)}<span className="text-[10px] text-ink/40">/{grandMax}</span></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
