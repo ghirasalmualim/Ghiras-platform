@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
@@ -200,6 +200,105 @@ function parseRules(
     }
   }
   return { rules, unknown };
+}
+
+/* ── استيراد الأسماء من صورة/PDF عبر OCR (Claude vision، بوابة معزولة) ── */
+const fileToDataURL = (file: File): Promise<string> =>
+  new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+async function compressImg(file: File): Promise<{ mime: string; b64: string }> {
+  const dataUrl = await fileToDataURL(file);
+  const img: HTMLImageElement = await new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = dataUrl;
+  });
+  const scale = Math.min(1, 1700 / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  if (!ctx) return { mime: 'image/jpeg', b64: dataUrl.split(',')[1] };
+  ctx.drawImage(img, 0, 0, w, h);
+  return { mime: 'image/jpeg', b64: c.toDataURL('image/jpeg', 0.85).split(',')[1] };
+}
+
+async function extractNames(file: File): Promise<string[]> {
+  let contentBlock: unknown;
+  if (file.type === 'application/pdf') {
+    const dataUrl = await fileToDataURL(file);
+    contentBlock = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: dataUrl.split(',')[1] } };
+  } else {
+    const { mime, b64 } = await compressImg(file);
+    contentBlock = { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } };
+  }
+  const prompt =
+    'هذه قائمة أسماء أشخاص (معلمات أو طالبات). استخرج الأسماء فقط، اسمًا واحدًا في كل سطر، بالترتيب، ' +
+    'بدون أرقام تسلسل أو رموز أو عناوين أو تواريخ أو أي كلام إضافي. لا تكتب أي شيء غير الأسماء.';
+  const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
+  const res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error?.message || 'تعذّرت القراءة');
+  const text: string = json?.content?.[0]?.text || '';
+  return text
+    .split('\n')
+    .map((s) => s.replace(/^[\s\d\-.،_)(]+/, '').trim())
+    .filter((s) => s && s.length <= 60);
+}
+
+function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const ref = useRef<HTMLInputElement>(null);
+  const pick = async (files: FileList | null) => {
+    const f = files?.[0];
+    if (!f) return;
+    setBusy(true);
+    try {
+      const names = await extractNames(f);
+      if (!names.length) window.alert('ما قدرت أطلّع أسماء واضحة من الصورة. جرّبي صورة أوضح.');
+      setDraft(names.join('\n'));
+    } catch (e) {
+      window.alert((e as Error).message || 'تعذّرت القراءة');
+    }
+    setBusy(false);
+    if (ref.current) ref.current.value = '';
+  };
+  return (
+    <div className="mt-2">
+      <button onClick={() => ref.current?.click()} disabled={busy} className="rounded-lg border border-sage/30 text-sage-deep font-bold text-[12px] px-3 py-1.5 disabled:opacity-50">
+        {busy ? '…جارٍ القراءة' : `📷 استيراد ${what} من صورة/PDF`}
+      </button>
+      <input ref={ref} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => pick(e.target.files)} />
+      {draft !== null ? (
+        <div className="mt-2 rounded-xl border border-sage/20 p-2">
+          <div className="text-[11.5px] text-ink/60 mb-1">راجعي الأسماء (اسم لكل سطر) — عدّلي أو احذفي الغلط ثم أضيفي:</div>
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={Math.min(12, Math.max(4, draft.split('\n').length))} className="w-full rounded-lg border border-sage/25 bg-white text-[13px] p-2 focus:outline-none focus:border-sage" />
+          <div className="flex gap-2 mt-1.5">
+            <button
+              onClick={() => {
+                const names = draft.split('\n').map((s) => s.trim()).filter(Boolean);
+                if (names.length) onAdd(names);
+                setDraft(null);
+              }}
+              className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-4 py-1.5"
+            >
+              ＋ أضيفي الكل ({draft.split('\n').map((s) => s.trim()).filter(Boolean).length})
+            </button>
+            <button onClick={() => setDraft(null)} className="rounded-lg border border-sage/25 text-sage-deep font-bold text-[12px] px-3 py-1.5">إلغاء</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function SchoolApp({ firstName, isAdmin }: { firstName: string; isAdmin: boolean }) {
@@ -437,6 +536,13 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setMembers((m) => m.filter((x) => x.id !== id));
     setDepts((d) => d.map((x) => (x.head_member_id === id ? { ...x, head_member_id: null } : x)));
   };
+  const importMembers = async (names: string[], deptId: string | null) => {
+    const rows = names.map((n) => ({ school_id: schoolId, member_name: n, role: 'teacher', department_id: deptId }));
+    const { error } = await supabase.from('school_members').insert(rows);
+    if (error) return showToast('تعذّر الاستيراد');
+    showToast(`تمت إضافة ${rows.length} معلمة ✅`);
+    if (schoolId) loadMembersDepts(schoolId);
+  };
 
   // ── المتعلمات ─────────────────────────────────────────────────
   const openClassStudents = async (cls: Klass) => {
@@ -470,6 +576,15 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     const { error } = await supabase.from('school_students').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
     setStudents((s) => s.filter((x) => x.id !== id));
+  };
+  const importStudents = async (names: string[]) => {
+    if (!openClass) return;
+    const base = students.length;
+    const rows = names.map((n, i) => ({ school_id: schoolId, class_id: openClass.id, name: n, sort: base + i + 1 }));
+    const { data, error } = await supabase.from('school_students').insert(rows).select('id,class_id,name,sid_no,note,archived,sort');
+    if (error || !data) return showToast('تعذّر الاستيراد');
+    setStudents((s) => [...s, ...(data as Student[])]);
+    showToast(`تمت إضافة ${data.length} متعلمة ✅`);
   };
 
   // ── المواد والتوزيع ───────────────────────────────────────────
@@ -652,6 +767,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           setHead={setHead}
           addMember={addMember}
           removeMember={removeMember}
+          importMembers={importMembers}
         />
       ) : view === 'students' ? (
         <StudentsView
@@ -667,6 +783,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           updateStudent={updateStudent}
           moveStudent={moveStudent}
           delStudent={delStudent}
+          importStudents={importStudents}
         />
       ) : view === 'teaching' ? (
         <TeachingView
@@ -924,6 +1041,7 @@ function DepartmentsView({
   setHead,
   addMember,
   removeMember,
+  importMembers,
 }: {
   depts: Dept[];
   members: Member[];
@@ -935,6 +1053,7 @@ function DepartmentsView({
   setHead: (deptId: string, memberId: string | null) => void;
   addMember: (login: string, role: string, deptId: string | null) => void;
   removeMember: (id: string) => void;
+  importMembers: (names: string[], deptId: string | null) => void;
 }) {
   const [newDept, setNewDept] = useState('');
   const noDept = members.filter((m) => !m.department_id);
@@ -1027,6 +1146,7 @@ function DepartmentsView({
                   {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} roleText={m.id === d.head_member_id ? 'رئيسة الشعبة' : undefined} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
                 </div>
                 {canManage ? <AddInline placeholder="اسم المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
+                {canManage ? <ImportNames what="معلمات" onAdd={(names) => importMembers(names, d.id)} /> : null}
               </div>
             </div>
           );
@@ -1564,6 +1684,7 @@ function StudentsView({
   updateStudent,
   moveStudent,
   delStudent,
+  importStudents,
 }: {
   stages: Stage[];
   grades: Grade[];
@@ -1577,6 +1698,7 @@ function StudentsView({
   updateStudent: (id: string, patch: Partial<Student>) => void;
   moveStudent: (id: string, toClassId: string) => void;
   delStudent: (id: string) => void;
+  importStudents: (names: string[]) => void;
 }) {
   const [q, setQ] = useState('');
   const [nm, setNm] = useState('');
@@ -1654,6 +1776,8 @@ function StudentsView({
           </button>
         </div>
       ) : null}
+
+      {canManage ? <ImportNames what="طالبات" onAdd={importStudents} /> : null}
 
       {shown.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">{q ? 'لا نتائج' : 'لا متعلمات بعد.'}</div>
