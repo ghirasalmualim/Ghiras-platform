@@ -19,10 +19,35 @@ type School = { id: string; name: string; academic_year: string | null; term: st
 type Stage = { id: string; name: string; sort: number };
 type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
+type Dept = { id: string; name: string; head_member_id: string | null; sort: number };
+type Member = { id: string; user_id: string; name: string | null; role: string; department_id: string | null };
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'مسؤولة المدرسة',
+  principal: 'مديرة المدرسة',
+  deputy: 'مديرة مساعدة',
+  coordinator: 'رئيسة شعبة',
+  supervisor: 'مشرفة',
+  student_affairs: 'شؤون الطلبة',
+  teacher: 'معلمة',
+};
+
+/** أرقام عربية → إنجليزية + نزع مفتاح 965 (الحسابات مبنية على التلفون). */
+const normLogin = (raw: string) => {
+  const t = (raw || '').trim();
+  if (t.includes('@')) return t.toLowerCase();
+  const en = t.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) - (d.charCodeAt(0) >= 0x06f0 ? 0x06f0 : 0x0660)));
+  if (/^\+?\d[\d\s-]*$/.test(en)) {
+    let d = en.replace(/\D/g, '');
+    if (d.length > 8 && d.startsWith('965')) d = d.slice(3);
+    return d;
+  }
+  return t;
+};
 
 const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] = [
   { key: 'structure', label: 'الهيكل المدرسي', emoji: '🏫' },
-  { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫', soon: true },
+  { key: 'departments', label: 'الشُّعب والمعلمات', emoji: '👩🏻‍🏫' },
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻', soon: true },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅', soon: true },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨', soon: true },
@@ -47,8 +72,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
   const [stages, setStages] = useState<Stage[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [classes, setClasses] = useState<Klass[]>([]);
+  const [depts, setDepts] = useState<Dept[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal';
@@ -99,6 +126,18 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setSchoolId(row.id);
   };
 
+  const loadMembersDepts = useCallback(
+    async (sid: string) => {
+      const [dp, mb] = await Promise.all([
+        supabase.from('school_departments').select('id,name,head_member_id,sort').eq('school_id', sid).order('sort'),
+        supabase.rpc('school_members_of', { p_school: sid }),
+      ]);
+      setDepts((dp.data as Dept[]) || []);
+      setMembers((mb.data as Member[]) || []);
+    },
+    [supabase]
+  );
+
   const load = useCallback(
     async (sid: string) => {
       setLoading(true);
@@ -112,9 +151,10 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
       setStages((st.data as Stage[]) || []);
       setGrades((gr.data as Grade[]) || []);
       setClasses((cl.data as Klass[]) || []);
+      await loadMembersDepts(sid);
       setLoading(false);
     },
-    [supabase]
+    [supabase, loadMembersDepts]
   );
 
   useEffect(() => {
@@ -199,6 +239,53 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     setClasses((c) => c.filter((x) => x.id !== id));
   };
 
+  // ── عمليات الشُّعب والمعلمات ───────────────────────────────────
+  const addDept = async (name: string) => {
+    const { data, error } = await supabase
+      .from('school_departments')
+      .insert({ school_id: schoolId, name, sort: nextSort(depts) })
+      .select('id,name,head_member_id,sort')
+      .single();
+    if (error || !data) return showToast('تعذّرت الإضافة');
+    setDepts((d) => [...d, data as Dept]);
+  };
+  const renameDept = async (id: string, name: string) => {
+    const { error } = await supabase.from('school_departments').update({ name }).eq('id', id);
+    if (error) return showToast('تعذّر التعديل');
+    setDepts((d) => d.map((x) => (x.id === id ? { ...x, name } : x)));
+  };
+  const delDept = async (id: string) => {
+    if (!window.confirm('حذف الشعبة؟ (المعلمات يبقون بالمدرسة بلا شعبة)')) return;
+    const { error } = await supabase.from('school_departments').delete().eq('id', id);
+    if (error) return showToast('تعذّر الحذف');
+    setDepts((d) => d.filter((x) => x.id !== id));
+    setMembers((m) => m.map((x) => (x.department_id === id ? { ...x, department_id: null } : x)));
+  };
+  const setHead = async (deptId: string, memberId: string | null) => {
+    const { error } = await supabase.from('school_departments').update({ head_member_id: memberId }).eq('id', deptId);
+    if (error) return showToast('تعذّر التعيين');
+    setDepts((d) => d.map((x) => (x.id === deptId ? { ...x, head_member_id: memberId } : x)));
+  };
+  const addMember = async (login: string, role: string, deptId: string | null) => {
+    const { data, error } = await supabase.rpc('school_add_member', {
+      p_school: schoolId,
+      p_login: normLogin(login),
+      p_role: role,
+      p_dept: deptId,
+    });
+    if (error) return showToast('تعذّرت الإضافة');
+    if (data === 'not_found') return showToast('ما لقينا حساب بهذا الرقم/الإيميل');
+    showToast('تمت الإضافة ✅');
+    if (schoolId) loadMembersDepts(schoolId);
+  };
+  const removeMember = async (id: string) => {
+    if (!window.confirm('إزالة العضو من المدرسة؟')) return;
+    const { error } = await supabase.from('school_members').delete().eq('id', id);
+    if (error) return showToast('تعذّرت الإزالة');
+    setMembers((m) => m.filter((x) => x.id !== id));
+    setDepts((d) => d.map((x) => (x.head_member_id === id ? { ...x, head_member_id: null } : x)));
+  };
+
   // ── العرض ─────────────────────────────────────────────────────
   if (!schoolId) {
     return (
@@ -242,12 +329,26 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           delGrade={delGrade}
           delClass={delClass}
         />
+      ) : view === 'departments' ? (
+        <DepartmentsView
+          depts={depts}
+          members={members}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          addDept={addDept}
+          renameDept={renameDept}
+          delDept={delDept}
+          setHead={setHead}
+          addMember={addMember}
+          removeMember={removeMember}
+        />
       ) : (
         <Dashboard
           school={school}
-          counts={{ stages: stages.length, grades: grades.length, classes: classes.length }}
+          counts={{ stages: stages.length, grades: grades.length, classes: classes.length, depts: depts.length, members: members.length }}
           onOpen={(k) => {
             if (k === 'structure') setView('structure');
+            else if (k === 'departments') setView('departments');
           }}
         />
       )}
@@ -443,13 +544,171 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /* ───────────────────────── اللوحة ───────────────────────── */
+/* ───────────────────────── الشُّعب والمعلمات ───────────────────────── */
+function DepartmentsView({
+  depts,
+  members,
+  canManage,
+  onBack,
+  addDept,
+  renameDept,
+  delDept,
+  setHead,
+  addMember,
+  removeMember,
+}: {
+  depts: Dept[];
+  members: Member[];
+  canManage: boolean;
+  onBack: () => void;
+  addDept: (name: string) => void;
+  renameDept: (id: string, name: string) => void;
+  delDept: (id: string) => void;
+  setHead: (deptId: string, memberId: string | null) => void;
+  addMember: (login: string, role: string, deptId: string | null) => void;
+  removeMember: (id: string) => void;
+}) {
+  const [newDept, setNewDept] = useState('');
+  const noDept = members.filter((m) => !m.department_id);
+
+  const MemberRow = ({ m }: { m: Member }) => (
+    <div className="flex items-center gap-2 py-1">
+      <span className="w-6 text-center text-sage/40">•</span>
+      <div className="flex-1 text-[13px] text-ink">
+        {m.name || '—'} <span className="text-[11px] text-ink/45">({ROLE_LABEL[m.role] || m.role})</span>
+      </div>
+      {canManage ? (
+        <button onClick={() => removeMember(m.id)} aria-label="إزالة" className="text-red-400 hover:text-red-600 text-sm px-1">🗑</button>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">الشُّعب والمعلمات</div>
+      </div>
+
+      {canManage ? (
+        <div className="flex gap-2">
+          <input
+            value={newDept}
+            onChange={(e) => setNewDept(e.target.value)}
+            placeholder="شعبة جديدة (مثال: التربية الإسلامية)"
+            className="flex-1 rounded-xl border border-sage/25 p-2.5 text-sm focus:outline-none focus:border-sage bg-white"
+          />
+          <button
+            onClick={() => {
+              if (newDept.trim()) {
+                addDept(newDept.trim());
+                setNewDept('');
+              }
+            }}
+            className="rounded-xl bg-sage-deep text-white font-bold text-sm px-4"
+          >
+            ＋ شعبة
+          </button>
+        </div>
+      ) : null}
+
+      {depts.length === 0 ? (
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">لا شُعب بعد.{canManage ? ' أضيفي أول شعبة.' : ''}</div>
+      ) : (
+        depts.map((d) => {
+          const mm = members.filter((m) => m.department_id === d.id);
+          const head = members.find((m) => m.id === d.head_member_id);
+          return (
+            <div key={d.id} className="card-3d bg-white rounded-2xl p-3">
+              <Row
+                label={d.name}
+                bold
+                canManage={canManage}
+                onRename={() => {
+                  const n = window.prompt('اسم الشعبة', d.name);
+                  if (n && n.trim()) renameDept(d.id, n.trim());
+                }}
+                onDelete={() => delDept(d.id)}
+              />
+              <div className="mt-2 pr-3 border-r-2 border-sage/10 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[12px] font-bold text-gold-deep">رئيسة الشعبة:</span>
+                  <span className="text-[13px] text-ink">{head?.name || '— لم تُعيّن —'}</span>
+                  {canManage ? (
+                    <select
+                      value={d.head_member_id || ''}
+                      onChange={(e) => setHead(d.id, e.target.value || null)}
+                      className="rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
+                    >
+                      <option value="">— تعيين رئيسة —</option>
+                      {mm.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name || '—'}</option>
+                      ))}
+                    </select>
+                  ) : null}
+                </div>
+                <div>
+                  <div className="text-[12px] font-bold text-sage-deep mb-1">المعلمات ({mm.length})</div>
+                  {mm.length ? mm.map((m) => <MemberRow key={m.id} m={m} />) : <div className="text-[12px] text-ink/35">— لا معلمات —</div>}
+                </div>
+                {canManage ? <AddInline placeholder="رقم/إيميل المعلمة لإضافتها" onAdd={(v) => addMember(v, 'teacher', d.id)} /> : null}
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      {/* الإدارة / أعضاء بلا شعبة */}
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep mb-2">الإدارة وأعضاء بلا شعبة</div>
+        {noDept.length ? noDept.map((m) => <MemberRow key={m.id} m={m} />) : <div className="text-[12px] text-ink/35 mb-2">— لا أحد —</div>}
+        {canManage ? <AddPerson onAdd={(login, role) => addMember(login, role, null)} /> : null}
+      </div>
+    </div>
+  );
+}
+
+/** إضافة عضو إداري (بدور محدّد) بلا شعبة. */
+function AddPerson({ onAdd }: { onAdd: (login: string, role: string) => void }) {
+  const [login, setLogin] = useState('');
+  const [role, setRole] = useState('principal');
+  return (
+    <div className="flex gap-1.5 mt-2 flex-wrap">
+      <input
+        value={login}
+        onChange={(e) => setLogin(e.target.value)}
+        placeholder="رقم/إيميل الحساب"
+        className="flex-1 min-w-[140px] rounded-lg border border-sage/20 p-2 text-[13px] focus:outline-none focus:border-sage bg-white"
+      />
+      <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+        <option value="principal">مديرة المدرسة</option>
+        <option value="deputy">مديرة مساعدة</option>
+        <option value="supervisor">مشرفة</option>
+        <option value="student_affairs">شؤون الطلبة</option>
+        <option value="teacher">معلمة</option>
+      </select>
+      <button
+        onClick={() => {
+          if (login.trim()) {
+            onAdd(login.trim(), role);
+            setLogin('');
+          }
+        }}
+        className="rounded-lg bg-sage-light text-sage-deep font-bold text-[12px] px-3"
+      >
+        ＋ إضافة
+      </button>
+    </div>
+  );
+}
+
 function Dashboard({
   school,
   counts,
   onOpen,
 }: {
   school: School | null;
-  counts: { stages: number; grades: number; classes: number };
+  counts: { stages: number; grades: number; classes: number; depts: number; members: number };
   onOpen: (key: string) => void;
 }) {
   const today = new Intl.DateTimeFormat('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
@@ -463,9 +722,9 @@ function Dashboard({
           {school?.term ? `الفصل ${school.term}` : ''}
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat n={counts.stages} l="مراحل" />
-          <Stat n={counts.grades} l="صفوف" />
           <Stat n={counts.classes} l="فصول" />
+          <Stat n={counts.depts} l="شُعب" />
+          <Stat n={counts.members} l="معلمات" />
         </div>
         <div className="text-[11.5px] text-ink/45 mt-3">الملخص اليومي للحضور والاحتياط والمناوبات يظهر بعد تفعيل تلك الأقسام.</div>
       </div>
