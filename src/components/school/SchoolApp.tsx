@@ -15,7 +15,7 @@ const DISP = { fontFamily: "var(--font-cairo), 'Tajawal', sans-serif" } as const
 const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const IPT = 'w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage';
 
-type School = { id: string; name: string; academic_year: string | null; term: string | null; work_days: number[] };
+type School = { id: string; name: string; academic_year: string | null; term: string | null; work_days: number[]; timetable_status?: string | null };
 type Stage = { id: string; name: string; sort: number };
 type Grade = { id: string; stage_id: string; name: string; sort: number };
 type Klass = { id: string; grade_id: string; name: string; sort: number; archived: boolean };
@@ -442,7 +442,7 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     async (sid: string) => {
       setLoading(true);
       const [s, st, gr, cl] = await Promise.all([
-        supabase.from('schools').select('id,name,academic_year,term,work_days').eq('id', sid).maybeSingle(),
+        supabase.from('schools').select('id,name,academic_year,term,work_days,timetable_status').eq('id', sid).maybeSingle(),
         supabase.from('school_stages').select('id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_grades').select('id,stage_id,name,sort').eq('school_id', sid).order('sort'),
         supabase.from('school_classes').select('id,grade_id,name,sort,archived').eq('school_id', sid).order('sort'),
@@ -716,6 +716,12 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
     const { error } = await supabase.from('school_timetable_entries').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
     setEntries((e) => e.filter((x) => x.id !== id));
+  };
+  const setTimetableStatus = async (status: string) => {
+    const { error } = await supabase.from('schools').update({ timetable_status: status }).eq('id', schoolId);
+    if (error) return showToast('تعذّر التحديث');
+    setSchool((s) => (s ? { ...s, timetable_status: status } : s));
+    showToast(status === 'approved' ? 'تم اعتماد الجدول ✅' : 'رجع مسودة');
   };
 
   // ── التوليد التلقائي (محرّك القيود) ───────────────────────────
@@ -1011,6 +1017,8 @@ export default function SchoolApp({ firstName, isAdmin }: { firstName: string; i
           generateTimetable={generateTimetable}
           generating={generating}
           genReport={genReport}
+          timetableStatus={school?.timetable_status || 'draft'}
+          setTimetableStatus={setTimetableStatus}
         />
       ) : view === 'attendance' ? (
         <AttendanceView
@@ -1489,6 +1497,8 @@ function TimetableView({
   generateTimetable,
   generating,
   genReport,
+  timetableStatus,
+  setTimetableStatus,
 }: {
   school: School | null;
   periods: Period[];
@@ -1508,6 +1518,8 @@ function TimetableView({
   generateTimetable: (rules?: Rule[]) => void;
   generating: boolean;
   genReport: { placed: number; unplaced: SolveTask[] } | null;
+  timetableStatus: string;
+  setTimetableStatus: (s: string) => void;
 }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState('lesson');
@@ -1549,6 +1561,17 @@ function TimetableView({
       <div className="flex items-center gap-2">
         <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
         <div className="font-extrabold text-sage-deep flex-1">الجدول المدرسي</div>
+        <span className={`text-[11px] rounded-full px-2.5 py-1 font-bold ${timetableStatus === 'approved' ? 'bg-sage-deep text-white' : 'bg-gold/15 text-gold-deep'}`}>
+          {timetableStatus === 'approved' ? '✓ معتمد' : 'مسودة'}
+        </span>
+        {canManage ? (
+          <button
+            onClick={() => setTimetableStatus(timetableStatus === 'approved' ? 'draft' : 'approved')}
+            className={`rounded-lg text-[11.5px] font-bold px-3 py-1.5 ${timetableStatus === 'approved' ? 'border border-sage/25 text-sage-deep' : 'bg-sage-deep text-white'}`}
+          >
+            {timetableStatus === 'approved' ? 'إرجاع لمسودة' : 'اعتماد الجدول'}
+          </button>
+        ) : null}
       </div>
 
       <div className="rounded-2xl bg-sage-light/40 border border-sage/15 p-3 text-[12.5px] text-ink/70">
