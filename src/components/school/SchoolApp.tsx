@@ -408,6 +408,14 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   // ── وضع صاحبة الصلاحيات (غير الإدارة وغير المشرفة، لها صلاحيات ممنوحة) ──
   const myPerms = permissions.filter((p) => p.user_id === uid);
   const permManage = (mod: string) => canManage || myPerms.some((p) => p.module === mod && ['add', 'edit', 'delete', 'approve'].includes(p.action));
+
+  // ── وضع منسقة المادة (رئيسة شعبة): تدير توزيع مواد شعبتها ──────
+  const myHeadDepts = myMember ? depts.filter((d) => d.head_member_id === myMember.id) : [];
+  const isCoordinator = !canManage && !isSupervisor && !!myMember?.user_id && myHeadDepts.length > 0;
+  const coordDeptIds = new Set(myHeadDepts.map((d) => d.id));
+  const coordSubjects = subjects.filter((s) => s.department_id && coordDeptIds.has(s.department_id));
+  const coordSubjectIds = new Set(coordSubjects.map((s) => s.id));
+  const coordTeaching = teaching.filter((t) => coordSubjectIds.has(t.subject_id));
   // خريطة الوحدة ← بطاقة القسم (الوحدات المدعومة بصلاحية دقيقة: الهيكل/الطالبات/الحضور)
   const MOD_KEY: Record<string, string> = { structure: 'structure', students: 'students', attendance: 'attendance' };
   const allowedKeys = canManage ? null : Array.from(new Set(myPerms.map((p) => MOD_KEY[p.module]).filter(Boolean)));
@@ -1120,12 +1128,13 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         />
       ) : view === 'teaching' ? (
         <TeachingView
-          subjects={subjects}
-          teaching={teaching}
+          subjects={isCoordinator ? coordSubjects : subjects}
+          teaching={isCoordinator ? coordTeaching : teaching}
           members={members}
           grades={grades}
           classes={classes}
-          canManage={canManage}
+          canManage={isCoordinator ? true : canManage}
+          subjectsManage={isCoordinator ? false : canManage}
           onBack={() => setView('dash')}
           addSubject={addSubject}
           renameSubject={renameSubject}
@@ -1279,6 +1288,12 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
             } else if (k === 'notes') setView('notes');
             else if (k === 'duty') setView('duty');
           }}
+        />
+      ) : isCoordinator ? (
+        <CoordinatorHome
+          name={myMember?.name || firstName}
+          depts={myHeadDepts}
+          onOpen={() => setView('teaching')}
         />
       ) : (
         <Dashboard
@@ -2028,6 +2043,7 @@ function TeachingView({
   grades,
   classes,
   canManage,
+  subjectsManage,
   onBack,
   addSubject,
   renameSubject,
@@ -2042,6 +2058,7 @@ function TeachingView({
   grades: Grade[];
   classes: Klass[];
   canManage: boolean;
+  subjectsManage?: boolean;
   onBack: () => void;
   addSubject: (name: string) => void;
   renameSubject: (id: string, name: string) => void;
@@ -2065,6 +2082,7 @@ function TeachingView({
   };
 
   const teachers = members.filter((m) => teaching.some((t) => t.member_id === m.id));
+  const sm = subjectsManage ?? canManage;
 
   return (
     <div className="space-y-3">
@@ -2083,7 +2101,7 @@ function TeachingView({
                 key={s.id}
                 label={s.name}
                 small
-                canManage={canManage}
+                canManage={sm}
                 onRename={() => {
                   const n = window.prompt('اسم المادة', s.name);
                   if (n && n.trim()) renameSubject(s.id, n.trim());
@@ -2095,7 +2113,7 @@ function TeachingView({
         ) : (
           <div className="text-[12px] text-ink/35 mb-2">— لا مواد بعد —</div>
         )}
-        {canManage ? <AddInline placeholder="مادة جديدة (مثال: اللغة العربية)" onAdd={addSubject} /> : null}
+        {sm ? <AddInline placeholder="مادة جديدة (مثال: اللغة العربية)" onAdd={addSubject} /> : null}
       </div>
 
       {/* التوزيع */}
@@ -3368,6 +3386,28 @@ function PermissionsView({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ───────────────────────── لوحة منسقة المادة (رئيسة الشعبة) ───────────────────────── */
+function CoordinatorHome({ name, depts, onOpen }: { name: string; depts: Dept[]; onOpen: () => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="card-3d bg-white rounded-2xl p-3">
+        <div className="font-extrabold text-sage-deep">📚 لوحة رئيسة الشعبة — {name}</div>
+        <div className="text-[12px] text-ink/60 mt-1">شُعبك:</div>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {depts.map((d) => (
+            <span key={d.id} className="text-[11px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">{d.name}</span>
+          ))}
+        </div>
+      </div>
+      <button onClick={onOpen} className="card-3d bg-white border border-sage/15 hover:border-sage/40 rounded-2xl p-3 text-right w-full">
+        <div className="text-2xl mb-1">📊</div>
+        <div className="font-extrabold text-sage-deep text-[14px]">توزيع المواد</div>
+        <div className="text-[11px] text-ink/55 mt-0.5 leading-snug">وزّعي مواد شعبتك على المعلمات وحدّدي الحصص الأسبوعية</div>
+      </button>
     </div>
   );
 }
