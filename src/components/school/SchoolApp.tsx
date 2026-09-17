@@ -434,13 +434,14 @@ async function extractTimetable(file: File): Promise<{ subject: string; entries:
   const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
   let res: Response;
   try {
-    res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 4096 }) });
+    res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 12000 }) });
   } catch { throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).'); }
   const raw = await res.text();
-  let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
+  let json: { error?: { message?: string }; stop_reason?: string; content?: { type?: string; text?: string }[] } = {};
   try { json = JSON.parse(raw); } catch { /* غير JSON */ }
   if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
   const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
+  if (!text && json?.stop_reason === 'max_tokens') throw new Error('الجدول كبير على القراءة دفعة واحدة. صوّري جزءًا أصغر (صف/صفّين) أو صورة أوضح وأقرب.');
   const obj = text.match(/\{[\s\S]*\}/);
   let parsed: { subject?: string; entries?: { teacher?: string; class?: string; day?: string; period?: number | string }[] } = {};
   if (obj) { try { parsed = JSON.parse(obj[0]); } catch { /* تجاهل */ } }

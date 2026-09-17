@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
   if (!Array.isArray(body?.messages)) return NextResponse.json({ error: { message: 'messages مفقودة' } }, { status: 400 });
   const reqTokens = parseInt(String(body?.max_tokens), 10);
-  const maxTokens = Math.min(4096, Math.max(256, isFinite(reqTokens) ? reqTokens : 1500));
+  const maxTokens = Math.min(16000, Math.max(256, isFinite(reqTokens) ? reqTokens : 1500));
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
