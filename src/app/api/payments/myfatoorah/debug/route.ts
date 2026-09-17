@@ -29,17 +29,19 @@ export async function GET(_req: NextRequest) {
 
   if (!key) return NextResponse.json({ ...out, note: 'MYFATOORAH_API_KEY فارغ على الخادم' });
 
-  try {
-    const r = await fetch(`${base}/v2/SendPayment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ InvoiceValue: 1, CustomerName: 'debug', DisplayCurrencyIso: 'KWD', CallBackUrl: 'https://www.ghiras-edu.com/x', Language: 'AR' }),
-    });
-    const text = await r.text();
-    out.mfHttpStatus = r.status;
-    out.mfResponse = text.slice(0, 500);
-  } catch (e) {
-    out.fetchError = (e as Error).message;
-  }
+  const tryBase = async (b: string) => {
+    try {
+      const r = await fetch(`${b}/v2/SendPayment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ InvoiceValue: 1, CustomerName: 'debug', DisplayCurrencyIso: 'KWD', CallBackUrl: 'https://www.ghiras-edu.com/x', Language: 'AR' }),
+      });
+      const text = await r.text();
+      let ok = false; try { ok = JSON.parse(text)?.IsSuccess === true; } catch { /* */ }
+      return { status: r.status, ok, body: text.slice(0, 200) };
+    } catch (e) { return { error: (e as Error).message }; }
+  };
+  out.LIVE_api = await tryBase('https://api.myfatoorah.com');
+  out.TEST_apitest = await tryBase('https://apitest.myfatoorah.com');
   return NextResponse.json(out);
 }
