@@ -88,6 +88,7 @@ const SECTIONS: { key: string; label: string; emoji: string; soon?: boolean }[] 
   { key: 'students', label: 'الصفوف والمتعلمات', emoji: '👧🏻' },
   { key: 'teaching', label: 'المواد والتوزيع', emoji: '📚' },
   { key: 'timetable', label: 'الجدول المدرسي', emoji: '📅' },
+  { key: 'teacherplan', label: 'جدول المعلمة (يدوي)', emoji: '🗓️' },
   { key: 'smart', label: 'إنشاء الجدول الذكي', emoji: '✨' },
   { key: 'substitution', label: 'الاحتياط', emoji: '🔄' },
   { key: 'duty', label: 'المناوبات', emoji: '📍' },
@@ -539,7 +540,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   const [genReport, setGenReport] = useState<{ placed: number; unplaced: SolveTask[] } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'grades' | 'smartatt' | 'permissions' | 'reports'>('dash');
+  const [view, setView] = useState<'dash' | 'structure' | 'departments' | 'students' | 'teaching' | 'timetable' | 'attendance' | 'staff' | 'substitution' | 'duty' | 'supervision' | 'notes' | 'grades' | 'smartatt' | 'teacherplan' | 'permissions' | 'reports'>('dash');
   const [toast, setToast] = useState('');
 
   const canManage = isAdmin || myRole === 'admin' || myRole === 'principal' || myRole === 'deputy';
@@ -1213,6 +1214,39 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (error) return showToast('تعذّر الحذف');
     setEntries((e) => e.filter((x) => x.id !== id));
   };
+  // مزامنة التوزيع (weekly_hours = عدد حصص المعلمة لهذا الفصل/المادة)
+  const syncTeaching = async (memberId: string, subjectId: string, classId: string, entriesNow: Entry[]) => {
+    const count = entriesNow.filter((e) => e.member_id === memberId && e.subject_id === subjectId && e.class_id === classId).length;
+    const existing = teaching.find((t) => t.member_id === memberId && t.subject_id === subjectId && t.class_id === classId);
+    if (count === 0) {
+      if (existing) { await supabase.from('school_teaching').delete().eq('id', existing.id); setTeaching((t) => t.filter((x) => x.id !== existing.id)); }
+    } else if (existing) {
+      if (existing.weekly_hours !== count) { await supabase.from('school_teaching').update({ weekly_hours: count }).eq('id', existing.id); setTeaching((t) => t.map((x) => (x.id === existing.id ? { ...x, weekly_hours: count } : x))); }
+    } else {
+      const { data } = await supabase.from('school_teaching').insert({ school_id: schoolId, member_id: memberId, subject_id: subjectId, class_id: classId, weekly_hours: count }).select('id,member_id,subject_id,class_id,weekly_hours').single();
+      if (data) setTeaching((t) => [...t, data as Teaching]);
+    }
+  };
+  // تبديل حصة معلمة (يبني الجدول والتوزيع معًا)
+  const toggleTeacherSlot = async (memberId: string, subjectId: string, classId: string, day: number, periodId: string) => {
+    const found = entries.find((e) => e.member_id === memberId && e.class_id === classId && e.day === day && e.period_id === periodId);
+    if (found) {
+      const { error } = await supabase.from('school_timetable_entries').delete().eq('id', found.id);
+      if (error) return showToast('تعذّر الحذف');
+      const next = entries.filter((e) => e.id !== found.id);
+      setEntries(next);
+      await syncTeaching(memberId, subjectId, classId, next);
+    } else {
+      const { data, error } = await supabase.from('school_timetable_entries').insert({ school_id: schoolId, day, period_id: periodId, class_id: classId, member_id: memberId, subject_id: subjectId }).select('id,day,period_id,class_id,member_id,subject_id').single();
+      if (error || !data) {
+        const busy = /tt_member_slot/.test(error?.message || ''); const dup = /tt_class_slot/.test(error?.message || '');
+        return showToast(busy ? '⚠️ المعلمة عندها حصة ثانية هذا الوقت' : dup ? 'الفصل مشغول بمادة أخرى هذا الوقت' : 'تعذّرت الإضافة');
+      }
+      const next = [...entries, data as Entry];
+      setEntries(next);
+      await syncTeaching(memberId, subjectId, classId, next);
+    }
+  };
   const setTimetableStatus = async (status: string) => {
     const { error } = await supabase.from('schools').update({ timetable_status: status }).eq('id', schoolId);
     if (error) return showToast('تعذّر التحديث');
@@ -1575,6 +1609,19 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           timetableStatus={school?.timetable_status || 'draft'}
           setTimetableStatus={setTimetableStatus}
         />
+      ) : view === 'teacherplan' ? (
+        <TeacherPlanView
+          members={members}
+          subjects={subjects}
+          classes={classes}
+          grades={grades}
+          periods={periods}
+          entries={entries}
+          workDays={school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4]}
+          canManage={canManage}
+          onBack={() => setView('dash')}
+          toggleTeacherSlot={toggleTeacherSlot}
+        />
       ) : view === 'attendance' ? (
         <AttendanceView
           stages={attStages}
@@ -1761,6 +1808,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
               setView('students');
             } else if (k === 'teaching') setView('teaching');
             else if (k === 'timetable' || k === 'smart') setView('timetable');
+            else if (k === 'teacherplan') setView('teacherplan');
             else if (k === 'supervision') setView('supervision');
             else if (k === 'notes') setView('notes');
             else if (k === 'grades') setView('grades');
@@ -2218,6 +2266,117 @@ function AddPerson({ onAdd }: { onAdd: (name: string, role: string) => void }) {
 }
 
 /* ───────────────────────── الجدول: أوقات اليوم + الشبكة ───────────────────────── */
+/* ───────────────────────── جدول المعلمة (يدوي) ───────────────────────── */
+function TeacherPlanView({
+  members,
+  subjects,
+  classes,
+  grades,
+  periods,
+  entries,
+  workDays,
+  canManage,
+  onBack,
+  toggleTeacherSlot,
+}: {
+  members: Member[];
+  subjects: Subject[];
+  classes: Klass[];
+  grades: Grade[];
+  periods: Period[];
+  entries: Entry[];
+  workDays: number[];
+  canManage: boolean;
+  onBack: () => void;
+  toggleTeacherSlot: (memberId: string, subjectId: string, classId: string, day: number, periodId: string) => void;
+}) {
+  const [mem, setMem] = useState('');
+  const [subj, setSubj] = useState('');
+  const [cls, setCls] = useState('');
+  const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+  const classLabel = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? `${g.name} · ${c.name}` : c.name; };
+  const openClasses = classes.filter((c) => !c.archived);
+  const lessonPeriods = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort);
+  const wd = workDays.slice().sort((a, b) => a - b);
+
+  const entryAt = (d: number, pid: string) => entries.find((e) => e.member_id === mem && e.class_id === cls && e.day === d && e.period_id === pid);
+  const memBusyElsewhere = (d: number, pid: string) => entries.some((e) => e.member_id === mem && e.day === d && e.period_id === pid && e.class_id !== cls);
+  const myCount = entries.filter((e) => e.member_id === mem && e.class_id === cls && e.subject_id === subj).length;
+  const ready = mem && subj && cls;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="rounded-lg border border-sage/25 text-sage-deep text-[12px] font-bold px-3 py-1.5">‹ اللوحة</button>
+        <div className="font-extrabold text-sage-deep flex-1">جدول المعلمة</div>
+      </div>
+
+      <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
+        اختاري المعلمة ومادتها وفصلها، ثم اضغطي خانات حصصها في الشبكة. يُبنى الجدول والتوزيع تلقائيًا (عدد الحصص = عدد الخانات).
+      </div>
+
+      <div className="card-3d bg-white rounded-2xl p-3 grid grid-cols-1 gap-1.5">
+        <select value={mem} onChange={(e) => setMem(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+          <option value="">المعلمة</option>
+          {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        <div className="grid grid-cols-2 gap-1.5">
+          <select value={subj} onChange={(e) => setSubj(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+            <option value="">المادة</option>
+            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select value={cls} onChange={(e) => setCls(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+            <option value="">الفصل</option>
+            {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {!ready ? (
+        <div className="text-[12px] text-ink/40 text-center py-4">اختاري المعلمة والمادة والفصل لتظهر الشبكة.</div>
+      ) : lessonPeriods.length === 0 ? (
+        <div className="text-[12px] text-ink/45 text-center py-4">أضيفي «أوقات اليوم» (حصص) من «الجدول المدرسي» أولًا.</div>
+      ) : (
+        <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
+          <div className="text-[11px] text-ink/55 px-1 mb-1">حصص هذا الفصل لهذه المعلمة: <b className="text-sage-deep">{myCount}</b> — اضغطي الخانة للإضافة/الإلغاء.</div>
+          <table className="border-collapse text-[11px]">
+            <thead>
+              <tr>
+                <th className="p-1 sticky right-0 bg-white"></th>
+                {lessonPeriods.map((p) => <th key={p.id} className="p-1 text-center whitespace-nowrap text-sage-deep font-bold">{p.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {wd.map((d) => (
+                <tr key={d}>
+                  <td className="p-1 font-bold text-ink sticky right-0 bg-white whitespace-nowrap">{WEEKDAYS[d]}</td>
+                  {lessonPeriods.map((p) => {
+                    const has = !!entryAt(d, p.id);
+                    const busy = !has && memBusyElsewhere(d, p.id);
+                    return (
+                      <td key={p.id} className="p-0.5 text-center">
+                        <button
+                          onClick={() => canManage && toggleTeacherSlot(mem, subj, cls, d, p.id)}
+                          disabled={!canManage}
+                          title={busy ? 'المعلمة مشغولة بفصل آخر هذا الوقت' : ''}
+                          className={`w-9 h-9 rounded-lg text-sm font-bold border ${has ? 'bg-sage-deep text-white border-sage-deep' : busy ? 'bg-gold/10 text-gold-deep border-gold/20' : 'bg-white text-ink/30 border-sage/20'}`}
+                        >
+                          {has ? '✓' : busy ? '•' : ''}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="text-[10px] text-ink/45 mt-1 px-1">✓ حصة لهذه المعلمة · • مشغولة بفصل آخر (لا يمكن) · فارغة = متاحة</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TimetableView({
   school,
   periods,
