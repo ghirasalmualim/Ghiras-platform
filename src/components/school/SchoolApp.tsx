@@ -2794,6 +2794,7 @@ function TeachingView({
   const [openTeach, setOpenTeach] = useState<Set<string>>(new Set());
   const toggleTeach = (id: string) => setOpenTeach((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [listOpen, setListOpen] = useState(true);
+  const [showShared, setShowShared] = useState(false);
   const [ttBusy, setTtBusy] = useState(false);
   const [ttDraft, setTtDraft] = useState<{ subject: string; entries: TTEntry[] } | null>(null);
   const [ttMsg, setTtMsg] = useState('');
@@ -2895,7 +2896,31 @@ function TeachingView({
 
       {/* التوزيع */}
       <div className="card-3d bg-white rounded-2xl p-3">
-        <div className="font-extrabold text-sage-deep mb-2">التوزيع</div>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="font-extrabold text-sage-deep flex-1">التوزيع</div>
+          {(() => {
+            const map = new Map<string, { subject_id: string; class_id: string; mids: Set<string> }>();
+            teaching.forEach((t) => { const k = `${t.subject_id}|${t.class_id}`; const g = map.get(k) || { subject_id: t.subject_id, class_id: t.class_id, mids: new Set<string>() }; g.mids.add(t.member_id); map.set(k, g); });
+            const shared = Array.from(map.values()).filter((g) => g.mids.size > 1);
+            return shared.length ? <button onClick={() => setShowShared(!showShared)} className="text-[11px] text-gold-deep border border-gold/30 rounded-lg px-2 py-0.5 font-bold">🔗 فصول مشتركة ({shared.length})</button> : null;
+          })()}
+        </div>
+        {showShared ? (() => {
+          const map = new Map<string, { subject_id: string; class_id: string; mids: string[] }>();
+          teaching.forEach((t) => { const k = `${t.subject_id}|${t.class_id}`; const g = map.get(k) || { subject_id: t.subject_id, class_id: t.class_id, mids: [] }; if (!g.mids.includes(t.member_id)) g.mids.push(t.member_id); map.set(k, g); });
+          const shared = Array.from(map.values()).filter((g) => g.mids.length > 1);
+          return (
+            <div className="rounded-xl bg-gold/5 border border-gold/20 p-2.5 mb-2 space-y-1.5">
+              <div className="text-[11px] font-bold text-gold-deep">الفصول التي تشترك فيها أكثر من معلمة (نفس المادة):</div>
+              {shared.length === 0 ? <div className="text-[12px] text-ink/40">— لا فصول مشتركة —</div> : shared.map((g, i) => (
+                <div key={i} className="text-[12px] border-b border-gold/10 pb-1 last:border-0">
+                  <div className="font-bold text-sage-deep">{subjectName(g.subject_id)} · {classLabel(g.class_id)}</div>
+                  <div className="text-ink/70">{g.mids.map((id) => memberName(id)).join(' + ')}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })() : null}
 
         {canManage ? (
           subjects.length && members.length && classes.length ? (
