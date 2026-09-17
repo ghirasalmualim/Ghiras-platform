@@ -2782,6 +2782,8 @@ function TeachingView({
   const [cSel, setCSel] = useState('');
   const [hSel, setHSel] = useState('3');
   const [mSearch, setMSearch] = useState('');
+  const [openTeach, setOpenTeach] = useState<Set<string>>(new Set());
+  const toggleTeach = (id: string) => setOpenTeach((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [ttBusy, setTtBusy] = useState(false);
   const [ttDraft, setTtDraft] = useState<{ subject: string; entries: TTEntry[] } | null>(null);
   const [ttMsg, setTtMsg] = useState('');
@@ -2944,12 +2946,16 @@ function TeachingView({
           teachers.map((m) => {
             const rows = teaching.filter((t) => t.member_id === m.id);
             const total = rows.reduce((a, t) => a + t.weekly_hours, 0);
+            const open = openTeach.has(m.id);
             return (
-              <div key={m.id} className="mb-3">
-                <div className="font-bold text-ink text-[13.5px] mb-1">
-                  {m.name} <span className="text-[11px] text-ink/45">({total} حصة أسبوعيًا)</span>
-                </div>
-                <div className="pr-3 border-r-2 border-sage/10 space-y-1">
+              <div key={m.id} className="mb-2 border-b border-sage/10 pb-2 last:border-0">
+                <button onClick={() => toggleTeach(m.id)} className="w-full flex items-center gap-2 text-right">
+                  <span className="text-ink/40 text-[11px] w-3">{open ? '▼' : '▶'}</span>
+                  <span className="font-bold text-ink text-[13.5px] flex-1">{m.name}</span>
+                  <span className="text-[10px] bg-sage/10 text-sage-deep rounded-full px-2 py-0.5">{total} حصة</span>
+                </button>
+                {open ? (
+                <div className="pr-3 border-r-2 border-sage/10 space-y-1 mt-1">
                   {rows.map((t) => (
                     <div key={t.id} className="flex items-center gap-2 text-[12.5px]">
                       <div className="flex-1 text-ink">{subjectName(t.subject_id)} · {classLabel(t.class_id)}</div>
@@ -2971,6 +2977,7 @@ function TeachingView({
                     </div>
                   ))}
                 </div>
+                ) : null}
               </div>
             );
           })
