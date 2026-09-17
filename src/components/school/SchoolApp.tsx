@@ -2935,7 +2935,17 @@ function TeachingView({
                     <div className="flex gap-1.5">
                       <input type="number" min={1} value={hSel} onChange={(e) => setHSel(e.target.value)} className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2" title="حصص أسبوعية" />
                       <button
-                        onClick={() => { if (mSel && sSel && cSel) { addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1)); setCSel(''); setMSearch(''); } }}
+                        onClick={() => {
+                          if (!(mSel && sSel && cSel)) return;
+                          const other = teaching.find((t) => t.subject_id === sSel && t.class_id === cSel && t.member_id !== mSel);
+                          if (other) {
+                            const otherName = members.find((m) => m.id === other.member_id)?.name || 'معلمة أخرى';
+                            if (!window.confirm(`⚠️ الفصل «${classLabel(cSel)}» مُسند أصلًا إلى «${otherName}» لنفس المادة.\nتبين تضيفين هذه المعلمة معها (يشاركن الفصل)؟\n\nموافق = أضيفها · إلغاء = غيّري الفصل/المعلمة`)) return;
+                          }
+                          addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1));
+                          setCSel('');
+                          setMSearch('');
+                        }}
                         className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] px-2"
                       >
                         ＋ توزيع
