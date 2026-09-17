@@ -987,6 +987,16 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     setAllStudents((s) => s.filter((x) => x.id !== id));
     setStudents((s) => s.filter((x) => x.id !== id));
   };
+  const clearClassStudents = async (classId: string) => {
+    const n = allStudents.filter((s) => s.class_id === classId).length;
+    if (!n) return;
+    if (!window.confirm(`مسح كل متعلمات هذا الفصل (${n}) نهائيًا؟ لا يمكن التراجع.`)) return;
+    const { error } = await supabase.from('school_students').delete().eq('school_id', schoolId).eq('class_id', classId);
+    if (error) return showToast('تعذّر المسح');
+    setAllStudents((s) => s.filter((x) => x.class_id !== classId));
+    setStudents((s) => s.filter((x) => x.class_id !== classId));
+    showToast(`تم مسح ${n} متعلمة`);
+  };
   const importStudents = async (classId: string, names: string[]) => {
     const inClass = allStudents.filter((s) => s.class_id === classId);
     const existing = new Set(inClass.map((s) => normName(s.name)));
@@ -1403,6 +1413,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           updateStudent={updateStudent}
           moveStudent={moveStudent}
           delStudent={delStudent}
+          clearClassStudents={clearClassStudents}
           importStudents={importStudents}
         />
       ) : view === 'teaching' ? (
@@ -3499,6 +3510,7 @@ function StudentsView({
   updateStudent,
   moveStudent,
   delStudent,
+  clearClassStudents,
   importStudents,
 }: {
   stages: Stage[];
@@ -3511,6 +3523,7 @@ function StudentsView({
   updateStudent: (id: string, patch: Partial<Student>) => void;
   moveStudent: (id: string, toClassId: string) => void;
   delStudent: (id: string) => void;
+  clearClassStudents: (classId: string) => void;
   importStudents: (classId: string, names: string[]) => void;
 }) {
   const [q, setQ] = useState('');
@@ -3621,7 +3634,12 @@ function StudentsView({
                             {list.length === 0 ? (
                               <div className="text-[12px] text-ink/35 py-1">— لا متعلمات —</div>
                             ) : (
-                              <div className="pr-1">{list.map((s) => <StudentRow key={s.id} s={s} />)}</div>
+                              <>
+                                <div className="pr-1">{list.map((s) => <StudentRow key={s.id} s={s} />)}</div>
+                                {canManage ? (
+                                  <button onClick={() => clearClassStudents(c.id)} className="mt-1.5 text-[11px] text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-2 py-1">🗑 مسح كل متعلمات الفصل ({list.length})</button>
+                                ) : null}
+                              </>
                             )}
                           </div>
                         ) : null}
