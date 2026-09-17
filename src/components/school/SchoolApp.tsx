@@ -1576,6 +1576,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           canManage={isCoordinator ? true : canManage}
           subjectsManage={isCoordinator ? false : canManage}
           deptCount={depts.length}
+          depts={depts}
           genSubjectsFromDepts={genSubjectsFromDepts}
           importTimetable={applyTimetableImport}
           onBack={() => setView('dash')}
@@ -2724,6 +2725,7 @@ function TeachingView({
   canManage,
   subjectsManage,
   deptCount,
+  depts = [],
   genSubjectsFromDepts,
   importTimetable,
   onBack,
@@ -2742,6 +2744,7 @@ function TeachingView({
   canManage: boolean;
   subjectsManage?: boolean;
   deptCount?: number;
+  depts?: Dept[];
   genSubjectsFromDepts?: () => void;
   importTimetable?: (subjectName: string, entries: TTEntry[]) => Promise<string>;
   onBack: () => void;
@@ -2864,7 +2867,15 @@ function TeachingView({
           subjects.length && members.length && classes.length ? (
             (() => {
               const selSubject = subjects.find((s) => s.id === sSel);
-              const pool = selSubject?.department_id ? members.filter((m) => m.department_id === selSubject.department_id) : members;
+              const sn = normName(selSubject?.name || '');
+              // حلّ الشعبة: بالرابط المباشر، وإلا بمطابقة الاسم/تضمّنه
+              const deptId = selSubject?.department_id
+                || depts.find((d) => normName(d.name) === sn)?.id
+                || depts.find((d) => sn && (normName(d.name).includes(sn) || sn.includes(normName(d.name))))?.id
+                || null;
+              const inDept = deptId ? members.filter((m) => m.department_id === deptId) : [];
+              const pool = inDept.length ? inDept : members; // إن لم توجد معلمات بالشعبة نعرض الكل
+              const filteredBySubject = inDept.length > 0;
               const shownTeachers = pool.filter((m) => !mSearch.trim() || (m.name || '').includes(mSearch.trim())).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
               return (
                 <div className="space-y-1.5 mb-3">
@@ -2876,9 +2887,10 @@ function TeachingView({
                     <>
                       <input value={mSearch} onChange={(e) => setMSearch(e.target.value)} placeholder="🔍 ابحثي عن معلمة" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
                       <select value={mSel} onChange={(e) => setMSel(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                        <option value="">{selSubject?.department_id ? `معلمات المادة (${shownTeachers.length})` : 'المعلمة'}</option>
+                        <option value="">{filteredBySubject ? `معلمات المادة (${shownTeachers.length})` : 'المعلمة (كل المدرسة)'}</option>
                         {shownTeachers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                       </select>
+                      {!filteredBySubject ? <div className="text-[10px] text-gold-deep">لا معلمات مربوطات بشعبة هذه المادة — تأكدي أن معلمات الإسلامية داخل شعبتها في «الشُّعب والمعلمات».</div> : null}
                     </>
                   ) : null}
                   <div className="grid grid-cols-2 gap-1.5">
