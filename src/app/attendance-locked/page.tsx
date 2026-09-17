@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة «سجل الحضور الذكي — خاص بالمشتركات».
@@ -42,6 +43,9 @@ export default function AttendanceLockedPage() {
           <br />
           والدفع الإلكتروني المباشر قريبًا 🌱
         </p>
+
+        <SubscribeButton productId="attendance" />
+
 
         <Link
           href="/support"

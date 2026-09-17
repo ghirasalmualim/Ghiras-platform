@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة الشراء لـ«جدول الضرب التفاعلي» — منتج مستقل بسعره الخاص (٣ د.ك).
@@ -52,6 +53,8 @@ export default function MultiplicationLockedPage() {
         </ul>
 
         {/* زر الشراء/التواصل */}
+        <SubscribeButton productId="multiplication" />
+
         <Link
           href="/support"
           className="mt-7 inline-block w-full rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-4 shadow-soft transition-all"

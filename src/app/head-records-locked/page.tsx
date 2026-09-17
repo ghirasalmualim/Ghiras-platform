@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة «الأداة للمشتركين» — تظهر عند محاولة فتح سجلات رئيس الشعبة
@@ -29,6 +30,9 @@ export default function HeadRecordsLockedPage() {
           <br />
           للاشتراك أو التفعيل، يرجى التواصل مع إدارة غراس المعلم.
         </p>
+
+        <SubscribeButton productId="head_records" />
+
 
         <Link
           href="/support"

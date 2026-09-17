@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة الشراء لـ«الساعة التفاعلية» — منتج مستقل بسعره الخاص.
@@ -56,6 +57,8 @@ export default function ClockLockedPage() {
         <div className="mt-7 w-full rounded-xl bg-sage/10 border border-sage/30 px-6 py-4 text-sage-dark font-extrabold">
           لتفعيل الساعة التفاعلية، تواصل مع إدارة غراس المعلم
         </div>
+        <SubscribeButton productId="clock" />
+
         <Link
           href="/support"
           className="mt-4 inline-block w-full rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"

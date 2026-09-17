@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة «مغامرة المجموعات التفاعلية — خاص بالمشتركات».
@@ -46,6 +47,9 @@ export default function AdventureLockedPage() {
           <br />
           والدفع الإلكتروني المباشر قريبًا 🌱
         </p>
+
+        <SubscribeButton productId="adventure" />
+
 
         <Link
           href="/support"

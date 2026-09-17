@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة «أجندتي — خاص بالمشتركين». تظهر لمن ليس لديه اشتراك أجندة سارٍ.
@@ -40,6 +41,9 @@ export default function MyAgendaLockedPage() {
           <br />
           والدفع الإلكتروني المباشر قريبًا 🌱
         </p>
+
+        <SubscribeButton productId="agenda" />
+
 
         <Link
           href="/support"
