@@ -277,6 +277,12 @@ const gradeRank = (name: string | null): number => {
   const m = n.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).match(/(\d+)/);
   return m ? +m[1] : 99;
 };
+/** ترتيب الفصول منطقيًا: رتبة الصف ثم رقم الفصل. */
+const sortClasses = (list: Klass[], grades: Grade[]): Klass[] => {
+  const rankOf = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? gradeRank(g.name) : 99; };
+  const numOf = (name: string) => { const m = name.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).match(/(\d+)\s*$/); return m ? +m[1] : 0; };
+  return list.slice().sort((a, b) => rankOf(a) - rankOf(b) || numOf(a.name) - numOf(b.name) || a.sort - b.sort || (a.name || '').localeCompare(b.name || '', 'ar'));
+};
 
 function parseRules(
   text: string,
@@ -2312,7 +2318,7 @@ function TeacherPlanView({
   const [cls, setCls] = useState('');
   const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   const classLabel = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? `${g.name} · ${c.name}` : c.name; };
-  const openClasses = classes.filter((c) => !c.archived);
+  const openClasses = sortClasses(classes.filter((c) => !c.archived), grades);
   const lessonPeriods = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort);
   const wd = workDays.slice().sort((a, b) => a - b);
 
@@ -2912,7 +2918,7 @@ function TeachingView({
                   <div className="grid grid-cols-2 gap-1.5">
                     <select value={cSel} onChange={(e) => setCSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
                       <option value="">الفصل</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
+                      {sortClasses(classes, grades).map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
                     </select>
                     <div className="flex gap-1.5">
                       <input type="number" min={1} value={hSel} onChange={(e) => setHSel(e.target.value)} className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2" title="حصص أسبوعية" />
@@ -3296,7 +3302,7 @@ function SupervisionView({
       ? stages.map((s) => ({ id: s.id, label: s.name }))
       : scopeType === 'grade'
       ? grades.map((g) => ({ id: g.id, label: gradeLabel(g.id) }))
-      : classes.filter((c) => !c.archived).map((c) => ({ id: c.id, label: classLabel(c.id) }));
+      : sortClasses(classes.filter((c) => !c.archived), grades).map((c) => ({ id: c.id, label: classLabel(c.id) }));
 
   // تجميع حسب المعلمة
   const byMember = sortedMembers
@@ -3427,7 +3433,7 @@ function NotesView({
   const sortedMembers = (memberOptions ?? members).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   const gradeName = (id: string) => grades.find((g) => g.id === id)?.name || '';
   const classLabel = (c: Klass) => `${gradeName(c.grade_id)} › ${c.name}`.replace(/^ › /, '');
-  const openClasses = classes.filter((c) => !c.archived);
+  const openClasses = sortClasses(classes.filter((c) => !c.archived), grades);
 
   const reset = () => {
     setStuId('');
@@ -4303,7 +4309,7 @@ function SmartAttendanceView({
     if (cls) onOpenClass(cls);
     if (cid) loadByClassDate(cid, date);
   };
-  const openClasses = classes.filter((c) => !c.archived);
+  const openClasses = sortClasses(classes.filter((c) => !c.archived), grades);
 
   const clsName = (cid: string) => classLabel(cid);
   const studentName = (sid: string) => students.find((s) => s.id === sid)?.name || '';
