@@ -2756,6 +2756,7 @@ function TeachingView({
   const [sSel, setSSel] = useState('');
   const [cSel, setCSel] = useState('');
   const [hSel, setHSel] = useState('3');
+  const [mSearch, setMSearch] = useState('');
   const [ttBusy, setTtBusy] = useState(false);
   const [ttDraft, setTtDraft] = useState<{ subject: string; entries: TTEntry[] } | null>(null);
   const [ttMsg, setTtMsg] = useState('');
@@ -2861,35 +2862,43 @@ function TeachingView({
 
         {canManage ? (
           subjects.length && members.length && classes.length ? (
-            <div className="grid grid-cols-2 gap-1.5 mb-3">
-              <select value={mSel} onChange={(e) => setMSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                <option value="">المعلمة</option>
-                {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <select value={sSel} onChange={(e) => setSSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                <option value="">المادة</option>
-                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              <select value={cSel} onChange={(e) => setCSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                <option value="">الفصل</option>
-                {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
-              </select>
-              <div className="flex gap-1.5">
-                <input type="number" min={1} value={hSel} onChange={(e) => setHSel(e.target.value)} className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2" title="حصص أسبوعية" />
-                <button
-                  onClick={() => {
-                    if (mSel && sSel && cSel) {
-                      addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1));
-                      setSSel('');
-                      setCSel('');
-                    }
-                  }}
-                  className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] px-2"
-                >
-                  ＋ توزيع
-                </button>
-              </div>
-            </div>
+            (() => {
+              const selSubject = subjects.find((s) => s.id === sSel);
+              const pool = selSubject?.department_id ? members.filter((m) => m.department_id === selSubject.department_id) : members;
+              const shownTeachers = pool.filter((m) => !mSearch.trim() || (m.name || '').includes(mSearch.trim())).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+              return (
+                <div className="space-y-1.5 mb-3">
+                  <select value={sSel} onChange={(e) => { setSSel(e.target.value); setMSel(''); }} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                    <option value="">اختاري المادة</option>
+                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  {sSel ? (
+                    <>
+                      <input value={mSearch} onChange={(e) => setMSearch(e.target.value)} placeholder="🔍 ابحثي عن معلمة" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                      <select value={mSel} onChange={(e) => setMSel(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                        <option value="">{selSubject?.department_id ? `معلمات المادة (${shownTeachers.length})` : 'المعلمة'}</option>
+                        {shownTeachers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                    </>
+                  ) : null}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <select value={cSel} onChange={(e) => setCSel(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+                      <option value="">الفصل</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
+                    </select>
+                    <div className="flex gap-1.5">
+                      <input type="number" min={1} value={hSel} onChange={(e) => setHSel(e.target.value)} className="w-16 rounded-lg border border-sage/25 bg-white text-[12px] p-2" title="حصص أسبوعية" />
+                      <button
+                        onClick={() => { if (mSel && sSel && cSel) { addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1)); setCSel(''); setMSearch(''); } }}
+                        className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] px-2"
+                      >
+                        ＋ توزيع
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             <div className="text-[12px] text-ink/45 mb-2">أضيفي مواد ومعلمات وفصولًا أولًا.</div>
           )
