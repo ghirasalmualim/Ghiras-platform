@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import ChangePassword from '@/components/ChangePassword';
 import LogoutButton from '@/components/LogoutButton';
+import SubscribeButton from '@/components/SubscribeButton';
 import {
   isStillValid,
   listEntitlements,
@@ -82,7 +83,7 @@ export default async function AccountPage() {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select(
-      'full_name, username, role, status, sub_start, sub_end, studio_until, gradebook_until, attendance_until, head_records_until, adventure_until, multiplication_until, workshops_until, game_credits, attendance_extra'
+      'full_name, username, role, status, sub_start, sub_end, studio_until, gradebook_until, attendance_until, head_records_until, adventure_until, multiplication_until, workshops_until, game_credits, lesson_credits, attendance_extra'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -176,6 +177,7 @@ export default async function AccountPage() {
   const anyEver = hasAnyEntitlement(profile as Record<string, unknown>);
   const anyActive = hasActiveEntitlement(profile as Record<string, unknown>);
   const credits = (profile.game_credits as number) ?? 0;
+  const lessonCredits = (profile.lesson_credits as number) ?? 0;
   const extra = (profile.attendance_extra as number) ?? 0;
 
   return (
@@ -337,6 +339,34 @@ export default async function AccountPage() {
                 </ul>
               </Card>
             )}
+
+            {/*
+              استوديو الحصة الذكية — شراء رصيد حصص (نموذج الحصص لا المدة).
+              الشراء يستدعي payment_add_credits ← يزيد lesson_credits. معزول
+              عن admin_set_tool/admin_grant. الرصيد يبقى دائمًا ويُخصم عند البناء.
+            */}
+            <Card title="استوديو الحصة الذكية">
+              <p className="text-sm leading-relaxed text-ink/70">
+                اشترِ رصيد حصص لبناء عروض الحصص في الاستوديو — كل حصة تُخصم عند
+                البناء، والرصيد يبقى دائمًا بلا انتهاء.
+              </p>
+              <p className="mt-3 flex items-baseline justify-between gap-2 text-sm">
+                <span className="text-ink/55">رصيد الحصص الحالي</span>
+                <span className="font-bold text-ink">{lessonCredits}</span>
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <SubscribeButton
+                  productId="studio_1"
+                  label="حصة واحدة"
+                  hint="عرض واحد يُضاف لرصيدك"
+                />
+                <SubscribeButton
+                  productId="studio_5"
+                  label="٥ حصص"
+                  hint="الأوفر · ٥ عروض"
+                />
+              </div>
+            </Card>
           </>
         )}
 

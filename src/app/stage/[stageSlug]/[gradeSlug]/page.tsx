@@ -7,6 +7,7 @@ import {
   getSubjects,
 } from '@/lib/supabase/data';
 import { subjectDisplayName } from '@/lib/subject-display';
+import SubscribeButton from '@/components/SubscribeButton';
 
 export const revalidate = 300;
 
@@ -157,6 +158,45 @@ export default async function GradePage({
                     🎁 جرّب الدرس الأول مجانًا
                   </a>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── اشتراك الصف الكامل — كل مواد الصف باشتراك واحد (٥٠ د.ك / ٤ أشهر) ── */}
+        {subjects.length > 0 && (
+          <div
+            className="mt-8 animate-float-in"
+            style={{ animationDelay: `${0.18 + subjects.length * 0.06}s` }}
+          >
+            <div className="card-3d relative overflow-hidden p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-gradient-to-l from-gold-light/40 to-transparent">
+              <span
+                aria-hidden="true"
+                className="flex items-center justify-center w-16 h-16 rounded-2xl text-4xl shadow-inset3d shrink-0"
+                style={{ backgroundColor: '#C9A84C1f' }}
+              >
+                🎓
+              </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-xl text-ink">
+                    اشترك بالصف كامل
+                  </span>
+                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-gold-light text-gold-dark">
+                    الأوفر
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-ink/60 leading-relaxed">
+                  اشتراك واحد يفتح <b>كل مواد {grade.name}</b> — أوفر من شراء كل
+                  مادة على حدة.
+                </p>
+                <SubscribeButton
+                  productId="games_grade"
+                  scopeId={grade.id}
+                  label="اشترك بالصف كامل"
+                  hidePrice
+                  hint={`كل مواد ${grade.name} · ٤ أشهر · تجديد بأي وقت`}
+                />
               </div>
             </div>
           </div>

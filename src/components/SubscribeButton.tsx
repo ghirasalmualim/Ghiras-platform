@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { PRODUCTS, fmtKwd } from '@/lib/pricing';
 
 /**
- * زر «اشتركي الآن» في صفحات القفل — يبدأ الدفع عبر MyFatoorah ويحوّل لصفحة الدفع.
+ * زر «اشترك الآن» في صفحات القفل — يبدأ الدفع عبر MyFatoorah ويحوّل لصفحة الدفع.
  * بيانات البطاقة تُدخَل في صفحة MyFatoorah (لا تمر علينا).
  */
-export default function SubscribeButton({ productId, scopeId }: { productId: string; scopeId?: string }) {
+export default function SubscribeButton({ productId, scopeId, label, hint, hidePrice }: { productId: string; scopeId?: string; label?: string; hint?: string; hidePrice?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const product = PRODUCTS[productId];
@@ -43,9 +43,9 @@ export default function SubscribeButton({ productId, scopeId }: { productId: str
         disabled={busy}
         className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all disabled:opacity-60"
       >
-        {busy ? '…جارٍ التحويل للدفع' : `🛒 اشتركي الآن — ${fmtKwd(product.priceKwd)}`}
+        {busy ? '…جارٍ التحويل للدفع' : `🛒 ${label ?? 'اشترك الآن'}${hidePrice ? '' : ` — ${fmtKwd(product.priceKwd)}`}`}
       </button>
-      <div className="mt-1.5 text-[12px] text-ink/45">{months ? `اشتراك ${months} أشهر · تجديد بأي وقت` : ''}</div>
+      <div className="mt-1.5 text-[12px] text-ink/45">{hint ?? (months ? `اشتراك ${months} أشهر · تجديد بأي وقت` : '')}</div>
       {err ? <div className="mt-2 text-[13px] text-red-500">{err}</div> : null}
     </div>
   );

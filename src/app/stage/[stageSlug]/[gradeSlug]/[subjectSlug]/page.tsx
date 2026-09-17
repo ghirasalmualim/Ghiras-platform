@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import GameLauncher from '@/components/GameLauncher';
 import LogoutButton from '@/components/LogoutButton';
 import AddToMySpace from '@/components/AddToMySpace';
+import SubscribeButton from '@/components/SubscribeButton';
 import { subjectKey } from '@/lib/workspace-items';
 import { createServerSupabase } from '@/lib/supabase/server';
 import {
@@ -326,6 +327,19 @@ export default async function SubjectPage({
                   إعادة المحاولة
                 </a>
               </div>
+            )}
+
+            {/*
+              زر الاشتراك بهذه المادة — للرفض الحقيقي وحده (٢٠ د.ك / ٤ أشهر).
+              يُمرَّر معرّف المادة كنطاق، والسعر يُقرأ من الخادم لا من المتصفح.
+            */}
+            {authState === 'ACCESS_DENIED' && (
+              <SubscribeButton
+                productId="games_subject"
+                scopeId={subject.id}
+                label="اشترك بهذه المادة"
+                hint={`${subjectDisplayName(subject, grade.slug)} · ٤ أشهر · تجديد بأي وقت`}
+              />
             )}
 
             {/*
