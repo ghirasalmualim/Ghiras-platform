@@ -1023,6 +1023,17 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (error || !data) return showToast('تعذّرت الإضافة');
     setSubjects((s) => [...s, data as Subject]);
   };
+  const genSubjectsFromDepts = async () => {
+    const existing = new Set(subjects.map((s) => normName(s.name)));
+    const toAdd = depts.filter((d) => !existing.has(normName(d.name)));
+    if (!toAdd.length) return showToast('كل الشُّعب لها مواد بالفعل');
+    const base = subjects.length;
+    const rows = toAdd.map((d, i) => ({ school_id: schoolId, name: d.name, department_id: d.id, sort: base + i + 1 }));
+    const { data, error } = await supabase.from('school_subjects').insert(rows).select('id,name,department_id,sort');
+    if (error || !data) return showToast('تعذّر التوليد');
+    setSubjects((s) => [...s, ...(data as Subject[])]);
+    showToast(`أُضيفت ${data.length} مادة من الشُّعب ✅`);
+  };
   const renameSubject = async (id: string, name: string) => {
     const { error } = await supabase.from('school_subjects').update({ name }).eq('id', id);
     if (error) return showToast('تعذّر التعديل');
@@ -1425,6 +1436,8 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           classes={classes}
           canManage={isCoordinator ? true : canManage}
           subjectsManage={isCoordinator ? false : canManage}
+          deptCount={depts.length}
+          genSubjectsFromDepts={genSubjectsFromDepts}
           onBack={() => setView('dash')}
           addSubject={addSubject}
           renameSubject={renameSubject}
@@ -2435,6 +2448,8 @@ function TeachingView({
   classes,
   canManage,
   subjectsManage,
+  deptCount,
+  genSubjectsFromDepts,
   onBack,
   addSubject,
   renameSubject,
@@ -2450,6 +2465,8 @@ function TeachingView({
   classes: Klass[];
   canManage: boolean;
   subjectsManage?: boolean;
+  deptCount?: number;
+  genSubjectsFromDepts?: () => void;
   onBack: () => void;
   addSubject: (name: string) => void;
   renameSubject: (id: string, name: string) => void;
@@ -2505,6 +2522,9 @@ function TeachingView({
           <div className="text-[12px] text-ink/35 mb-2">— لا مواد بعد —</div>
         )}
         {sm ? <AddInline placeholder="مادة جديدة (مثال: اللغة العربية)" onAdd={addSubject} /> : null}
+        {sm && deptCount && genSubjectsFromDepts ? (
+          <button onClick={genSubjectsFromDepts} className="mt-1.5 text-[12px] text-sage-deep border border-sage/30 rounded-lg px-3 py-1.5 font-bold">✨ توليد مادة لكل شعبة ({deptCount})</button>
+        ) : null}
       </div>
 
       {/* التوزيع */}
