@@ -269,6 +269,15 @@ const normName = (s: string | null | undefined): string =>
     .replace(/ـ/g, '')
     .replace(/[ً-ْ]/g, '');
 
+/** رتبة الصف من اسمه (الأول=1 … الثاني عشر=12) للترتيب المنطقي. */
+const GRADE_ORD = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'];
+const gradeRank = (name: string | null): number => {
+  const n = normName(name);
+  for (let i = GRADE_ORD.length - 1; i >= 1; i--) { if (n.includes(normName(GRADE_ORD[i]))) return i; }
+  const m = n.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).match(/(\d+)/);
+  return m ? +m[1] : 99;
+};
+
 function parseRules(
   text: string,
   members: { id: string; name: string | null }[],
@@ -697,10 +706,17 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
         supabase.from('school_classes').select('id,grade_id,name,sort,archived').eq('school_id', sid).order('sort'),
         supabase.from('school_students').select('id,class_id,name,sid_no,note,archived,sort').eq('school_id', sid).order('sort'),
       ]);
+      const stData = (st.data as Stage[]) || [];
+      const grData = (gr.data as Grade[]) || [];
+      const clData = (cl.data as Klass[]) || [];
+      const stageRank = new Map(stData.map((x, i) => [x.id, i]));
+      const gr2 = grData.slice().sort((a, b) => (stageRank.get(a.stage_id) ?? 99) - (stageRank.get(b.stage_id) ?? 99) || gradeRank(a.name) - gradeRank(b.name) || a.sort - b.sort);
+      const gRankById = new Map(gr2.map((g) => [g.id, { s: stageRank.get(g.stage_id) ?? 99, r: gradeRank(g.name) }]));
+      const cl2 = clData.slice().sort((a, b) => { const ga = gRankById.get(a.grade_id) || { s: 99, r: 99 }; const gb = gRankById.get(b.grade_id) || { s: 99, r: 99 }; return ga.s - gb.s || ga.r - gb.r || a.sort - b.sort || (a.name || '').localeCompare(b.name || '', 'ar'); });
       setSchool((s.data as School) || null);
-      setStages((st.data as Stage[]) || []);
-      setGrades((gr.data as Grade[]) || []);
-      setClasses((cl.data as Klass[]) || []);
+      setStages(stData);
+      setGrades(gr2);
+      setClasses(cl2);
       setAllStudents((al.data as Student[]) || []);
       await loadMembersDepts(sid);
       setLoading(false);
