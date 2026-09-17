@@ -2166,6 +2166,15 @@ function DepartmentsView({
         </div>
       ) : null}
 
+      {depts.length ? (
+        <button
+          onClick={() => setOpenDepts(openDepts.size ? new Set() : new Set(depts.map((d) => d.id)))}
+          className="text-[11.5px] text-sage-deep border border-sage/25 rounded-lg px-2.5 py-1 font-bold"
+        >
+          {openDepts.size ? '⊟ طيّ الكل' : '⊞ فتح الكل'}
+        </button>
+      ) : null}
+
       {depts.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">لا شُعب بعد.{canManage ? ' أضيفي أول شعبة.' : ''}</div>
       ) : (
