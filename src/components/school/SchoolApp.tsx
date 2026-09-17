@@ -413,6 +413,46 @@ async function extractGradeColumns(file: File): Promise<{ name: string; max: num
   return cols;
 }
 
+type TTEntry = { teacher: string; klass: string; day: number; period: number };
+/** قراءة جدول شعبة من صورة: يعيد {subject, entries[{teacher, klass, day, period}]}. */
+async function extractTimetable(file: File): Promise<{ subject: string; entries: TTEntry[] }> {
+  let contentBlock: unknown;
+  if (file.type === 'application/pdf') {
+    const dataUrl = await fileToDataURL(file);
+    contentBlock = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: dataUrl.split(',')[1] } };
+  } else {
+    const { mime, b64 } = await compressImg(file);
+    contentBlock = { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } };
+  }
+  const prompt =
+    'هذه صورة جدول مدرسي لمادة/شعبة واحدة. استخرج كل حصة دراسية في الجدول.\n' +
+    'لكل حصة: اسم المعلمة، ورمز/اسم الفصل (مثل "5/1" أو "الخامس أ")، واليوم، ورقم الحصة.\n' +
+    'اليوم من: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس. رقم الحصة عدد صحيح (1،2،3…).\n' +
+    'تجاهل الطابور والاستراحة والفترات الفارغة. إن ظهر اسم المادة/الشعبة أدرجه في "subject".\n' +
+    'أعد JSON صِرفًا بلا أي شرح أو Markdown بهذا الشكل:\n' +
+    '{"subject":"العربي","entries":[{"teacher":"أ. منى","class":"5/1","day":"الأحد","period":1}]}';
+  const messages = [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }];
+  let res: Response;
+  try {
+    res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 4096 }) });
+  } catch { throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).'); }
+  const raw = await res.text();
+  let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
+  try { json = JSON.parse(raw); } catch { /* غير JSON */ }
+  if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
+  const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
+  const obj = text.match(/\{[\s\S]*\}/);
+  let parsed: { subject?: string; entries?: { teacher?: string; class?: string; day?: string; period?: number | string }[] } = {};
+  if (obj) { try { parsed = JSON.parse(obj[0]); } catch { /* تجاهل */ } }
+  const dayIdx = (d: string) => { const hit = DAY_WORDS.find(([re]) => re.test(d || '')); return hit ? hit[1] : -1; };
+  const toN = (v: number | string | undefined) => parseInt(String(v ?? '').replace(/[٠-٩]/g, (x) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(x))), 10);
+  const entries: TTEntry[] = (parsed.entries || [])
+    .map((e) => ({ teacher: String(e?.teacher ?? '').trim(), klass: String(e?.class ?? '').trim(), day: dayIdx(String(e?.day ?? '')), period: toN(e?.period) }))
+    .filter((e) => e.teacher && e.klass && e.day >= 0 && e.period >= 1 && e.period <= 12);
+  if (!entries.length) throw new Error(`لم تُقرأ حصص. رد الخدمة: «${(text || raw).slice(0, 180) || 'فارغ'}»`);
+  return { subject: String(parsed.subject ?? '').trim(), entries };
+}
+
 function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) => void }) {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -1039,6 +1079,70 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (error) return showToast('تعذّر التعديل');
     setSubjects((s) => s.map((x) => (x.id === id ? { ...x, name } : x)));
   };
+  // ── استيراد جدول شعبة من صورة: ينشئ الناقص ويبني التوزيع والجدول ──
+  const applyTimetableImport = async (subjectName: string, entries: TTEntry[]): Promise<string> => {
+    if (!schoolId) return 'لا مدرسة';
+    if (!subjectName.trim()) return 'حدّدي اسم المادة أولًا';
+    const c = { teachers: 0, classes: 0, grades: 0, periods: 0, teaching: 0, lessons: 0, skipped: 0 };
+    const de = (s: string) => s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    // 1) المرحلة (وحدة — الابتدائي)
+    let stageId = stages[0]?.id;
+    if (!stageId) { const { data } = await supabase.from('school_stages').insert({ school_id: schoolId, name: 'الابتدائي', sort: 1 }).select('id').single(); stageId = data?.id; }
+    if (!stageId) return 'تعذّر إنشاء المرحلة';
+    const stageFixed: string = stageId;
+    // 2) المادة
+    const deptMatch = depts.find((d) => normName(d.name) === normName(subjectName));
+    let subjectId = subjects.find((s) => normName(s.name) === normName(subjectName))?.id;
+    if (!subjectId) { const { data } = await supabase.from('school_subjects').insert({ school_id: schoolId, name: subjectName.trim(), department_id: deptMatch?.id ?? null, sort: subjects.length + 1 }).select('id').single(); subjectId = data?.id; }
+    if (!subjectId) return 'تعذّر إنشاء المادة';
+    // 3) الحصص (lesson) حتى أقصى رقم
+    const maxP = Math.max(...entries.map((e) => e.period));
+    const ORD = ['', 'الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة', 'الحادية عشرة', 'الثانية عشرة'];
+    const lessonPids = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort).map((p) => p.id);
+    let baseSort = periods.length;
+    while (lessonPids.length < maxP) { const n = lessonPids.length + 1; const { data } = await supabase.from('school_periods').insert({ school_id: schoolId, name: `الحصة ${ORD[n] || n}`, kind: 'lesson', sort: ++baseSort }).select('id').single(); if (!data) break; lessonPids.push(data.id); c.periods++; }
+    // 4) الصفوف والفصول
+    const GN = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
+    const localGrades = [...grades]; const localClasses = [...classes]; const classCache = new Map<string, string>();
+    const ensureClass = async (label: string): Promise<string | null> => {
+      const key = normName(label); if (classCache.has(key)) return classCache.get(key)!;
+      const digits = de(label);
+      let gnum: number | null = null;
+      for (let k = 1; k < GN.length; k++) { if (label.includes(GN[k])) { gnum = k; break; } }
+      let section = '';
+      if (gnum !== null) { const rest = digits.replace(new RegExp(GN[gnum], 'g'), '').trim(); const sm = rest.match(/([0-9]+|[أ-ي])/); section = sm ? sm[1] : (rest || '1'); }
+      else { const gm = digits.match(/(\d+)/); gnum = gm ? +gm[1] : null; section = digits.replace(/^\D*\d+\s*[/\-–\s]*/, '').trim(); if (!section) section = digits.replace(/\d+/g, '').trim() || label.trim(); }
+      const gradeName = gnum && GN[gnum] ? GN[gnum] : label.trim();
+      let grade = localGrades.find((g) => g.stage_id === stageFixed && normName(g.name) === normName(gradeName));
+      if (!grade) { const { data } = await supabase.from('school_grades').insert({ school_id: schoolId, stage_id: stageFixed, name: gradeName, sort: localGrades.length + 1 }).select('id,stage_id,name,sort').single(); if (!data) return null; grade = data as Grade; localGrades.push(grade); c.grades++; }
+      let cls = localClasses.find((x) => x.grade_id === grade!.id && normName(x.name) === normName(section));
+      if (!cls) { const { data } = await supabase.from('school_classes').insert({ school_id: schoolId, grade_id: grade.id, name: section, sort: localClasses.filter((x) => x.grade_id === grade!.id).length + 1 }).select('id,grade_id,name,sort,archived').single(); if (!data) return null; cls = data as Klass; localClasses.push(cls); c.classes++; }
+      classCache.set(key, cls.id); return cls.id;
+    };
+    // 5) المعلمات
+    const memCache = new Map<string, string>(); const localMembers = [...members];
+    const ensureTeacher = async (name: string): Promise<string | null> => {
+      const key = normName(name); if (memCache.has(key)) return memCache.get(key)!;
+      let mid = localMembers.find((x) => normName(x.name) === key)?.id;
+      if (!mid) { const { data } = await supabase.from('school_members').insert({ school_id: schoolId, member_name: name.trim(), role: 'teacher', department_id: deptMatch?.id ?? null }).select('id').single(); if (!data) return null; mid = data.id as string; localMembers.push({ id: mid, user_id: null, name, role: 'teacher', department_id: deptMatch?.id ?? null } as Member); c.teachers++; }
+      if (!mid) return null;
+      memCache.set(key, mid); return mid;
+    };
+    // بناء المراجع
+    const resolved: { memberId: string; classId: string; day: number; pid: string }[] = [];
+    for (const e of entries) {
+      const memberId = await ensureTeacher(e.teacher); const classId = await ensureClass(e.klass); const pid = lessonPids[e.period - 1];
+      if (memberId && classId && pid) resolved.push({ memberId, classId, day: e.day, pid });
+    }
+    // 6) التوزيع (عدد حصص كل معلمة×فصل)
+    const dist = new Map<string, { memberId: string; classId: string; hours: number }>();
+    for (const r of resolved) { const k = `${r.memberId}|${r.classId}`; const cur = dist.get(k) || { memberId: r.memberId, classId: r.classId, hours: 0 }; cur.hours++; dist.set(k, cur); }
+    for (const d of Array.from(dist.values())) { const { error } = await supabase.from('school_teaching').upsert({ school_id: schoolId, member_id: d.memberId, subject_id: subjectId, class_id: d.classId, weekly_hours: d.hours }, { onConflict: 'school_id,member_id,subject_id,class_id' }); if (!error) c.teaching++; }
+    // 7) الجدول (حصص في مواقعها) — يتخطّى التعارض
+    for (const r of resolved) { const { error } = await supabase.from('school_timetable_entries').insert({ school_id: schoolId, day: r.day, period_id: r.pid, class_id: r.classId, member_id: r.memberId, subject_id: subjectId }); if (error) c.skipped++; else c.lessons++; }
+    await load(schoolId);
+    return `تم ✅ معلمات جدد: ${c.teachers} · فصول جديدة: ${c.classes} · حصص أُنشئت: ${c.periods} · توزيع: ${c.teaching} · حصص بالجدول: ${c.lessons}${c.skipped ? ` · تخطّى ${c.skipped} (تعارض)` : ''}`;
+  };
   const delSubject = async (id: string) => {
     if (!window.confirm('حذف المادة؟ (يُحذف توزيعها)')) return;
     const { error } = await supabase.from('school_subjects').delete().eq('id', id);
@@ -1438,6 +1542,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
           subjectsManage={isCoordinator ? false : canManage}
           deptCount={depts.length}
           genSubjectsFromDepts={genSubjectsFromDepts}
+          importTimetable={applyTimetableImport}
           onBack={() => setView('dash')}
           addSubject={addSubject}
           renameSubject={renameSubject}
@@ -2450,6 +2555,7 @@ function TeachingView({
   subjectsManage,
   deptCount,
   genSubjectsFromDepts,
+  importTimetable,
   onBack,
   addSubject,
   renameSubject,
@@ -2467,6 +2573,7 @@ function TeachingView({
   subjectsManage?: boolean;
   deptCount?: number;
   genSubjectsFromDepts?: () => void;
+  importTimetable?: (subjectName: string, entries: TTEntry[]) => Promise<string>;
   onBack: () => void;
   addSubject: (name: string) => void;
   renameSubject: (id: string, name: string) => void;
@@ -2479,6 +2586,10 @@ function TeachingView({
   const [sSel, setSSel] = useState('');
   const [cSel, setCSel] = useState('');
   const [hSel, setHSel] = useState('3');
+  const [ttBusy, setTtBusy] = useState(false);
+  const [ttDraft, setTtDraft] = useState<{ subject: string; entries: TTEntry[] } | null>(null);
+  const [ttMsg, setTtMsg] = useState('');
+  const ttRef = useRef<HTMLInputElement>(null);
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.name || '—';
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || '—';
@@ -2525,6 +2636,53 @@ function TeachingView({
         {sm && deptCount && genSubjectsFromDepts ? (
           <button onClick={genSubjectsFromDepts} className="mt-1.5 text-[12px] text-sage-deep border border-sage/30 rounded-lg px-3 py-1.5 font-bold">✨ توليد مادة لكل شعبة ({deptCount})</button>
         ) : null}
+      </div>
+
+      {/* استيراد جدول شعبة من صورة */}
+      {sm && importTimetable ? (
+        <div className="card-3d bg-white rounded-2xl p-3 space-y-2">
+          <div className="font-extrabold text-sage-deep">📸 استيراد جدول شعبة من صورة</div>
+          <div className="text-[11px] text-ink/55 leading-relaxed">صوّري جدول مادة/شعبة واحدة، والذكاء يقرأه وينشئ المعلمات والفصول الناقصة، ويبني التوزيع والجدول — بعد مراجعتك.</div>
+          <input ref={ttRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={async (e) => {
+            const f = e.target.files?.[0]; if (!f) return; setTtBusy(true); setTtMsg('');
+            try { const r = await extractTimetable(f); setTtDraft(r); } catch (err) { window.alert((err as Error).message || 'تعذّرت القراءة'); }
+            setTtBusy(false); if (ttRef.current) ttRef.current.value = '';
+          }} />
+          {ttDraft === null ? (
+            <button onClick={() => ttRef.current?.click()} disabled={ttBusy} className="w-full rounded-lg border border-sage/30 text-sage-deep font-bold text-[12px] py-2 disabled:opacity-50">{ttBusy ? '…جارٍ قراءة الجدول' : '📸 تصوير الجدول'}</button>
+          ) : (
+            <div className="rounded-lg bg-sage/5 p-2 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-ink/55 whitespace-nowrap">المادة:</span>
+                <input value={ttDraft.subject} onChange={(e) => setTtDraft({ ...ttDraft, subject: e.target.value })} placeholder="اسم المادة" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
+              </div>
+              <div className="text-[11px] text-ink/55">قُرئ {ttDraft.entries.length} حصة — راجعي واحذفي الخطأ:</div>
+              <div className="max-h-52 overflow-y-auto space-y-1">
+                {ttDraft.entries.map((en, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[11.5px] bg-white rounded px-2 py-1">
+                    <span className="flex-1">{en.teacher} · فصل {en.klass} · {WEEKDAYS[en.day]} · حصة {en.period}</span>
+                    <button onClick={() => setTtDraft({ ...ttDraft, entries: ttDraft.entries.filter((_, j) => j !== i) })} className="text-red-400">✕</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={async () => {
+                    if (!ttDraft.entries.length) { setTtDraft(null); return; }
+                    setTtBusy(true); const msg = await importTimetable(ttDraft.subject, ttDraft.entries); setTtBusy(false); setTtMsg(msg); setTtDraft(null);
+                  }}
+                  disabled={ttBusy || !ttDraft.subject.trim()}
+                  className="flex-1 rounded-lg bg-sage-deep text-white font-bold text-[12px] py-2 disabled:opacity-40"
+                >{ttBusy ? '…جارٍ الإنشاء' : 'اعتماد وبناء التوزيع والجدول'}</button>
+                <button onClick={() => setTtDraft(null)} className="rounded-lg border border-sage/25 text-ink/60 text-[12px] px-3">إلغاء</button>
+              </div>
+            </div>
+          )}
+          {ttMsg ? <div className="text-[11.5px] text-sage-deep bg-sage/5 rounded-lg p-2">{ttMsg}</div> : null}
+        </div>
+      ) : null}
+      {/* نهاية استيراد الجدول */}
+      <div className="hidden">
       </div>
 
       {/* التوزيع */}
