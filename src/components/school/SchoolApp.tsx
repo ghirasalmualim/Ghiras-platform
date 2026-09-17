@@ -2940,6 +2940,15 @@ function TeachingView({
           )
         ) : null}
 
+        {teachers.length ? (
+          <button
+            onClick={() => setOpenTeach(openTeach.size ? new Set() : new Set(teachers.map((m) => m.id)))}
+            className="mb-2 text-[11.5px] text-sage-deep border border-sage/25 rounded-lg px-2.5 py-1 font-bold"
+          >
+            {openTeach.size ? '⊟ طيّ الكل' : '⊞ فتح الكل'}
+          </button>
+        ) : null}
+
         {teachers.length === 0 ? (
           <div className="text-[12px] text-ink/35">— لا توزيع بعد —</div>
         ) : (
