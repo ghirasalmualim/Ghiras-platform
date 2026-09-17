@@ -2793,6 +2793,7 @@ function TeachingView({
   const [mSearch, setMSearch] = useState('');
   const [openTeach, setOpenTeach] = useState<Set<string>>(new Set());
   const toggleTeach = (id: string) => setOpenTeach((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const [listOpen, setListOpen] = useState(true);
   const [ttBusy, setTtBusy] = useState(false);
   const [ttDraft, setTtDraft] = useState<{ subject: string; entries: TTEntry[] } | null>(null);
   const [ttMsg, setTtMsg] = useState('');
@@ -2950,17 +2951,22 @@ function TeachingView({
         ) : null}
 
         {teachers.length ? (
-          <button
-            onClick={() => setOpenTeach(openTeach.size ? new Set() : new Set(teachers.map((m) => m.id)))}
-            className="mb-2 text-[11.5px] text-sage-deep border border-sage/25 rounded-lg px-2.5 py-1 font-bold"
-          >
-            {openTeach.size ? '⊟ طيّ الكل' : '⊞ فتح الكل'}
-          </button>
+          <div className="flex items-center gap-2 mb-2 border-b border-sage/15 pb-1.5">
+            <button onClick={() => setListOpen(!listOpen)} className="flex items-center gap-1.5 flex-1 text-right">
+              <span className="text-ink/40 text-[11px] w-3">{listOpen ? '▼' : '▶'}</span>
+              <span className="font-extrabold text-sage-deep text-[13px]">التوزيع المسجّل ({teachers.length} معلمة)</span>
+            </button>
+            {listOpen ? (
+              <button onClick={() => setOpenTeach(openTeach.size ? new Set() : new Set(teachers.map((m) => m.id)))} className="text-[11px] text-sage-deep border border-sage/25 rounded-lg px-2 py-0.5 font-bold">
+                {openTeach.size ? 'طيّ الحصص' : 'فتح الحصص'}
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {teachers.length === 0 ? (
           <div className="text-[12px] text-ink/35">— لا توزيع بعد —</div>
-        ) : (
+        ) : !listOpen ? null : (
           teachers.map((m) => {
             const rows = teaching.filter((t) => t.member_id === m.id);
             const total = rows.reduce((a, t) => a + t.weekly_hours, 0);
