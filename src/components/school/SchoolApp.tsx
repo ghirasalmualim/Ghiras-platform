@@ -2291,13 +2291,19 @@ function TeacherPlanView({
   toggleTeacherSlot: (memberId: string, subjectId: string, classId: string, day: number, periodId: string) => void;
 }) {
   const [mem, setMem] = useState('');
-  const [subj, setSubj] = useState('');
+  const [manualSubj, setManualSubj] = useState('');
   const [cls, setCls] = useState('');
   const sortedMembers = members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   const classLabel = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? `${g.name} · ${c.name}` : c.name; };
   const openClasses = classes.filter((c) => !c.archived);
   const lessonPeriods = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort);
   const wd = workDays.slice().sort((a, b) => a - b);
+
+  // المادة تلقائيًا من شعبة المعلمة (المادة المربوطة بالقسم)؛ وإلا نطلب اختيارها
+  const selMember = members.find((m) => m.id === mem) || null;
+  const autoSubject = selMember?.department_id ? subjects.find((s) => s.department_id === selMember.department_id) || null : null;
+  const subj = autoSubject ? autoSubject.id : manualSubj;
+  const subjName = subjects.find((s) => s.id === subj)?.name || '';
 
   const entryAt = (d: number, pid: string) => entries.find((e) => e.member_id === mem && e.class_id === cls && e.day === d && e.period_id === pid);
   const memBusyElsewhere = (d: number, pid: string) => entries.some((e) => e.member_id === mem && e.day === d && e.period_id === pid && e.class_id !== cls);
@@ -2312,28 +2318,32 @@ function TeacherPlanView({
       </div>
 
       <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
-        اختاري المعلمة ومادتها وفصلها، ثم اضغطي خانات حصصها في الشبكة. يُبنى الجدول والتوزيع تلقائيًا (عدد الحصص = عدد الخانات).
+        اختاري المعلمة والفصل، ثم اضغطي خانات حصصها في الشبكة. المادة تُعرف تلقائيًا من شعبتها. يُبنى الجدول والتوزيع تلقائيًا (عدد الحصص = عدد الخانات).
       </div>
 
-      <div className="card-3d bg-white rounded-2xl p-3 grid grid-cols-1 gap-1.5">
-        <select value={mem} onChange={(e) => setMem(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-          <option value="">المعلمة</option>
+      <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
+        <select value={mem} onChange={(e) => setMem(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+          <option value="">اختاري المعلمة</option>
           {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
-        <div className="grid grid-cols-2 gap-1.5">
-          <select value={subj} onChange={(e) => setSubj(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-            <option value="">المادة</option>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select value={cls} onChange={(e) => setCls(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-            <option value="">الفصل</option>
-            {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
-          </select>
-        </div>
+        {mem ? (
+          autoSubject ? (
+            <div className="text-[12px] text-ink/70">المادة: <b className="text-sage-deep">{subjName}</b> <span className="text-[10px] text-ink/40">(من شعبتها)</span></div>
+          ) : (
+            <select value={manualSubj} onChange={(e) => setManualSubj(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+              <option value="">اختاري المادة (المعلمة بلا شعبة)</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )
+        ) : null}
+        <select value={cls} onChange={(e) => setCls(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
+          <option value="">اختاري الفصل</option>
+          {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+        </select>
       </div>
 
       {!ready ? (
-        <div className="text-[12px] text-ink/40 text-center py-4">اختاري المعلمة والمادة والفصل لتظهر الشبكة.</div>
+        <div className="text-[12px] text-ink/40 text-center py-4">اختاري المعلمة والفصل لتظهر الشبكة.</div>
       ) : lessonPeriods.length === 0 ? (
         <div className="text-[12px] text-ink/45 text-center py-4">أضيفي «أوقات اليوم» (حصص) من «الجدول المدرسي» أولًا.</div>
       ) : (
