@@ -32,7 +32,7 @@ async function handle(req: NextRequest) {
   const done = (ok: boolean) => NextResponse.redirect(`${origin}/workspace?pay=${ok ? 'ok' : 'fail'}`, { status: 303 });
 
   const paymentId = req.nextUrl.searchParams.get('paymentId');
-  const key = process.env.MYFATOORAH_API_KEY;
+  const key = (process.env.MYFATOORAH_API_KEY || '').trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!paymentId || !key || !serviceKey || !supaUrl) return done(false);

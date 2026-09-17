@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   if (!product) return NextResponse.json({ error: 'منتج غير معروف' }, { status: 400 });
   if (product.kind === 'games' && !body.scopeId) return NextResponse.json({ error: 'اختاري المادة/الصف' }, { status: 400 });
 
-  const key = process.env.MYFATOORAH_API_KEY;
+  const key = (process.env.MYFATOORAH_API_KEY || '').trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!key || !serviceKey || !supaUrl) return NextResponse.json({ error: 'الدفع غير مُعدّ على الخادم' }, { status: 500 });
