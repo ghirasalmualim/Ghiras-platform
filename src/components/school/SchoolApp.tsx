@@ -3519,11 +3519,16 @@ function StudentsView({
   const toggle = (id: string) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const classLabel = (c: Klass) => { const g = grades.find((x) => x.id === c.grade_id); return g ? `${g.name} · ${c.name}` : c.name; };
   const inClass = (cid: string) => students.filter((s) => s.class_id === cid).sort((a, b) => a.sort - b.sort);
+  // ترتيب موحّد للفصول: المرحلة ← الصف ← الفصل (لأن sort يتكرّر داخل كل صف)
+  const stageIdx = new Map(stages.map((s, i) => [s.id, i]));
+  const gradeIdx = new Map(grades.map((g, i) => [g.id, i]));
+  const classRank = (c: Klass): [number, number, number] => { const g = grades.find((x) => x.id === c.grade_id); return [g ? stageIdx.get(g.stage_id) ?? 99 : 99, gradeIdx.get(c.grade_id) ?? 99, c.sort]; };
+  const cmpClass = (a: Klass, b: Klass) => { const ra = classRank(a), rb = classRank(b); return ra[0] - rb[0] || ra[1] - rb[1] || ra[2] - rb[2]; };
   const t = q.trim();
   const matches = t ? students.filter((s) => s.name.includes(t) || (s.sid_no || '').includes(t)) : [];
 
   const StudentRow = ({ s }: { s: Student }) => {
-    const moveTargets = classes.filter((c) => c.id !== s.class_id && !c.archived);
+    const moveTargets = classes.filter((c) => c.id !== s.class_id && !c.archived).sort(cmpClass);
     return (
       <div className={`flex flex-col gap-0.5 border-t border-sage/10 pt-1.5 first:border-0 ${s.archived ? 'opacity-60' : ''}`}>
         <div className="flex items-center gap-1.5">
