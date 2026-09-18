@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { isStillValid } from '@/lib/entitlements';
+import { getStageBySlug, getGradeBySlug, getSubjects } from '@/lib/supabase/data';
 
 /**
  * مُصدِّر تصاريح الأدوات المحمية (دفتر التقييم الذكي + عروض غراس التفاعلية).
@@ -22,6 +23,9 @@ type ToolCfg = {
   until: string | readonly string[];
   lock: string; // صفحة «خاص بالمشتركين»
   deviceLimit: boolean; // هل تُطبّق قاعدة الجهازين؟
+  // لعبة الطالب: تُقيَّد بمدن (مواد) الصف التي تملك المشترِكة صلاحيتها فعلًا.
+  student?: boolean;
+  gradeSlug?: string; // صفّ اللعبة (مثل 'grade-5') — لحساب المدن المسموحة.
 };
 
 // الأدوات المحمية
@@ -48,6 +52,8 @@ const TOOLS: Record<string, ToolCfg> = {
     until: 'sub_end',
     lock: '/student-game-locked',
     deviceLimit: false,
+    student: true,
+    gradeSlug: 'grade-5',
   },
   // لعبة الطالب (الصف الرابع) — نفس النموذج المشمول باشتراك المواد (sub_end).
   'student-g4': {
@@ -56,6 +62,8 @@ const TOOLS: Record<string, ToolCfg> = {
     until: 'sub_end',
     lock: '/student-game-locked',
     deviceLimit: false,
+    student: true,
+    gradeSlug: 'grade-4',
   },
   // لعبة الطالب (الصف الثالث) — نفس النموذج المشمول باشتراك المواد (sub_end).
   'student-g3': {
@@ -64,6 +72,8 @@ const TOOLS: Record<string, ToolCfg> = {
     until: 'sub_end',
     lock: '/student-game-locked',
     deviceLimit: false,
+    student: true,
+    gradeSlug: 'grade-3',
   },
   // لعبة الطالب (الصف الثاني) — نفس النموذج المشمول باشتراك المواد (sub_end).
   'student-g2': {
@@ -72,6 +82,8 @@ const TOOLS: Record<string, ToolCfg> = {
     until: 'sub_end',
     lock: '/student-game-locked',
     deviceLimit: false,
+    student: true,
+    gradeSlug: 'grade-2',
   },
   // لعبة الطالب (الصف الأول) — نفس النموذج المشمول باشتراك المواد (sub_end).
   'student-g1': {
@@ -80,6 +92,8 @@ const TOOLS: Record<string, ToolCfg> = {
     until: 'sub_end',
     lock: '/student-game-locked',
     deviceLimit: false,
+    student: true,
+    gradeSlug: 'grade-1',
   },
 };
 
@@ -132,11 +146,41 @@ export async function GET(req: NextRequest) {
   const p = profile as { role?: string; status?: string; [k: string]: unknown } | null;
   const isAdmin = p?.role === 'admin';
   // سارٍ إن كان أدمِن، أو الحساب غير موقوف وأحدُ أعمدة الصلاحية ساري المفعول.
-  const active =
+  let active =
     isAdmin ||
     (!!p &&
       p.status !== 'suspended' &&
       cols.some((c) => isStillValid((p[c] as string | null) ?? null)));
+
+  // ── لعبة الطالب: تُقيَّد بالمدن (المواد) المملوكة فعلًا في هذا الصف ──
+  // المدن المسموحة = المواد التي تُرجِع can_access_subject=صحيح (نفس منطق صفحات
+  // الألعاب تمامًا). الأدمِن: كل المدن. وأي خطأ غير متوقّع ⇒ نُبقي السلوك الحالي
+  // (sub_end) بلا قفل مدن — حتى لا ينكسر وصول أي مشترِكة (fail-open مقصود).
+  let citiesParam: string | null = null;
+  if (tool.student && tool.gradeSlug) {
+    try {
+      const stage = await getStageBySlug('primary');
+      const grade = stage ? await getGradeBySlug(stage.id, tool.gradeSlug) : null;
+      const subjects = grade ? await getSubjects(grade.id) : [];
+      let allowed: string[];
+      if (isAdmin) {
+        allowed = subjects.map((s) => s.slug);
+      } else {
+        allowed = [];
+        for (const s of subjects) {
+          const { data: ok } = await supabase.rpc('can_access_subject', {
+            p_subject: s.id,
+          });
+          if (ok === true) allowed.push(s.slug);
+        }
+      }
+      active = isAdmin || allowed.length > 0;
+      if (active) citiesParam = isAdmin ? 'all' : allowed.join(',');
+    } catch (e) {
+      console.error('[STUDENT_CITY_FALLBACK]', (e as Error)?.message ?? e);
+    }
+  }
+
   if (!active) {
     // ليست مشترِكة في هذه الأداة — صفحة توضيحية بدل التوجيه الصامت
     return NextResponse.redirect(new URL(tool.lock, req.url));
@@ -161,6 +205,14 @@ export async function GET(req: NextRequest) {
   const sig = await hmac(`t|${tool.slug}|${exp}`);
   const dest = new URL(tool.url);
   dest.searchParams.set('t', `${exp}.${sig}`);
+
+  // مدن لعبة الطالب المسموحة — موقّعة بنفس صلاحية التوكن. حارس الألعاب يتحقق
+  // منها ويمرّرها للّعبة (كوكي)، واللعبة تقفل المدن غير المسموحة. غيابها ⇒ لا قفل.
+  if (citiesParam !== null) {
+    const cEnc = b64url(enc.encode(citiesParam));
+    const cSig = await hmac(`c|${tool.slug}|${exp}|${cEnc}`);
+    dest.searchParams.set('c', `${exp}.${cEnc}.${cSig}`);
+  }
 
   // توكن موحّد للدفتر: يؤمّن جسر الذكاء الاصطناعي (SEC-001) والتخزين السحابي (REL-002).
   // يحمل هوية المعلّمة، صالح ٨ ساعات (نفس عمر جلسة الدفتر).
