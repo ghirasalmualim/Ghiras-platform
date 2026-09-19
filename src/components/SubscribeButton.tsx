@@ -11,7 +11,7 @@ export default function SubscribeButton({ productId, scopeId, label, hint, hideP
   const [err, setErr] = useState('');
   const product = PRODUCTS[productId];
   if (!product) return null;
-  const months = product.kind !== 'studio' ? product.months : 0;
+  const months = product.kind === 'tool' || product.kind === 'games' ? product.months : 0;
 
   const go = async () => {
     setBusy(true);

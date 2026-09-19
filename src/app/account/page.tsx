@@ -321,24 +321,40 @@ export default async function AccountPage() {
               )}
             </Card>
 
-            {(credits > 0 || extra > 0) && (
+            {/* رصيدُ الألعابِ انتقلَ لبطاقتِه الخاصّةِ أدناه — هنا الإضافاتُ فقط */}
+            {extra > 0 && (
               <Card title="الاستخدام والإضافات">
                 <ul className="flex flex-col gap-3 text-sm">
-                  {credits > 0 && (
-                    <li className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="text-ink/55">رصيد توليد الألعاب</span>
-                      <span className="font-bold text-ink">{credits}</span>
-                    </li>
-                  )}
-                  {extra > 0 && (
-                    <li className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="text-ink/55">سجلات حضور إضافية</span>
-                      <span className="font-bold text-ink">{extra}</span>
-                    </li>
-                  )}
+                  <li className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-ink/55">سجلات حضور إضافية</span>
+                    <span className="font-bold text-ink">{extra}</span>
+                  </li>
                 </ul>
               </Card>
             )}
+
+            {/*
+              ألعاب غراس التفاعلية — باقةٌ واحدةٌ مشترَكة بين الألعابِ الخمس.
+              الشراء يستدعي payment_add_game_credits ← يزيد game_credits
+              (رصيدٌ دائمٌ لا مدةَ له). معزولٌ عن admin_add_game_credits،
+              والخصمُ يبقى حصرًا في consume_game_credit عند تثبيتِ لعبةٍ جديدة.
+            */}
+            <Card title="ألعاب غراس التفاعلية">
+              <p className="text-sm leading-relaxed text-ink/70">
+                باقةٌ واحدةٌ تفتح لك <b>٣ ألعاب</b> تختارينها من: من سيربح
+                المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات.
+                الرصيد دائمٌ لا ينتهي، ويُخصم عند تثبيت لعبةٍ جديدة.
+              </p>
+              <p className="mt-3 flex items-baseline justify-between gap-2 text-sm">
+                <span className="text-ink/55">رصيد الألعاب الحالي</span>
+                <span className="font-bold text-ink">{credits}</span>
+              </p>
+              <SubscribeButton
+                productId="games_3"
+                label="٣ ألعاب"
+                hint="رصيدٌ دائم · يُضاف فور تأكيد الدفع"
+              />
+            </Card>
 
             {/*
               استوديو الحصة الذكية — شراء رصيد حصص (نموذج الحصص لا المدة).

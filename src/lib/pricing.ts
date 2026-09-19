@@ -6,7 +6,8 @@
 export type Product =
   | { id: string; kind: 'tool'; label: string; tool: string; months: number; priceKwd: number }
   | { id: string; kind: 'games'; label: string; scope: 'subject' | 'grade'; months: number; priceKwd: number }
-  | { id: string; kind: 'studio'; label: string; credits: number; priceKwd: number };
+  | { id: string; kind: 'studio'; label: string; credits: number; priceKwd: number }
+  | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number };
 
 export const PRODUCTS: Record<string, Product> = {
   gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
@@ -20,6 +21,9 @@ export const PRODUCTS: Record<string, Product> = {
   // الألعاب (تختار المشترية المادة/الصف عند الدفع)
   games_subject:  { id: 'games_subject',  kind: 'games', label: 'ألعاب مادة واحدة', scope: 'subject', months: 4, priceKwd: 20 },
   games_grade:    { id: 'games_grade',    kind: 'games', label: 'ألعاب صف كامل',   scope: 'grade',   months: 4, priceKwd: 50 },
+  // ألعاب غراس التفاعلية (المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات)
+  // رصيدٌ دائم لا مدةَ له: تختار المعلمة أيَّ ٣ ألعابٍ تُثبّتها، والخصم عند التثبيت الأول.
+  games_3:        { id: 'games_3',        kind: 'game_credits', label: 'ألعاب غراس التفاعلية — ٣ ألعاب', credits: 3, priceKwd: 2 },
   // الستوديو (حصص)
   studio_1:       { id: 'studio_1',       kind: 'studio', label: 'استوديو الحصة — حصة واحدة', credits: 1, priceKwd: 3 },
   studio_5:       { id: 'studio_5',       kind: 'studio', label: 'استوديو الحصة — ٥ حصص',    credits: 5, priceKwd: 10 },
@@ -35,6 +39,12 @@ export const LOCK_TO_PRODUCT: Record<string, string> = {
   multiplication: 'multiplication',
   clock: 'clock',
   'head-records': 'head_records',
+  // صفحات قفل الألعاب التفاعلية ← باقة الـ٣ ألعاب
+  millionaire: 'games_3',
+  xo: 'games_3',
+  sinjim: 'games_3',
+  snake: 'games_3',
+  balloons: 'games_3',
 };
 
 export const fmtKwd = (n: number) => `${n.toFixed(3).replace(/\.?0+$/, '')} د.ك`;

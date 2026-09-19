@@ -23,6 +23,12 @@ export interface ToolDef {
   locked: string | null;
   /** رابطٌ خارجيٌّ يُفتح في تبويبٍ جديد (أداة مستضافة خارج المنصّة). */
   external?: boolean;
+  /**
+   * أداةٌ مدفوعةٌ تحرس نفسَها بنفسِها (لا بعمودِ مدّةٍ في profiles): مساحتي
+   * تفتحُ رابطَها دائمًا، والأداةُ هي التي تقرّر وتعرض صفحةَ الشراء. تُعرض
+   * «متاحة» لا «مجانية» — فـ`col: null` وحدَه يعني مجّانيةً، وهذه ليست كذلك.
+   */
+  selfGated?: boolean;
 }
 
 /**
@@ -48,14 +54,14 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     href: '/api/tool-access?tool=gradebook', col: 'gradebook_until',
     locked: '/gradebook-locked', external: true,
   },
-  // ستوديو الحصة الذكية: أداةٌ خارجيةٌ لها مصدرُ صلاحيةٍ قائم في profiles هو
-  // `studio_until`. مساحتي تشتقّ الحالة منه: سارٍ/أدمن → يفتح الرابط الخارجي
-  // (والاستوديو نفسه يفرض نفس القاعدة: أدمن أو studio_until سارٍ)؛ منتهٍ →
-  // «تجديد الاشتراك» إلى «حسابي» بلا فتح الرابط.
+  // ستوديو الحصة الذكية: صار يُباع بالحصص لا بالمدّة، فلا عمودَ مدّةٍ يحكمه
+  // (`studio_until` بقيَ للمنحِ اليدويةِ القديمة فقط ولم يعد بوّابته). الاستوديو
+  // نفسه يفرض البوّابة حيًّا — رصيدُ حصصٍ قائم، أو درسٌ سابقٌ مملوك، أو أدمِن —
+  // ويعرض صفحةَ شرائه بنفسه. لذلك مساحتي تفتح رابطه دائمًا ولا تحكم عليه.
   studio: {
     key: 'studio', name: 'ستوديو الحصة الذكية', emoji: '🎬',
-    href: 'https://studio.ghiras-edu.com', col: 'studio_until', locked: '/account',
-    external: true,
+    href: 'https://studio.ghiras-edu.com', col: null, locked: '/account',
+    external: true, selfGated: true,
   },
   gharas_bank: {
     key: 'gharas_bank', name: 'بنك غراس', emoji: '🌱',

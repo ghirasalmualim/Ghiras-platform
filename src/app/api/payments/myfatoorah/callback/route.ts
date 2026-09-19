@@ -21,6 +21,9 @@ async function activate(admin: RpcClient, order: {
   if (order.kind === 'games' && order.scope && order.scope_id && order.months) {
     return admin.rpc('payment_grant_games', { p_user: order.user_id, p_scope: order.scope, p_scope_id: order.scope_id, p_months: order.months });
   }
+  if (order.kind === 'game_credits' && order.credits) {
+    return admin.rpc('payment_add_game_credits', { p_user: order.user_id, p_count: order.credits });
+  }
   if (order.kind === 'studio' && order.credits) {
     return admin.rpc('payment_add_credits', { p_user: order.user_id, p_count: order.credits });
   }

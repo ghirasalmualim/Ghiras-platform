@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
     tool: product.kind === 'tool' ? product.tool : null,
     scope: product.kind === 'games' ? product.scope : null,
     scope_id: product.kind === 'games' ? body.scopeId : null,
-    months: product.kind !== 'studio' ? product.months : null,
-    credits: product.kind === 'studio' ? product.credits : null,
+    months: product.kind === 'tool' || product.kind === 'games' ? product.months : null,
+    credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
     amount_kwd: product.priceKwd,
     status: 'pending',
   };

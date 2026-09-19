@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SubscribeButton from '@/components/SubscribeButton';
 
 /**
  * صفحة «من سيربح المليون — أداة مدفوعة برصيد».
@@ -30,31 +31,31 @@ export default function MillionaireLockedPage() {
           الأداة تعمل برصيد ألعاب — كل رصيد = لعبة كاملة.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-sage/25 bg-sage-light/40 p-4">
-            <div className="text-lg font-extrabold text-sage-deep">لعبة واحدة</div>
-            <div className="text-2xl font-black text-sage-dark mt-1">٢ د.ك</div>
-          </div>
-          <div className="rounded-2xl border-2 border-gold/60 bg-gold-light/40 p-4 relative">
-            <span className="absolute -top-3 right-1/2 translate-x-1/2 bg-gold text-white text-[11px] font-extrabold px-3 py-0.5 rounded-full whitespace-nowrap">
-              الأوفر
-            </span>
-            <div className="text-lg font-extrabold text-gold-dark">٥ ألعاب</div>
-            <div className="text-2xl font-black text-gold-dark mt-1">٨ د.ك</div>
+        {/* باقةٌ واحدةٌ لكلِّ ألعابِ غراس التفاعلية — رصيدٌ دائمٌ مشترَك */}
+        <div className="mt-6 rounded-2xl border-2 border-gold/60 bg-gold-light/40 p-5 relative">
+          <span className="absolute -top-3 right-1/2 translate-x-1/2 bg-gold text-white text-[11px] font-extrabold px-3 py-0.5 rounded-full whitespace-nowrap">
+            باقة غراس
+          </span>
+          <div className="text-lg font-extrabold text-gold-dark">٣ ألعاب</div>
+          <div className="text-3xl font-black text-gold-dark mt-1">٢ د.ك</div>
+          <div className="mt-2 text-[12px] font-bold leading-relaxed text-ink/55">
+            رصيدٌ دائم لا ينتهي · تختارين أيَّ ٣ ألعاب من:
+            <br />
+            من سيربح المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات
           </div>
         </div>
 
-        <p className="mt-6 text-sm text-ink/50 leading-relaxed">
-          لتفعيل الرصيد، يرجى التواصل مع إدارة غراس المعلم.
-          <br />
-          والدفع الإلكتروني المباشر قريباً 🌱
-        </p>
+        <SubscribeButton
+          productId="games_3"
+          label="فعّلي باقة الألعاب"
+          hint="دفعٌ إلكترونيٌّ مباشر · يُضاف الرصيد فور تأكيد الدفع"
+        />
 
         <Link
           href="/support"
-          className="mt-7 inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
+          className="mt-4 block text-ink/55 hover:text-ink font-bold text-sm transition-colors"
         >
-          💬 تواصل معنا
+          💬 عندك سؤال؟ تواصل معنا
         </Link>
         <Link
           href="/"

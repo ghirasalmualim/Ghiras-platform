@@ -87,7 +87,8 @@ export default async function WorkspacePage() {
       let tone: Card['tone'];
       let accessible: boolean;
       if (isAdmin || def.col === null) {
-        tone = def.col === null ? 'free' : 'available';
+        // أداةٌ تحرس نفسَها (selfGated) مدفوعةٌ وإن لم يحكمها عمود — لا تُوسَم «مجانية»
+        tone = def.col === null && !def.selfGated ? 'free' : 'available';
         accessible = true;
       } else if (isStillValid((p[def.col] as string | null) ?? null)) {
         tone = 'available';
