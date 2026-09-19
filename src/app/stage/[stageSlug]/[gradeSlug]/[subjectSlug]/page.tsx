@@ -48,6 +48,7 @@ const FREE_GAMES: Record<string, string> = {
   'english|grade-8': 'https://games.ghiras-edu.com/free-english-g8/full-review',
   'english|grade-7': 'https://games.ghiras-edu.com/free-english-g7/full-review',
   'english|grade-6': 'https://games.ghiras-edu.com/free-english-g6/full-review',
+  'math|grade-4': 'https://games.ghiras-edu.com/free-math-g4/full-review',
   'math|grade-3': 'https://games.ghiras-edu.com/free-math-g3/full-review',
   'math|grade-2': 'https://games.ghiras-edu.com/free-math-g2/full-review',
   'math|grade-1': 'https://games.ghiras-edu.com/free-math-g1/full-review',
