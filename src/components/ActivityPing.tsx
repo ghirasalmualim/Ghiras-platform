@@ -37,8 +37,13 @@ export default function ActivityPing() {
         } = await supabase.auth.getUser();
         if (!user || !alive) return;
 
+        // نبضتان لا واحدة: `touch_activity` تكتب «آخر ظهور» فوق نفسِه،
+        // و`log_activity_day` تُراكم يومًا بعد يوم — فمنها وحدَها يُعرَف
+        // من استعملت المنصّة ثلاثين يومًا ممّن دخلت مرّةً واحدة.
+        // مستقلّتان عمدًا: فشلُ الإحصاء الجديد لا يُسقِط «آخر ظهور» القائم.
         await supabase.rpc('touch_activity');
         localStorage.setItem(KEY, String(Date.now()));
+        await supabase.rpc('log_activity_day');
       } catch {
         // زائرة غير مسجّلة، أو تخزين محلي محجوب، أو انقطاع شبكة —
         // تسجيل النشاط إحصائي بحت ولا يجوز أن يعطّل أي شيء للمعلمة.
