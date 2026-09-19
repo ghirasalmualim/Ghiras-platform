@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
 
   // SendPayment
   const mfBody = {
+    NotificationOption: 'LNK',
     InvoiceValue: product.priceKwd,
     CustomerName: (prof?.full_name as string) || 'معلمة غراس',
     DisplayCurrencyIso: 'KWD',
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
   const invoiceId = mfJson?.Data?.InvoiceId;
   if (!mfRes.ok || !url) {
     await admin.from('payment_orders').update({ status: 'failed' }).eq('id', order.id);
-    const msg = mfJson?.Message || (mfJson?.ValidationErrors?.[0]?.Error) || 'تعذّر بدء الدفع';
+    const msg = (mfJson?.ValidationErrors?.[0]?.Error) || mfJson?.Message || 'تعذّر بدء الدفع';
     return NextResponse.json({ error: msg }, { status: 502 });
   }
   await admin.from('payment_orders').update({ mf_invoice_id: String(invoiceId ?? '') }).eq('id', order.id);
