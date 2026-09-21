@@ -1,7 +1,0 @@
-مكتباتُ القراءةِ المحليةِ في غراس — مستضافةٌ هنا ولا تُحمَّلُ من أي CDN خارجي.
-كلُّها برخصة Apache License 2.0:
-  • tesseract.js 7.0.0 ............ https://github.com/naptha/tesseract.js
-  • tesseract.js-core 7.0.0 ....... https://github.com/naptha/tesseract.js-core
-  • @tesseract.js-data/ara 1.0.0 (4.0.0_best_int) — tessdata_best, Google
-  • SheetJS xlsx 0.20.3 ............ https://sheetjs.com
-  • pdf.js 6.3.289 (legacy) ........ https://github.com/mozilla/pdf.js  (سجل الدرجات فقط)

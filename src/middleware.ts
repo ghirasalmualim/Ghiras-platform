@@ -46,7 +46,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // ocr/ = مكتباتُ القراءةِ المحليّة (ملفّاتٌ عامّةٌ ثابتة، ~٦ م.ب) — لا جلسةَ لتجديدها
-    '/((?!_next/static|_next/image|favicon.ico|icons|logo.png|manifest.json|ocr/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icons|logo.png|manifest.json).*)',
   ],
 };
