@@ -34,6 +34,97 @@
   const IDLE_MS = 90000;       // يُغلَقُ القارئُ بعد ٩٠ ثانيةً بلا استعمالٍ لتحريرِ الذاكرة
   const MAX_PDF_PAGES = 8;
 
+  /* ═════════════ سجلُّ التشخيصِ المؤقّت (?diag=1 فقط) ═════════════
+     ⚠️ مؤقّت — لمعرفةِ سببِ تعطّلِ القراءةِ على iPad، ويُزالُ بعد التشخيص.
+     • لا يعملُ ولا يظهرُ إلا إن كان في الرابطِ ?diag=1 — المعلماتُ لا يرينه.
+     • لا يُرسِلُ شيئًا لأيِّ مكان: يُعرَضُ على الشاشةِ ويُنسَخُ يدويًّا فقط.
+     • لا يسجّلُ أسماءً ولا نصًّا مستخرَجًا ولا صورةً ولا اسمَ الملف (قد يحملُ اسمَ
+       طالبة) — أعدادٌ وأبعادٌ وأزمنةٌ ونصوصُ أخطاءٍ تقنيةٌ فقط.
+     • يُحفَظُ في localStorage على الجهازِ نفسِه كي يبقى بعد أن يُعيدَ Safari تحميلَ
+       الصفحةِ عند نفادِ الذاكرة — فيُكشَفُ ذلك ويُعرَفُ عند أيِّ مرحلةٍ حدث. */
+  const DIAG = (function () {
+    try { if (/[?&]diag=1\b/.test(location.search)) { sessionStorage.setItem('ghiras-ocr-diag-on', '1'); return true; }
+      return sessionStorage.getItem('ghiras-ocr-diag-on') === '1'; } catch (e) { return false; }
+  })();
+  const DKEY = 'ghiras-ocr-diag-log', FKEY = 'ghiras-ocr-diag-inflight';
+  const t0Page = Date.now();
+  let dlines = [], dpanel = null, stageT = 0;
+  function dstore() { try { localStorage.setItem(DKEY, JSON.stringify(dlines.slice(-400))); } catch (e) {} }
+  function dlog(stage, msg) {
+    if (!DIAG) return;
+    const t = ((Date.now() - t0Page) / 1000).toFixed(2);
+    dlines.push(`[${t}ث] ${stage}${msg != null && msg !== '' ? ' — ' + msg : ''}`);
+    dstore(); drender();
+  }
+  // «المرحلةُ الجارية»: تُكتَبُ قبل كلِّ مرحلةٍ ثقيلةٍ وتُمسَحُ عند النهاية — لو وُجدت عند
+  // فتحِ الصفحةِ فقد أُعيدَ تحميلُها في منتصفِ العمل (نفادُ ذاكرةٍ غالبًا)
+  function dstage(name) { if (!DIAG) return; stageT = Date.now(); try { localStorage.setItem(FKEY, JSON.stringify({ name, at: Date.now() })); } catch (e) {} dlog('▶ ' + name); }
+  function dstageEnd(name, extra) { if (!DIAG) return; dlog('✔ ' + name, `${((Date.now() - stageT) / 1000).toFixed(2)}ث${extra ? ' · ' + extra : ''}`); }
+  function dclearInflight() { if (!DIAG) return; try { localStorage.removeItem(FKEY); } catch (e) {} }
+  function derr(where, e) {
+    if (!DIAG) return;
+    const txt = e && (e.stack || e.message) ? `${e.name || 'Error'}: ${e.message || ''}\n${String(e.stack || '').split('\n').slice(0, 6).join('\n')}` : String(e);
+    dlog('✗ خطأ في ' + where, txt);
+  }
+  function drender() {
+    if (!dpanel) return;
+    dpanel.querySelector('pre').textContent = dlines.join('\n');
+    dpanel.querySelector('pre').scrollTop = 1e9;
+  }
+  function dpanelInit() {
+    if (!DIAG || dpanel || !document.body) return;
+    dpanel = document.createElement('div');
+    dpanel.setAttribute('dir', 'rtl');
+    dpanel.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483646;background:#1f2a24;color:#e8f0ea;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:12px/1.55 -apple-system,monospace;max-height:38vh;display:flex;flex-direction:column';
+    dpanel.innerHTML = '<div style="display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid #3a4a40">'
+      + '<b style="flex:1">🩺 سجل التشخيص (مؤقت — لا يُرسل شيئًا)</b>'
+      + '<button data-c style="background:#7A9E7E;color:#fff;border:0;border-radius:8px;padding:6px 10px;font:inherit;font-weight:700">📋 نسخ سجل التشخيص</button>'
+      + '<button data-x style="background:#5a3a3a;color:#fff;border:0;border-radius:8px;padding:6px 10px;font:inherit">🗑️ مسح</button>'
+      + '<button data-h style="background:#3a4a40;color:#fff;border:0;border-radius:8px;padding:6px 10px;font:inherit">▾</button></div>'
+      + '<pre style="margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1"></pre>';
+    document.body.appendChild(dpanel);
+    dpanel.querySelector('[data-c]').onclick = async () => {
+      const txt = dlines.join('\n');
+      let ok = false;
+      try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {}
+      if (!ok) { // احتياطٌ لـ Safari القديم: تحديدُ النصِّ ونسخُه
+        const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select(); try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
+      }
+      dpanel.querySelector('[data-c]').textContent = ok ? '✅ نُسخ' : '⚠️ انسخيه يدويًا';
+      setTimeout(() => { dpanel.querySelector('[data-c]').textContent = '📋 نسخ سجل التشخيص'; }, 2500);
+    };
+    dpanel.querySelector('[data-x]').onclick = () => { dlines = []; try { localStorage.removeItem(DKEY); localStorage.removeItem(FKEY); } catch (e) {} drender(); };
+    dpanel.querySelector('[data-h]').onclick = () => { const p = dpanel.querySelector('pre'); p.style.display = p.style.display === 'none' ? '' : 'none'; };
+    drender();
+  }
+  // دعمُ SIMD كما يكشفُه Tesseract — لمعرفةِ أيِّ نواةٍ سيختار (لا يُرى من داخلِ العامل)
+  function wasmFeatures() {
+    const ok = (b) => { try { return WebAssembly.validate(new Uint8Array(b)); } catch (e) { return false; } };
+    const simd = ok([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]);
+    const relaxed = ok([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,15,1,13,0,65,1,253,15,65,2,253,15,253,128,2,11]);
+    return { wasm: typeof WebAssembly === 'object', simd, relaxed, core: relaxed ? 'relaxedsimd-lstm' : simd ? 'simd-lstm' : 'lstm' };
+  }
+  if (DIAG) {
+    try { dlines = JSON.parse(localStorage.getItem(DKEY) || '[]'); } catch (e) { dlines = []; }
+    dlines.push('════════ فتح الصفحة ════════');
+    let inflight = null; try { inflight = JSON.parse(localStorage.getItem(FKEY) || 'null'); } catch (e) {}
+    if (inflight) {
+      dlog('⚠️⚠️ أُعيد تحميل الصفحة أثناء مرحلة: ' + inflight.name, `قبل ${Math.round((Date.now() - inflight.at) / 1000)}ث — الأرجح نفاد ذاكرة الجهاز`);
+      dclearInflight();
+    }
+    const f = wasmFeatures();
+    const isIPad = /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    const pwa = (navigator.standalone === true) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    dlog('الوحدة', `GhirasOCR ${'2026-09-21.7-diag'} · base=${BASE}`);
+    dlog('الجهاز', `${isIPad ? 'iPad' : (/iPhone/.test(navigator.userAgent) ? 'iPhone' : 'غير iOS')} · ${pwa ? 'تطبيق الشاشة الرئيسية (PWA)' : 'متصفّح'} · شاشة ${screen.width}×${screen.height} @${window.devicePixelRatio}x · أنوية ${navigator.hardwareConcurrency || '؟'} · ذاكرة ${navigator.deviceMemory || 'غير متاحة'}`);
+    dlog('المتصفّح', navigator.userAgent);
+    dlog('القدرات', `WebAssembly=${f.wasm} · SIMD=${f.simd} · RelaxedSIMD=${f.relaxed} ⇒ النواة المتوقَّعة: ${f.core} · Worker=${typeof Worker} · createImageBitmap=${typeof createImageBitmap} · OffscreenCanvas=${typeof OffscreenCanvas} · IndexedDB=${typeof indexedDB}`);
+    window.addEventListener('error', (e) => dlog('✗ خطأ عام في الصفحة', `${e.message || ''} @ ${(e.filename || '').split('/').pop()}:${e.lineno || ''}`));
+    window.addEventListener('unhandledrejection', (e) => derr('وعد غير ملتقط', e.reason));
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', dpanelInit); else dpanelInit();
+  }
+
   /* ─────────────── تحميلٌ كسولٌ للمكتبات (مرّةً واحدة) ─────────────── */
   const loaded = {};
   function loadScript(src) {
@@ -57,7 +148,15 @@
     'initialized api': 'تجهيز أداة القراءة…',
     'recognizing text': 'قراءة الكشف…',
   };
+  let dLastStatus = '';
   function report(m) {
+    if (DIAG && m && m.status) {
+      const pct = typeof m.progress === 'number' ? Math.round(m.progress * 100) : null;
+      if (m.status !== dLastStatus || pct === 100) {
+        dlog('  Tesseract', `${m.status}${pct != null ? ' ' + pct + '%' : ''}`);
+        dLastStatus = m.status;
+      }
+    }
     if (!statusCb || !m) return;
     const label = STATUS_AR[m.status] || 'جارٍ العمل…';
     const pct = typeof m.progress === 'number' ? Math.round(m.progress * 100) : null;
@@ -68,7 +167,10 @@
     clearTimeout(idleTimer);
     if (workerReady) return workerReady;
     workerReady = (async () => {
+      dstage('تحميل مكتبة Tesseract');
       await loadScript(BASE + 'tesseract/tesseract.min.js');
+      dstageEnd('تحميل مكتبة Tesseract', 'Tesseract=' + typeof window.Tesseract);
+      dstage('تشغيل Web Worker + النواة (WASM) + اللغة العربية');
       // oem=1 (LSTM فقط) ⇒ نواةُ lstm الأخفّ، ونموذجُ best_int للعربية
       const w = await window.Tesseract.createWorker('ara', 1, {
         workerPath: BASE + 'tesseract/worker.min.js',
@@ -82,9 +184,10 @@
         logger: report,
       });
       await w.setParameters({ preserve_interword_spaces: '1' });
+      dstageEnd('تشغيل Web Worker + النواة (WASM) + اللغة العربية', 'العامل جاهز');
       worker = w;
       return w;
-    })().catch((e) => { workerReady = null; throw e; });
+    })().catch((e) => { derr('تشغيل العامل/النواة/اللغة', e); workerReady = null; throw e; });
     return workerReady;
   }
   function scheduleIdle() {
@@ -110,12 +213,19 @@
     return new Promise((res, rej) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
+      // تفريغُ img.src بعد النجاحِ يُطلِقُ onerror في المتصفّح — العلَمُ يُسكتُه (كان بلا أثر، لكنه يضلّلُ سجلَّ التشخيص)
+      let decoded = false;
       img.onload = () => {
-        try { res(fitCanvas(img, img.naturalWidth, img.naturalHeight)); }
-        catch (e) { rej(e); }
+        decoded = true;
+        try {
+          const c = fitCanvas(img, img.naturalWidth, img.naturalHeight);
+          dlog('فكّ الصورة ✓', `الأصل ${img.naturalWidth}×${img.naturalHeight} (${(img.naturalWidth * img.naturalHeight / 1e6).toFixed(1)} ميغابكسل) ⇒ ${c.width === img.naturalWidth ? 'بلا تصغير' : 'صُغّرت إلى'} ${c.width}×${c.height}`);
+          res(c);
+        }
+        catch (e) { derr('تصغير الصورة على اللوحة', e); rej(e); }
         finally { URL.revokeObjectURL(url); img.src = ''; }
       };
-      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image-decode')); };
+      img.onerror = () => { if (decoded) return; dlog('✗ فكّ الصورة فشل', 'المتصفّح لم يستطع قراءة الملف كصورة'); URL.revokeObjectURL(url); rej(new Error('image-decode')); };
       img.src = url;
     });
   }
@@ -446,9 +556,13 @@
     const w = await getWorker();
     let full = null, crop = null;
     try {
+      dstage('تجهيز الصورة (تقويم/إضاءة/خطوط)');
       full = prepare(page, null, true);
+      dstageEnd('تجهيز الصورة (تقويم/إضاءة/خطوط)', `لوحة ${full.width}×${full.height} · أعمدة مكتشفة ${(full.cols || []).length}`);
       await w.setParameters({ tessedit_pageseg_mode: '3' });
+      dstage('قراءة الصفحة كاملة');
       const linesFull = await recognizeLines(full);
+      dstageEnd('قراءة الصفحة كاملة', `أسطر مقروءة: ${linesFull.length}`);
       if (!rect) {
         // الصفحةُ كاملةً بلا تظليل: تحليلُ التخطيطِ وحدَه ينهارُ أحيانًا في الصورِ المهتزّة
         // (قيسَ: ٠/٢٠)، فيُقرأُ أيضًا كلُّ عمودٍ عريضٍ من أعمدةِ الجدولِ وحدَه — «تظليلٌ
@@ -456,6 +570,7 @@
         let best = pickNames(linesFull, full.width, false);
         const cols = (full.cols || []).filter(([x0, x1]) => x1 - x0 >= full.width * 0.12);
         if (cols.length >= 2) {
+          dstage(`قراءة الأعمدة منفردة (${Math.min(cols.length, 6)})`);
           await w.setParameters({ tessedit_pageseg_mode: '6' });
           for (const [x0, x1] of cols.slice(0, 6)) {
             const strip = document.createElement('canvas');
@@ -466,7 +581,9 @@
               if (r.confSum > best.confSum) best = { names: r.names, removed: Math.max(best.removed, r.removed), confSum: r.confSum };
             } finally { wipe(strip); }
           }
+          dstageEnd(`قراءة الأعمدة منفردة (${Math.min(cols.length, 6)})`);
         }
+        dlog('النتيجة', `عدد الأسماء: ${best.names.length} · أسطر أرقام/ضجيج حُذفت: ${best.removed}`);
         return best;
       }
 
@@ -479,9 +596,11 @@
       const a = pickNames(inside, full.width, true);
 
       // (ب) القصاصةُ نفسُها — كتلةٌ موحّدة (psm 6): كلُّ صفٍّ سطر
+      dstage('قراءة الجزء المظلَّل');
       crop = prepare(page, rect, true);
       await w.setParameters({ tessedit_pageseg_mode: '6' });
       const b = pickNames(await recognizeLines(crop), crop.width, true);
+      dstageEnd('قراءة الجزء المظلَّل', `قصاصة ${crop.width}×${crop.height} · أسماء (أ) ${a.names.length} (ب) ${b.names.length}`);
 
       // الاختيار: إن وجدت إحداهما أسماءً أكثرَ بوضوح (٢٠٪+) فهي الأصحّ — الصورُ القاسيةُ
       // تُسقِطُ من (أ) نصفَ الأسماء (قيسَ: ١٠ مقابل ١٩). وإن تقاربتا قُدِّمت (أ): حدودُ
@@ -593,13 +712,21 @@
     const isPdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name || '');
     let pages = [];
     try {
+      // نوعُ الملفِّ وحجمُه وامتدادُه فقط — لا اسمُه (قد يحملُ اسمَ طالبة) ولا محتواه
+      const ext = ((file.name || '').match(/\.([a-z0-9]{1,5})$/i) || [, '—'])[1].toLowerCase();
+      dlog('════ استلام ملف', `النوع ${file.type || '(فارغ)'} · الامتداد .${ext} · الحجم ${(file.size / 1024 / 1024).toFixed(2)} م.ب · PDF=${isPdf}`);
       onStatus('تجهيز الصورة…');
+      dstage(isPdf ? 'فكّ ملف PDF' : 'فكّ الصورة');
       pages = isPdf ? await pdfToCanvases(file) : [await imageToCanvas(file)];
+      dstageEnd(isPdf ? 'فكّ ملف PDF' : 'فكّ الصورة', `صفحات ${pages.length}`);
       const allLines = [];
       let removed = 0, cancelled = false;
       for (let i = 0; i < pages.length; i++) {
         const label = pages.length > 1 ? `صفحة ${i + 1} من ${pages.length}` : '';
+        dclearInflight();   // انتظارُ المعلمةِ في النافذةِ ليس مرحلةً ثقيلة
+        dlog('نافذة القص ظهرت');
         const choice = await cropDialog(pages[i], label);
+        dlog('اختيار المعلمة', choice.mode === 'crop' && choice.rect ? `تظليل ${choice.rect.w}×${choice.rect.h}` : choice.mode);
         if (choice.mode === 'cancel') { choice.ui.close(); cancelled = true; break; }
         if (choice.mode === 'skip') { choice.ui.close(); continue; }
         choice.ui.busy(true);
@@ -613,10 +740,15 @@
           scheduleIdle();
         }
       }
-      if (cancelled && !allLines.length) return { names: [], removed: 0, cancelled: true };
+      if (cancelled && !allLines.length) { dclearInflight(); return { names: [], removed: 0, cancelled: true }; }
       // إزالةُ التكرارِ المتتالي بين الصفحات
       const names = allLines.filter((n, i) => n !== allLines[i - 1]);
+      dclearInflight();
+      dlog('════ انتهت القراءة بنجاح', `عدد الأسماء: ${names.length}`);
       return { names, removed, cancelled };
+    } catch (e) {
+      derr('القراءة', e); dclearInflight();
+      throw e;
     } finally {
       pages.forEach(wipe); pages = null;   // لا يبقى من الصورةِ شيءٌ في الذاكرة
     }
@@ -651,7 +783,7 @@
   }
 
   // الإصدار: للتحقّقِ من أيِّ نسخةٍ يُشغِّلُها جهازُ المعلمة (الدعمُ الفنيّ واختبارُ الكاش)
-  window.GhirasOCR = { readNames, readSheet, cleanNames, base: BASE, version: '2026-09-21.6' };
+  window.GhirasOCR = { readNames, readSheet, cleanNames, base: BASE, version: '2026-09-21.7-diag' };
   // منفذُ اختبارٍ لا يُفعَّلُ إلا إن طلبته صفحةُ الاختبارِ صراحةً قبل التحميل
   if (window.__GHIRAS_OCR_TEST) window.GhirasOCR._t = { prepare, recognizeLines, pickNames, cleanLine, splitAl, getWorker, imageToCanvas, skewAngle, readPage };
 })();
