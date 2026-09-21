@@ -221,9 +221,14 @@ export async function GET(req: NextRequest) {
     const kSig = await hmac(`k|${user.id}|${kExp}`);
     dest.searchParams.set('k', `${kExp}.${user.id}.${kSig}`);
     // الأدمِن: سجلات وحذف وصور مسح بلا حدّ (الدفتر يقرأ ?slots=N و ?adm=1).
+    // موقّعة بـ ?l= — حارس الألعاب يحذف أي slots/adm/demo بلا توقيع صالح.
     if (isAdmin) {
-      dest.searchParams.set('slots', '999');
-      dest.searchParams.set('adm', '1');
+      const slots = '999';
+      const adm = '1';
+      const lSig = await hmac(`l|gradebook|${kExp}|${slots}|${adm}`);
+      dest.searchParams.set('slots', slots);
+      dest.searchParams.set('adm', adm);
+      dest.searchParams.set('l', `${kExp}.${slots}.${adm}.${lSig}`);
     }
   }
 
