@@ -220,6 +220,11 @@ export async function GET(req: NextRequest) {
     const kExp = Date.now() + 8 * 60 * 60 * 1000;
     const kSig = await hmac(`k|${user.id}|${kExp}`);
     dest.searchParams.set('k', `${kExp}.${user.id}.${kSig}`);
+    // الأدمِن: سجلات وحذف وصور مسح بلا حدّ (الدفتر يقرأ ?slots=N و ?adm=1).
+    if (isAdmin) {
+      dest.searchParams.set('slots', '999');
+      dest.searchParams.set('adm', '1');
+    }
   }
 
   const res = NextResponse.redirect(dest.toString());
