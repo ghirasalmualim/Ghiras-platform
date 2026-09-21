@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { isStillValid, TOOL_COLS } from '@/lib/entitlements';
 import AddToMySpace from '@/components/AddToMySpace';
+import PaymentResult from '@/components/PaymentResult';
 import {
   TOOL_REGISTRY,
   parseSubjectKey,
@@ -52,7 +53,11 @@ const TONE_LABEL: Record<Card['tone'], string> = {
   expired: 'انتهى الاشتراك',
 };
 
-export default async function WorkspacePage() {
+export default async function WorkspacePage({
+  searchParams,
+}: {
+  searchParams?: { pay?: string; p?: string };
+}) {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/workspace');
@@ -132,6 +137,8 @@ export default async function WorkspacePage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-cream px-4 py-6 md:px-8 md:py-10">
+      {/* رسالةُ الرجوعِ من الدفع — كانت العلامةُ تصلُ ولا يقرؤها أحد */}
+      <PaymentResult pay={searchParams?.pay} product={searchParams?.p} />
       <nav className="max-w-5xl mx-auto flex items-center gap-2 text-sm mb-6 flex-wrap">
         <Link href="/" className="px-3 py-1.5 rounded-full bg-white text-sage-dark border border-sage/30 hover:border-sage transition">الرئيسية</Link>
         <span className="px-3 py-1.5 rounded-full bg-sage text-white font-bold">مساحتي</span>

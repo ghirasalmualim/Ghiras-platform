@@ -7,7 +7,8 @@ export type Product =
   | { id: string; kind: 'tool'; label: string; tool: string; months: number; priceKwd: number }
   | { id: string; kind: 'games'; label: string; scope: 'subject' | 'grade'; months: number; priceKwd: number }
   | { id: string; kind: 'studio'; label: string; credits: number; priceKwd: number }
-  | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number };
+  | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number }
+  | { id: string; kind: 'bundle'; label: string; tools: string[]; months: number; lessonCredits: number; priceKwd: number };
 
 export const PRODUCTS: Record<string, Product> = {
   gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
@@ -24,6 +25,11 @@ export const PRODUCTS: Record<string, Product> = {
   // ألعاب غراس التفاعلية (المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات)
   // رصيدٌ دائم لا مدةَ له: تختار المعلمة أيَّ ٣ ألعابٍ تُثبّتها، والخصم عند التثبيت الأول.
   games_3:        { id: 'games_3',        kind: 'game_credits', label: 'ألعاب غراس التفاعلية — ٣ ألعاب', credits: 3, priceKwd: 2 },
+  // باقة المعلم: أربع أدواتٍ ٤ أشهر + حصّةُ استوديو واحدة (قيمتُها منفردةً ٣٥ د.ك)،
+  // ومعها هديّةٌ مفاجِئةٌ لا تُعلَنُ في الكرت: رصيدُ لعبةٍ واحدة (تظهرُ بعد الدفع).
+  // ⚠️ `tools` هنا للعرضِ وحدَه — التفعيلُ الفعليُّ مُثبَّتٌ في دالّةِ القاعدة
+  //    payment_activate_teacher_pack، فأيُّ تعديلٍ هنا يلزمُه تعديلٌ هناك.
+  teacher_pack:   { id: 'teacher_pack',   kind: 'bundle', label: 'باقة المعلم', tools: ['gharas_bank', 'attendance', 'gradebook', 'agenda'], months: 4, lessonCredits: 1, priceKwd: 30 },
   // الستوديو (حصص)
   studio_1:       { id: 'studio_1',       kind: 'studio', label: 'استوديو الحصة — حصة واحدة', credits: 1, priceKwd: 3 },
   studio_5:       { id: 'studio_5',       kind: 'studio', label: 'استوديو الحصة — ٥ حصص',    credits: 5, priceKwd: 10 },

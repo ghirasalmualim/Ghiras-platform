@@ -91,9 +91,15 @@ declare
 begin
   if not public.is_admin() then raise exception 'not authorized'; end if;
 
+  -- ⚠️ التصريحُ بالأنواعِ لازم: `role` و`status` نوعُهما enum لا text
+  --    (public.user_role / public.user_status)، وبلا ::text ترفضُ Postgres
+  --    النتيجةَ كلَّها برسالة «structure of query does not match function
+  --    result type». وبقيّةُ الأعمدةِ مصبوبةٌ معها حصانةً لأيِّ تغييرِ نوعٍ لاحق.
   return query
-  select p.id, p.full_name, p.username, p.phone, p.role, p.status,
-         p.created_at, p.last_active,
+  select p.id::uuid,
+         p.full_name::text, p.username::text, p.phone::text,
+         p.role::text, p.status::text,
+         p.created_at::timestamptz, p.last_active::timestamptz,
          coalesce(a.d, 0)::integer,
          coalesce(a.h, 0)::integer,
          coalesce(g.n, 0)::integer,

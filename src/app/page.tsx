@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import HomeSections from '@/components/HomeSections';
 import AccountBar from '@/components/AccountBar';
+import TeacherPackCard from '@/components/TeacherPackCard';
 
 export const revalidate = 300; // تحديث كل 5 دقائق مع تخزين مؤقت للسرعة
 
@@ -35,6 +36,14 @@ export default function HomePage() {
           <br />
           للمعلمين والمعلمات — اختر قسمك وابدأ
         </p>
+
+        {/* إعلانُ «باقة المعلم» — قبلَ الأقسامِ ليراه الزائرُ أوّلًا */}
+        <div
+          className="w-full mt-8 animate-float-in"
+          style={{ animationDelay: '0.3s' }}
+        >
+          <TeacherPackCard />
+        </div>
 
         {/* كرتان رئيسيان: ألعاب · المعلّم ورئيس الشعبة */}
         <div

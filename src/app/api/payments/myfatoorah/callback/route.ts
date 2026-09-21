@@ -13,13 +13,18 @@ const MF_BASE = process.env.MYFATOORAH_BASE_URL || 'https://api.myfatoorah.com';
 
 type RpcClient = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
 async function activate(admin: RpcClient, order: {
-  id: string; user_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null;
+  id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null;
 }) {
   if (order.kind === 'tool' && order.tool && order.months) {
     return admin.rpc('payment_activate_tool', { p_user: order.user_id, p_tool: order.tool, p_months: order.months });
   }
   if (order.kind === 'games' && order.scope && order.scope_id && order.months) {
     return admin.rpc('payment_grant_games', { p_user: order.user_id, p_scope: order.scope, p_scope_id: order.scope_id, p_months: order.months });
+  }
+  // باقةٌ = منحٌ متعدّدةٌ في دالّةٍ واحدةٍ ذرّية: إمّا تُفعَّلُ كلُّها أو لا شيء.
+  // (ستُّ نداءاتٍ منفصلةٍ كانت ستتركُ عند فشلِ إحداها طلبًا مدفوعًا نصفَ مُفعَّل.)
+  if (order.kind === 'bundle' && order.product_id === 'teacher_pack') {
+    return admin.rpc('payment_activate_teacher_pack', { p_user: order.user_id });
   }
   if (order.kind === 'game_credits' && order.credits) {
     return admin.rpc('payment_add_game_credits', { p_user: order.user_id, p_count: order.credits });
@@ -32,7 +37,11 @@ async function activate(admin: RpcClient, order: {
 
 async function handle(req: NextRequest) {
   const origin = req.nextUrl.origin;
-  const done = (ok: boolean) => NextResponse.redirect(`${origin}/workspace?pay=${ok ? 'ok' : 'fail'}`, { status: 303 });
+  const done = (ok: boolean, product?: string) =>
+    NextResponse.redirect(
+      `${origin}/workspace?pay=${ok ? 'ok' : 'fail'}${ok && product ? `&p=${encodeURIComponent(product)}` : ''}`,
+      { status: 303 },
+    );
 
   const paymentId = req.nextUrl.searchParams.get('paymentId');
   const key = (process.env.MYFATOORAH_API_KEY || '').trim();
@@ -57,11 +66,11 @@ async function handle(req: NextRequest) {
   const orderId = mfJson?.Data?.CustomerReference;
   if (!orderId) return done(false);
 
-  const { data: order } = await admin.from('payment_orders').select('id,user_id,kind,tool,scope,scope_id,months,credits,status').eq('id', orderId).maybeSingle();
+  const { data: order } = await admin.from('payment_orders').select('id,user_id,product_id,kind,tool,scope,scope_id,months,credits,status').eq('id', orderId).maybeSingle();
   if (!order) return done(false);
-  const o = order as { id: string; user_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; status: string };
+  const o = order as { id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; status: string };
 
-  if (o.status === 'paid') return done(true); // مُفعّل مسبقًا — idempotent
+  if (o.status === 'paid') return done(true, o.product_id); // مُفعّل مسبقًا — idempotent
 
   if (status !== 'Paid') {
     await admin.from('payment_orders').update({ status: 'failed', mf_payment_id: paymentId }).eq('id', o.id).eq('status', 'pending');
@@ -73,7 +82,7 @@ async function handle(req: NextRequest) {
     .from('payment_orders')
     .update({ status: 'paid', paid_at: new Date().toISOString(), mf_payment_id: paymentId })
     .eq('id', o.id).eq('status', 'pending').select('id').maybeSingle();
-  if (!claimed) return done(true); // فازت نسخة أخرى بالتفعيل
+  if (!claimed) return done(true, o.product_id); // فازت نسخة أخرى بالتفعيل
 
   const { error } = await activate(admin as unknown as RpcClient, o);
   if (error) {
@@ -81,7 +90,7 @@ async function handle(req: NextRequest) {
     await admin.from('payment_orders').update({ status: 'pending' }).eq('id', o.id);
     return done(false);
   }
-  return done(true);
+  return done(true, o.product_id);
 }
 
 export const GET = handle;
