@@ -30,19 +30,35 @@ export default function TeacherPackCard() {
     + (PRODUCTS.studio_1?.priceKwd ?? 0) * pack.lessonCredits;
   const saving = single - pack.priceKwd;
 
+  // «٥ دنانير» لا «٥ د.ك» في الشارة — كما كتبتها صاحبةُ المنصّة؛ والتمييزُ
+  // للعددِ من ٣ إلى ١٠ (جمعُ القلّة)، وما سواه يُكتَبُ بالرمز.
+  const savingLabel =
+    Number.isInteger(saving) && saving >= 3 && saving <= 10
+      ? `${ar(String(saving))} دنانير`
+      : kwd(saving);
+
+  // مطويٌّ افتراضيًّا — سطرٌ واحدٌ يفتحُ التفاصيلَ عند الضغط. <details> أصليٌّ:
+  // يعملُ بلا JavaScript، ولوحةُ المفاتيحِ وقارئُ الشاشةِ يفهمانه من تلقاءِ نفسيهما.
   return (
     <div className="mx-auto w-full max-w-md">
-      <div className="card-3d relative overflow-hidden border-2 border-gold/60 bg-gradient-to-b from-gold-light/50 to-white p-6 text-right">
-        {saving > 0 && (
-          <span className="mb-2 inline-block rounded-full bg-gold px-3 py-1 text-[11px] font-extrabold text-white">
-            وفّر {kwd(saving)}
+      <details className="group card-3d overflow-hidden border-2 border-gold/60 bg-gradient-to-b from-gold-light/50 to-white text-right">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-black text-sage-deep">✨ {pack.label}</h2>
+            <p className="text-[13px] font-bold text-ink/55">أدواتك كلها في اشتراك واحد</p>
+          </div>
+          {saving > 0 && (
+            <span className="shrink-0 rounded-full bg-gold px-3 py-1 text-[11px] font-extrabold text-white">
+              وفّر {savingLabel}
+            </span>
+          )}
+          <span aria-hidden className="shrink-0 text-ink/40 transition-transform group-open:rotate-180">
+            ▾
           </span>
-        )}
+        </summary>
 
-        <h2 className="text-2xl font-black text-sage-deep">✨ {pack.label}</h2>
-        <p className="mt-1 text-sm font-bold text-ink/55">أدواتك اليومية كلها في اشتراك واحد</p>
-
-        <ul className="mt-4 space-y-2">
+        <div className="border-t border-gold/30 px-5 pb-5 pt-4">
+        <ul className="space-y-2">
           {ITEMS.map((it) => (
             <li key={it.id} className="flex items-center gap-2.5 text-[15px] font-bold text-ink">
               <span aria-hidden className="text-lg">{it.emoji}</span>
@@ -71,7 +87,8 @@ export default function TeacherPackCard() {
             hint="تُفعَّل الأدوات فور تأكيد الدفع"
           />
         </div>
-      </div>
+        </div>
+      </details>
     </div>
   );
 }
