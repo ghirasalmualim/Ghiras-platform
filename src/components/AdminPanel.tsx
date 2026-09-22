@@ -395,7 +395,7 @@ export default function AdminPanel() {
     act(id, () => supabase.rpc('admin_set_status', { p_user: id, p_status: 'active' }), 'تم إعادة تفعيل الحساب');
   };
   const resetDevices = (id: string) => {
-    if (!confirm('تصفير أجهزة هذا الحساب؟ ستُحذف الأجهزة المسجّلة ويقدر يفتح من جهازين جديدين.')) return;
+    if (!confirm('تصفير أجهزة هذا الحساب؟ ستُحذف الأجهزة المسجّلة ويقدر يفتح من أربعة أجهزة جديدة.')) return;
     const supabase = createClient();
     act(id, () => supabase.rpc('admin_reset_devices', { p_user: id }), 'تم تصفير الأجهزة');
   };
