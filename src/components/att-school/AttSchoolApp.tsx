@@ -255,8 +255,7 @@ function CreateWizard({ sb, say, onDone, onCancel }: {
       <div className="mt-6 rounded-2xl bg-gold-light/60 border border-gold/40 p-4">
         <div className="font-extrabold">المجموع: {toAr(total)} فصلًا</div>
         <div className="text-sm text-ink/70 mt-1">
-          الاشتراك: {toAr(PRICE_PER_CLASS)} د.ك لكل فصل (أقلّ اشتراك {toAr(MIN_CLASSES)} فصول) لمدة {toAr(MONTHS)} شهور —{' '}
-          <b>{toAr(price(total))} د.ك</b>. تجهيز الإدارة مجاني، والتسجيل اليومي يبدأ بعد التفعيل.
+          تجهيز الإدارة مجاني، والتسجيل اليومي يبدأ بعد التفعيل.
         </div>
       </div>
 
@@ -330,8 +329,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
             <div className="rounded-2xl bg-gold-light text-ink px-4 py-3 text-sm max-w-md">
               <div className="font-extrabold text-gold-dark">⏳ بانتظار التفعيل</div>
               <div className="mt-1">
-                جهّزي الصفوف والطالبات والمسؤولات الآن. الاشتراك لـ{toAr(classes.length)} فصلًا:{' '}
-                <b>{toAr(price(classes.length))} د.ك</b> لمدة {toAr(MONTHS)} شهور.
+                جهّزي الصفوف والطالبات والمسؤولات الآن، وتواصلي معنا للتفعيل.
               </div>
               <Link href="/support" className="inline-block mt-2 font-extrabold text-sage-deep underline">💬 التفعيل عبر التواصل مع غراس</Link>
             </div>
