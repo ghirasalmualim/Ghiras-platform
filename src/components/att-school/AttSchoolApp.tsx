@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import AttDaily from './AttDaily';
 import { StudentRecord, AuditLog } from './AttRecords';
+import AttReports from './AttReports';
 
 /**
  * «إدارة الحضور المدرسية» 🏫 — المرحلة ٢: الإنشاء + الهيكل + الطالبات + المسؤولات + الإعدادات
@@ -268,7 +269,7 @@ function CreateWizard({ sb, say, onDone, onCancel }: {
 }
 
 /* ================================================================== الإدارة */
-type Tab = 'today' | 'structure' | 'students' | 'log' | 'staff' | 'settings';
+type Tab = 'today' | 'reports' | 'structure' | 'students' | 'log' | 'staff' | 'settings';
 
 function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
   sb: ReturnType<typeof createClient>; org: Org; uid: string; fullName: string; say: (m: string) => void; reloadOrgs: () => Promise<Org[]>;
@@ -303,6 +304,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
 
   const tabs: { k: Tab; l: string; main?: boolean }[] = [
     { k: 'today', l: '📋 الحضور اليومي' },
+    { k: 'reports', l: '🖨️ التقارير' },
     { k: 'structure', l: '🏗️ الصفوف والفصول', main: true },
     { k: 'students', l: '👩‍🎓 الطالبات' },
     { k: 'log', l: '🧾 سجل التعديلات', main: true },
@@ -353,6 +355,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
             fullName={fullName} say={say}
           />
         )}
+        {tab === 'reports' && <AttReports sb={sb} org={org} grades={grades} classes={scopeClasses} />}
         {tab === 'structure' && isMain && (
           <StructureTab sb={sb} sid={sid} stages={stages} grades={grades} classes={classes} say={say} reload={loadStructure} />
         )}

@@ -35,7 +35,7 @@ const CARD = 'rounded-2xl bg-white border border-sage/15 shadow-sm';
 const BTN = 'rounded-xl px-3 py-2 font-extrabold text-sm transition-all disabled:opacity-50';
 
 /** العام الدراسي الحالي: يبدأ سبتمبر. الفصل الأول سبتمبر–يناير، الثاني فبراير–يونيو. */
-function academicRanges(today: string) {
+export function academicRanges(today: string) {
   const [y, m] = today.split('-').map(Number);
   const startY = m >= 8 ? y : y - 1;
   return {
