@@ -24,12 +24,21 @@ export async function POST(req: NextRequest) {
   const isAdmin = profile?.role === 'admin';
 
   // عضوٌ في أي مدرسة؟ (name-only members لهم user_id فارغ فلا يُحسبون — وهذا صحيح)
+  // «إدارة الحضور المدرسية» (att_org): القراءة بالذكاء بعد التفعيل فقط (att_until سارٍ).
+  // مدارس «إدارة المدرسة» الكاملة تبقى كما كانت.
   let member = false;
   if (!isAdmin) {
-    const { count } = await supabase.from('school_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-    member = (count || 0) > 0;
+    const { data: mem } = await supabase.from('school_members').select('school_id').eq('user_id', user.id);
+    const ids = Array.from(new Set(((mem as { school_id: string }[]) || []).map((m) => m.school_id)));
+    if (ids.length) {
+      const { data: sch } = await supabase.from('schools').select('id, att_org, att_until').in('id', ids);
+      const now = Date.now();
+      member = ((sch as { att_org: boolean | null; att_until: string | null }[]) || []).some(
+        (x) => !x.att_org || (!!x.att_until && new Date(x.att_until).getTime() > now),
+      );
+    }
   }
-  if (!isAdmin && !member) return NextResponse.json({ error: { message: 'غير مصرّح' } }, { status: 403 });
+  if (!isAdmin && !member) return NextResponse.json({ error: { message: 'قراءة الكشف بالتصوير تعمل بعد تفعيل الإدارة' } }, { status: 403 });
 
   // حاجز الفاتورة اليومي (الأدمِن يتخطّى)
   if (!isAdmin) {

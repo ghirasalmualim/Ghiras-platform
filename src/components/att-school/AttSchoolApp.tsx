@@ -360,7 +360,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
           <StructureTab sb={sb} sid={sid} stages={stages} grades={grades} classes={classes} say={say} reload={loadStructure} />
         )}
         {tab === 'students' && (
-          <StudentsTab sb={sb} sid={sid} grades={grades} classes={scopeClasses} gender={org.gender} say={say} />
+          <StudentsTab sb={sb} sid={sid} grades={grades} classes={scopeClasses} gender={org.gender} active={org.active} say={say} />
         )}
         {tab === 'log' && isMain && <AuditLog sb={sb} schoolId={sid} gender={org.gender} classes={classes} />}
         {tab === 'staff' && isMain && <StaffTab sb={sb} sid={sid} uid={uid} grades={grades} classes={classes} say={say} />}
@@ -468,8 +468,8 @@ function StructureTab({ sb, sid, stages, grades, classes, say, reload }: {
 }
 
 /* ------------------------------------------------------------------ الطالبات */
-function StudentsTab({ sb, sid, grades, classes, gender, say }: {
-  sb: ReturnType<typeof createClient>; sid: string; grades: Grade[]; classes: Klass[]; gender: 'girls' | 'boys'; say: (m: string) => void;
+function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
+  sb: ReturnType<typeof createClient>; sid: string; grades: Grade[]; classes: Klass[]; gender: 'girls' | 'boys'; active: boolean; say: (m: string) => void;
 }) {
   const [classId, setClassId] = useState<string>('');
   const [profile, setProfile] = useState<Student | null>(null);
@@ -601,10 +601,15 @@ function StudentsTab({ sb, sid, grades, classes, gender, say }: {
                 <button className={B_SAGE} disabled={busy || !parseNames(paste).length} onClick={() => addNames(parseNames(paste))}>
                   إضافة {parseNames(paste).length ? toAr(parseNames(paste).length) : ''}
                 </button>
-                <label className={`${B_GHOST} cursor-pointer`}>
-                  📸 تصوير كشف
-                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { readImage(e.target.files?.[0]); e.target.value = ''; }} />
-                </label>
+                {active ? (
+                  <label className={`${B_GHOST} cursor-pointer`}>
+                    📸 تصوير كشف
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { readImage(e.target.files?.[0]); e.target.value = ''; }} />
+                  </label>
+                ) : (
+                  <span className={`${B_GHOST} opacity-60 cursor-not-allowed`} title="تعمل بعد تفعيل الإدارة">📸 تصوير كشف 🔒</span>
+                )}
+                {!active && !ocr && <span className="text-xs text-ink/60">قراءة الكشف بالتصوير تعمل بعد تفعيل الإدارة — الصقي الأسماء الآن</span>}
                 {ocr && <span className="text-sm text-ink/70">{ocr}</span>}
               </div>
             </div>
