@@ -136,7 +136,7 @@ export default function AttSchoolApp({ uid, isAdmin, fullName }: { uid: string; 
           />
         )}
         {view === 'org' && org && <OrgView sb={sb} org={org} uid={uid} fullName={fullName} say={say} reloadOrgs={loadOrgs} />}
-        {view === 'home' && isAdmin && <AdminBoard sb={sb} say={say} />}
+        {view === 'home' && isAdmin && <AdminBoard sb={sb} say={say} onChanged={loadOrgs} />}
       </div>
 
       {toast && (
@@ -801,8 +801,11 @@ function SettingsTab({ sb, org, say, reloadOrgs }: {
 }
 
 /* ================================================================== لوحة التفعيل (الأدمِن) */
-function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m: string) => void }) {
+function AdminBoard({ sb, say, onChanged }: { sb: ReturnType<typeof createClient>; say: (m: string) => void; onChanged: () => void }) {
   const [rows, setRows] = useState<AdminOrg[]>([]);
+  const [del, setDel] = useState<(AdminOrg & { students: number | null }) | null>(null);
+  const [delTyped, setDelTyped] = useState('');
+  const [delBusy, setDelBusy] = useState(false);
   const [draft, setDraft] = useState<Record<string, { classes: number; months: number }>>({});
 
   const load = useCallback(async () => {
@@ -845,6 +848,23 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
     say('⏸️ تم الإيقاف');
     load();
   };
+  const askDelete = async (s: AdminOrg) => {
+    setDelTyped('');
+    setDel({ ...s, students: null });
+    const { count } = await sb.from('school_students').select('id', { count: 'exact', head: true }).eq('school_id', s.id).eq('archived', false);
+    setDel((d) => (d && d.id === s.id ? { ...d, students: count ?? 0 } : d));
+  };
+  const doDelete = async () => {
+    if (!del || delTyped.trim() !== 'حذف') return;
+    setDelBusy(true);
+    const { error } = await sb.rpc('att_org_delete', { p_school: del.id });
+    setDelBusy(false);
+    if (error) return say(error.message.includes('function') ? 'دالة الحذف غير مُفعّلة بعد في القاعدة' : errMsg(error));
+    say(`🗑️ حُذفت «${del.name}»`);
+    setDel(null);
+    load();
+    onChanged();
+  };
 
   return (
     <section className="mt-10">
@@ -877,11 +897,38 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
                 </label>
                 <button className={B_GOLD} onClick={() => activate(s)}>{active ? '🔁 تجديد' : '✅ تفعيل'}، {toAr(price(d.classes))} د.ك</button>
                 {active && <button className={B_DANGER} onClick={() => stop(s)}>⏸️ إيقاف</button>}
+                <button className={B_DANGER} onClick={() => askDelete(s)}>🗑️ حذف</button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {del && (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={() => !delBusy && setDel(null)}>
+          <div className="bg-white rounded-3xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="text-4xl text-center">⚠️</div>
+            <h3 className="text-lg font-extrabold text-center text-red-600 mt-1">تنبيه: حذف إدارة نهائيًا</h3>
+            <p className="mt-3 text-sm leading-7">
+              ستُحذف إدارة <b>«{del.name}»</b>{del.owner ? <> (المنشئة: {del.owner})</> : null} بكل محتوياتها:
+            </p>
+            <ul className="text-sm leading-7 list-disc pr-5">
+              <li>{toAr(del.classes)} فصلًا والصفوف والمراحل</li>
+              <li>{del.students === null ? '…' : toAr(del.students)} طالبة/طالب وكل سجلات حضورهم</li>
+              <li>المسؤولات وصلاحياتهن وسجل التعديلات</li>
+            </ul>
+            <p className="mt-2 text-sm font-extrabold text-red-600">لا يمكن التراجع عن الحذف.</p>
+            <label className="block mt-3 text-sm font-bold">للتأكيد اكتبي كلمة «حذف»:</label>
+            <input autoFocus className="mt-1 w-full rounded-xl border border-red-200 px-3 py-2" value={delTyped} onChange={(e) => setDelTyped(e.target.value)} placeholder="حذف" />
+            <div className="flex gap-2 mt-4">
+              <button className={`${BTN} flex-1 bg-red-600 text-white disabled:opacity-40`} disabled={delBusy || delTyped.trim() !== 'حذف'} onClick={doDelete}>
+                {delBusy ? '⏳ جاري الحذف…' : '🗑️ حذف نهائي'}
+              </button>
+              <button className={`${BTN} flex-1 bg-white border border-sage/30 text-sage-deep`} disabled={delBusy} onClick={() => setDel(null)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
