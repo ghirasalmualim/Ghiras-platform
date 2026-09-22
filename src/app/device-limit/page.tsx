@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 
 /**
- * صفحة «تجاوز حدّ الأجهزة» — تظهر عند محاولة فتح السجل من جهاز رابع.
+ * صفحة «تجاوز حدّ الأجهزة» — تظهر عند محاولة فتح السجل من جهاز خامس.
  */
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +21,10 @@ export default function DeviceLimitPage() {
           📱
         </span>
         <h1 className="mt-4 text-xl font-extrabold text-ink">
-          الحساب مفتوح على ثلاثة أجهزة
+          الحساب مفتوح على أربعة أجهزة
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
-          يُسمح باستخدام أدوات غراس على ثلاثة أجهزة فقط لكل حساب.
+          يُسمح باستخدام أدوات غراس على أربعة أجهزة فقط لكل حساب.
           <br />
           لتغيير أحد الأجهزة، يرجى التواصل مع إدارة غراس المعلم.
         </p>

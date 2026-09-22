@@ -22,7 +22,7 @@ type ToolCfg = {
   // عمود صلاحيةٍ واحد، أو عدّة أعمدة — أيُّها سارٍ يفتح الأداة (منطق «أو»).
   until: string | readonly string[];
   lock: string; // صفحة «خاص بالمشتركين»
-  deviceLimit: boolean; // هل تُطبّق قاعدة الجهازين؟
+  deviceLimit: boolean; // هل تُطبّق قاعدة حدّ الأجهزة؟
   // لعبة الطالب: تُقيَّد بمدن (مواد) الصف التي تملك المشترِكة صلاحيتها فعلًا.
   student?: boolean;
   gradeSlug?: string; // صفّ اللعبة (مثل 'grade-5') — لحساب المدن المسموحة.
@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(tool.lock, req.url));
   }
 
-  // حدّ الأجهزة ٣ (للأدوات المُفعّل عليها فقط، الأدمِن مُعفى)
+  // حدّ الأجهزة ٤ (للأدوات المُفعّل عليها فقط، الأدمِن مُعفى)
   let newDevice = false;
   let deviceId = req.cookies.get('gg_device')?.value || '';
   if (tool.deviceLimit && !isAdmin) {

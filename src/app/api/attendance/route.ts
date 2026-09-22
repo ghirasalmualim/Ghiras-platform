@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     ? 9999
     : BASE_REGISTERS + (((profile?.attendance_extra as number) ?? 0) || 0);
 
-  // حدّ الأجهزة ٣ (للمشترِكات فقط، الأدمِن مُعفى) — يعيد استخدام register_device
+  // حدّ الأجهزة ٤ (للمشترِكات فقط، الأدمِن مُعفى) — يعيد استخدام register_device
   let newDevice = false;
   let deviceId = req.cookies.get('gg_device')?.value || '';
   if (!isAdmin) {
