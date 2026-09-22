@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import AttDaily from './AttDaily';
 
 /**
  * «إدارة الحضور المدرسية» 🏫 — المرحلة ٢: الإنشاء + الهيكل + الطالبات + المسؤولات + الإعدادات
@@ -103,11 +104,11 @@ export default function AttSchoolApp({ uid, isAdmin, fullName }: { uid: string; 
           <span className="text-2xl">🏫</span>
           <div className="flex-1">
             <h1 className="font-extrabold text-lg leading-tight">إدارة الحضور المدرسية</h1>
-            <p className="text-xs text-white/75">غراس المعلم{fullName ? ` · ${fullName}` : ''}</p>
+            <p className="text-xs text-white/75">غراس المعلم{fullName ? `، ${fullName}` : ''}</p>
           </div>
           {view !== 'home' && (
             <button className="rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-sm font-bold" onClick={() => { setView('home'); setOrgId(null); }}>
-              ⟵ إداراتي
+              → إداراتي
             </button>
           )}
           <Link href="/attendance" className="rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-sm font-bold">
@@ -132,7 +133,7 @@ export default function AttSchoolApp({ uid, isAdmin, fullName }: { uid: string; 
             onCancel={() => setView('home')}
           />
         )}
-        {view === 'org' && org && <OrgView sb={sb} org={org} uid={uid} say={say} reloadOrgs={loadOrgs} />}
+        {view === 'org' && org && <OrgView sb={sb} org={org} uid={uid} fullName={fullName} say={say} reloadOrgs={loadOrgs} />}
         {view === 'home' && isAdmin && <AdminBoard sb={sb} say={say} />}
       </div>
 
@@ -266,13 +267,13 @@ function CreateWizard({ sb, say, onDone, onCancel }: {
 }
 
 /* ================================================================== الإدارة */
-type Tab = 'structure' | 'students' | 'staff' | 'settings';
+type Tab = 'today' | 'structure' | 'students' | 'staff' | 'settings';
 
-function OrgView({ sb, org, uid, say, reloadOrgs }: {
-  sb: ReturnType<typeof createClient>; org: Org; uid: string; say: (m: string) => void; reloadOrgs: () => Promise<Org[]>;
+function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
+  sb: ReturnType<typeof createClient>; org: Org; uid: string; fullName: string; say: (m: string) => void; reloadOrgs: () => Promise<Org[]>;
 }) {
   const isMain = org.kind === 'main';
-  const [tab, setTab] = useState<Tab>(isMain ? 'structure' : 'students');
+  const [tab, setTab] = useState<Tab>('today');
   const [stages, setStages] = useState<Stage[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [classes, setClasses] = useState<Klass[]>([]);
@@ -300,6 +301,7 @@ function OrgView({ sb, org, uid, say, reloadOrgs }: {
   }, [isMain, classes, org.grade_ids, org.class_ids]);
 
   const tabs: { k: Tab; l: string; main?: boolean }[] = [
+    { k: 'today', l: '📋 الحضور اليومي' },
     { k: 'structure', l: '🏗️ الصفوف والفصول', main: true },
     { k: 'students', l: '👩‍🎓 الطالبات' },
     { k: 'staff', l: '👥 المسؤولات', main: true },
@@ -313,12 +315,12 @@ function OrgView({ sb, org, uid, say, reloadOrgs }: {
           <div className="flex-1 min-w-[200px]">
             <h2 className="text-xl font-extrabold">{org.gender === 'boys' ? '📗' : '📘'} {org.name}</h2>
             <p className="text-sm text-ink/60 mt-1">
-              {toAr(classes.length)} فصلًا · {toAr(grades.length)} صفوف · {isMain ? '👑 مسؤولة رئيسية' : '🧭 مسؤولة صف'}
+              {toAr(classes.length)} فصلًا، {toAr(grades.length)} صفوف، {isMain ? '👑 مسؤولة رئيسية' : '🧭 مسؤولة صف'}
             </p>
           </div>
           {org.active ? (
             <div className="rounded-2xl bg-sage-light text-sage-deep px-4 py-2 text-sm font-bold">
-              ✅ مفعّلة حتى {fmtDate(org.att_until)} · مشتركة بـ{toAr(org.att_classes)} فصلًا
+              ✅ مفعّلة حتى {fmtDate(org.att_until)}، مشتركة بـ{toAr(org.att_classes)} فصلًا
             </div>
           ) : (
             <div className="rounded-2xl bg-gold-light text-ink px-4 py-3 text-sm max-w-md">
@@ -331,9 +333,6 @@ function OrgView({ sb, org, uid, say, reloadOrgs }: {
             </div>
           )}
         </div>
-        <div className="mt-4 rounded-xl bg-sage-mist border border-sage/20 px-4 py-3 text-sm text-sage-deep font-bold">
-          📋 التسجيل اليومي ولوحة الإدارة والتقارير — قريبًا في المرحلة القادمة.
-        </div>
       </div>
 
       <nav className="flex gap-2 overflow-x-auto mt-4 pb-1">
@@ -345,6 +344,13 @@ function OrgView({ sb, org, uid, say, reloadOrgs }: {
       </nav>
 
       <div className="mt-4">
+        {tab === 'today' && (
+          <AttDaily
+            sb={sb} org={org} grades={grades} classes={classes}
+            scopeClassIds={isMain ? null : scopeClasses.map((c) => c.id)}
+            fullName={fullName} say={say}
+          />
+        )}
         {tab === 'structure' && isMain && (
           <StructureTab sb={sb} sid={sid} stages={stages} grades={grades} classes={classes} say={say} reload={loadStructure} />
         )}
@@ -670,7 +676,7 @@ function StaffTab({ sb, sid, uid, grades, classes, say }: {
                 <div className="font-extrabold">{m.name || 'بدون اسم'} {m.user_id === uid && <span className="text-xs text-ink/50">(أنتِ)</span>}</div>
                 <div className="text-sm text-ink/60">
                   {m.is_owner ? '👑 المنشئة' : m.kind === 'main' ? '👑 مسؤولة رئيسية' : '🧭 مسؤولة صف'}
-                  {m.phone ? ` · ${toAr(m.phone)}` : ''}
+                  {m.phone ? `، ${toAr(m.phone)}` : ''}
                 </div>
                 {m.kind === 'grade' && (
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -802,7 +808,7 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
       ((cls as { school_id: string }[]) || []).forEach((c) => { counts[c.school_id] = (counts[c.school_id] || 0) + 1; });
       const { data: owners } = await sb.from('profiles').select('id,full_name,phone').in('id', list.map((s) => s.owner_id));
       const om: Record<string, string> = {};
-      ((owners as { id: string; full_name: string | null; phone: string | null }[]) || []).forEach((o) => { om[o.id] = `${o.full_name || ''}${o.phone ? ' · ' + o.phone : ''}`; });
+      ((owners as { id: string; full_name: string | null; phone: string | null }[]) || []).forEach((o) => { om[o.id] = `${o.full_name || ''}${o.phone ? '، ' + o.phone : ''}`; });
       list.forEach((s) => { s.classes = counts[s.id] || 0; s.owner = om[s.owner_id]; });
     }
     setRows(list);
@@ -831,7 +837,7 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
   return (
     <section className="mt-10">
       <h2 className="text-lg font-extrabold mb-1">🔐 لوحة التفعيل (للإدارة فقط)</h2>
-      <p className="text-sm text-ink/60 mb-3">{toAr(PRICE_PER_CLASS)} د.ك للفصل · أقلّ اشتراك {toAr(MIN_CLASSES)} فصول · {toAr(MONTHS)} شهور. التجديد يُكمل من تاريخ الانتهاء.</p>
+      <p className="text-sm text-ink/60 mb-3">{toAr(PRICE_PER_CLASS)} د.ك للفصل، أقلّ اشتراك {toAr(MIN_CLASSES)} فصول، {toAr(MONTHS)} شهور. التجديد يُكمل من تاريخ الانتهاء.</p>
       {!rows.length && <p className="text-ink/55 text-sm">لا توجد إدارات بعد.</p>}
       <div className="space-y-3">
         {rows.map((s) => {
@@ -843,7 +849,7 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
                 <div className="flex-1 min-w-[200px]">
                   <div className="font-extrabold">{s.name}</div>
                   <div className="text-sm text-ink/60">
-                    {s.owner || '—'} · {toAr(s.classes)} فصلًا فعليًا ·{' '}
+                    {s.owner || '—'}، {toAr(s.classes)} فصلًا فعليًا ·{' '}
                     {active ? `✅ حتى ${fmtDate(s.att_until)} (${toAr(s.att_classes)} فصلًا)` : s.att_until ? '⏸️ منتهية' : '⏳ لم تُفعَّل'}
                   </div>
                 </div>
@@ -857,7 +863,7 @@ function AdminBoard({ sb, say }: { sb: ReturnType<typeof createClient>; say: (m:
                   <input type="number" min={1} className="w-16 rounded-lg border border-sage/25 px-2 py-1.5" value={d.months}
                     onChange={(e) => setDraft({ ...draft, [s.id]: { ...d, months: Math.max(1, parseInt(e.target.value || '4', 10) || MONTHS) } })} />
                 </label>
-                <button className={B_GOLD} onClick={() => activate(s)}>{active ? '🔁 تجديد' : '✅ تفعيل'} · {toAr(price(d.classes))} د.ك</button>
+                <button className={B_GOLD} onClick={() => activate(s)}>{active ? '🔁 تجديد' : '✅ تفعيل'}، {toAr(price(d.classes))} د.ك</button>
                 {active && <button className={B_DANGER} onClick={() => stop(s)}>⏸️ إيقاف</button>}
               </div>
             </div>
