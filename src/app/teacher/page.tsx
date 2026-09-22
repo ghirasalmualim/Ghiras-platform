@@ -106,6 +106,21 @@ export default function TeacherPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <AddToMySpace itemType="tool" itemKey="attendance" label="سجل الحضور الذكي" />
                 </div>
+                <Link className="tile" href="/attendance/school">
+                  <span className="em" aria-hidden="true">
+                    🏫
+                  </span>
+                  <span>
+                    <b>
+                      إدارة الحضور المدرسية
+                      <span className="tag paid">مستقل — ٤ د.ك للفصل</span>
+                    </b>
+                    <small>حضور المدرسة كاملة بعدة مسؤولات وتقارير وطباعة</small>
+                  </span>
+                </Link>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <AddToMySpace itemType="tool" itemKey="att_school" label="إدارة الحضور المدرسية" />
+                </div>
               </div>
               {/* سجل الدرجات أداة خارجية تُفتح عبر مُصدِّر التصاريح */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

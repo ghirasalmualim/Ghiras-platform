@@ -45,6 +45,12 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     key: 'attendance', name: 'سجل الحضور الذكي', emoji: '🗓️',
     href: '/attendance', col: 'attendance_until', locked: '/attendance-locked',
   },
+  // إدارة الحضور المدرسية: اشتراكها على المدرسة (schools.att_until) لا على الحساب،
+  // والصفحة نفسها تعرض الحالة وتفرض التفعيل عبر RLS ودوال att_* — فتُفتح دائمًا.
+  att_school: {
+    key: 'att_school', name: 'إدارة الحضور المدرسية', emoji: '🏫',
+    href: '/attendance/school', col: null, locked: null, selfGated: true,
+  },
   adventure: {
     key: 'adventure', name: 'مغامرة المجموعات التفاعلية', emoji: '🚀',
     href: '/adventure', col: 'adventure_until', locked: '/adventure-locked',
