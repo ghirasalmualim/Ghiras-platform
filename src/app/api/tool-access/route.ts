@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(tool.lock, req.url));
   }
 
-  // حدّ الجهازين (للأدوات المُفعّل عليها فقط، الأدمِن مُعفى)
+  // حدّ الأجهزة ٣ (للأدوات المُفعّل عليها فقط، الأدمِن مُعفى)
   let newDevice = false;
   let deviceId = req.cookies.get('gg_device')?.value || '';
   if (tool.deviceLimit && !isAdmin) {
