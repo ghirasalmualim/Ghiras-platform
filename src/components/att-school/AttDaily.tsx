@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { createClient } from '@/lib/supabase/client';
+import { StudentRecord } from './AttRecords';
 
 /**
  * «إدارة الحضور المدرسية» — المرحلة ٣: التسجيل اليومي + لوحة الإدارة + التنبيهات.
@@ -383,6 +384,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
   const [search, setSearch] = useState('');
   const [queued, setQueued] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [profile, setProfile] = useState<Student | null>(null);
   const inflight = useRef(0);
   const statusRef = useRef<Record<string, Status>>({});
   const chains = useRef<Record<string, Promise<void>>>({});
@@ -535,8 +537,8 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
           const st = cur(s.id);
           const idx = list.indexOf(s) + 1;
           return (
-            <button key={s.id} onClick={() => cycle(s)}
-              className="rounded-2xl border-2 p-3 flex items-center gap-3 text-right select-none active:scale-[.98] transition-transform min-h-[64px]"
+            <div key={s.id} role="button" tabIndex={0} onClick={() => cycle(s)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(s); } }}
+              className="rounded-2xl border-2 p-3 flex items-center gap-3 text-right select-none cursor-pointer active:scale-[.98] transition-transform min-h-[64px]"
               style={{ background: META[st].bg, borderColor: st === 'present' ? '#D7E6D9' : META[st].color }}>
               <span className="w-8 h-8 shrink-0 rounded-full bg-white/80 flex items-center justify-center font-extrabold text-sm text-ink/60">{toAr(idx)}</span>
               <span className="flex-1">
@@ -544,11 +546,15 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
                 <span className="block text-xs font-extrabold" style={{ color: META[st].color }}>{word(st)}</span>
               </span>
               <span className="text-2xl">{META[st].ic}</span>
-            </button>
+              <button type="button" title="سجل الطالبة" aria-label="سجل الطالبة" onClick={(e) => { e.stopPropagation(); setProfile(s); }}
+                className="w-9 h-9 shrink-0 rounded-full bg-white/90 border border-sage/20 flex items-center justify-center text-base">👤</button>
+            </div>
           );
         })}
         {!shown.length && <p className="col-span-full text-center text-ink/55 py-10">{list.length ? 'لا توجد نتائج' : 'لا توجد طالبات في هذا الفصل — أضيفيهن من تبويب «الطالبات»'}</p>}
       </div>
+
+      {profile && <StudentRecord sb={sb} student={profile} klass={klass} gender={org.gender} onClose={() => setProfile(null)} />}
 
       {/* زر الاعتماد ثابت أسفل الشاشة */}
       <div className="fixed bottom-0 inset-x-0 z-20 bg-white/95 border-t border-sage/20 p-3">

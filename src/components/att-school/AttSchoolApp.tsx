@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import AttDaily from './AttDaily';
+import { StudentRecord, AuditLog } from './AttRecords';
 
 /**
  * «إدارة الحضور المدرسية» 🏫 — المرحلة ٢: الإنشاء + الهيكل + الطالبات + المسؤولات + الإعدادات
@@ -267,7 +268,7 @@ function CreateWizard({ sb, say, onDone, onCancel }: {
 }
 
 /* ================================================================== الإدارة */
-type Tab = 'today' | 'structure' | 'students' | 'staff' | 'settings';
+type Tab = 'today' | 'structure' | 'students' | 'log' | 'staff' | 'settings';
 
 function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
   sb: ReturnType<typeof createClient>; org: Org; uid: string; fullName: string; say: (m: string) => void; reloadOrgs: () => Promise<Org[]>;
@@ -304,6 +305,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
     { k: 'today', l: '📋 الحضور اليومي' },
     { k: 'structure', l: '🏗️ الصفوف والفصول', main: true },
     { k: 'students', l: '👩‍🎓 الطالبات' },
+    { k: 'log', l: '🧾 سجل التعديلات', main: true },
     { k: 'staff', l: '👥 المسؤولات', main: true },
     { k: 'settings', l: '⚙️ الإعدادات', main: true },
   ];
@@ -355,8 +357,9 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
           <StructureTab sb={sb} sid={sid} stages={stages} grades={grades} classes={classes} say={say} reload={loadStructure} />
         )}
         {tab === 'students' && (
-          <StudentsTab sb={sb} sid={sid} grades={grades} classes={scopeClasses} say={say} />
+          <StudentsTab sb={sb} sid={sid} grades={grades} classes={scopeClasses} gender={org.gender} say={say} />
         )}
+        {tab === 'log' && isMain && <AuditLog sb={sb} schoolId={sid} gender={org.gender} classes={classes} />}
         {tab === 'staff' && isMain && <StaffTab sb={sb} sid={sid} uid={uid} grades={grades} classes={classes} say={say} />}
         {tab === 'settings' && isMain && <SettingsTab sb={sb} org={org} say={say} reloadOrgs={reloadOrgs} />}
       </div>
@@ -462,10 +465,11 @@ function StructureTab({ sb, sid, stages, grades, classes, say, reload }: {
 }
 
 /* ------------------------------------------------------------------ الطالبات */
-function StudentsTab({ sb, sid, grades, classes, say }: {
-  sb: ReturnType<typeof createClient>; sid: string; grades: Grade[]; classes: Klass[]; say: (m: string) => void;
+function StudentsTab({ sb, sid, grades, classes, gender, say }: {
+  sb: ReturnType<typeof createClient>; sid: string; grades: Grade[]; classes: Klass[]; gender: 'girls' | 'boys'; say: (m: string) => void;
 }) {
   const [classId, setClassId] = useState<string>('');
+  const [profile, setProfile] = useState<Student | null>(null);
   const [list, setList] = useState<Student[]>([]);
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState(false);
@@ -572,13 +576,14 @@ function StudentsTab({ sb, sid, grades, classes, say }: {
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-lg flex-1">{current.name} <span className="text-ink/50 text-sm">· {toAr(list.length)} طالبة</span></h3>
+              <h3 className="font-extrabold text-lg flex-1">{current.name} <span className="text-ink/50 text-sm">— {toAr(list.length)} طالبة</span></h3>
             </div>
             <ol className="mt-3 divide-y divide-sage/10">
               {list.map((s, i) => (
                 <li key={s.id} className="flex items-center gap-2 py-2">
                   <span className="w-8 text-center text-ink/45 font-bold">{toAr(i + 1)}</span>
                   <span className="flex-1 font-bold">{s.name}</span>
+                  <button className="px-2" onClick={() => setProfile(s)} aria-label="سجل الطالبة" title="سجل الطالبة">👤</button>
                   <button className="px-2 text-sage-dark" onClick={() => rename(s)} aria-label="تعديل">✏️</button>
                   <button className="px-2 text-red-500" onClick={() => remove(s)} aria-label="إزالة">✕</button>
                 </li>
@@ -603,6 +608,7 @@ function StudentsTab({ sb, sid, grades, classes, say }: {
           </>
         )}
       </div>
+      {profile && current && <StudentRecord sb={sb} student={profile} klass={current} gender={gender} onClose={() => setProfile(null)} />}
     </div>
   );
 }
