@@ -111,10 +111,7 @@ export default function TeacherPage() {
                     🏫
                   </span>
                   <span>
-                    <b>
-                      إدارة الحضور المدرسية
-                      <span className="tag paid">مستقل — ٤ د.ك للفصل</span>
-                    </b>
+                    <b>إدارة الحضور المدرسية</b>
                     <small>حضور المدرسة كاملة بعدة مسؤولات وتقارير وطباعة</small>
                   </span>
                 </Link>
