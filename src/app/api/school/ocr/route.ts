@@ -4,7 +4,10 @@ import { createServerSupabase } from '@/lib/supabase/server';
 /**
  * OCR معزول لـ«إدارة المدرسة»: يقرأ صورة/PDF قائمة أسماء ويعيد نص الذكاء.
  * جسرٌ رفيع إلى Anthropic (المفتاح على الخادم). البوابة: عضو مدرسة أو admin —
- * مستقلٌّ عن اشتراك الحضور. سقفٌ يوميّ عبر ai_reserve_daily (kind=school_ocr).
+ * مستقلٌّ عن اشتراك الحضور. سقفٌ يوميّ عبر ai_reserve_daily بنوع 'ocr' — وهو نفس
+ * عدّاد قراءة الكشوف في سجل الحضور (ميزانية قراءة واحدة للمعلمة). لا تستعمل نوعًا
+ * جديدًا: الدالة والجدول يقبلان ('game','ocr','gradebook') فقط، وأي نوع غيرها يرفع
+ * خطأ ⇒ رفضٌ دائم للقراءة.
  * لا يمسّ أي أداة أخرى.
  */
 export const runtime = 'nodejs';
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   // حاجز الفاتورة اليومي (الأدمِن يتخطّى)
   if (!isAdmin) {
-    const { data: reserve, error: rErr } = await supabase.rpc('ai_reserve_daily', { p_kind: 'school_ocr', p_limit: OCR_DAILY });
+    const { data: reserve, error: rErr } = await supabase.rpc('ai_reserve_daily', { p_kind: 'ocr', p_limit: OCR_DAILY });
     if (rErr || !reserve) return NextResponse.json({ error: { message: 'تعذّر التحقق من حدّ الاستخدام — حاولي بعد قليل.' } }, { status: 503 });
     if (!(reserve as { allowed?: boolean }).allowed) return NextResponse.json({ error: { message: 'وصلتِ الحدّ اليومي. جرّبي غدًا.' } }, { status: 429 });
   }
