@@ -11,7 +11,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const BASE_REGISTERS = 2; // سجلان مجاناً ضمن الاشتراك
+const BASE_REGISTERS = 4; // أربعة سجلات ضمن الاشتراك (قرار حصة 2026-09-25)
 
 async function guard() {
   const supabase = createServerSupabase();
