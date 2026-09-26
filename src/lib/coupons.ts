@@ -17,6 +17,7 @@ export interface Coupon {
 
 export const COUPONS: Coupon[] = [
   { code: 'ورشة غراس', percent: 20 },
+  { code: 'ilovemath', percent: 20 },
 ];
 
 const TASHKEEL = /[ً-ْٰـ]/g;
