@@ -16,9 +16,9 @@ export interface Coupon {
 }
 
 export const COUPONS: Coupon[] = [
-  { code: 'ورشة غراس', percent: 20 },
-  { code: 'ilovemath', percent: 20 },
-  { code: 'fanatk21', percent: 20 },
+  { code: 'ورشة غراس', percent: 20, until: '2026-10-01' },
+  { code: 'ilovemath', percent: 20, until: '2026-10-01' },
+  { code: 'fanatk21', percent: 20, until: '2026-10-01' },
 ];
 
 const TASHKEEL = /[ً-ْٰـ]/g;
