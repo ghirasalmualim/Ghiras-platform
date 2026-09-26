@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { PRODUCTS } from '@/lib/pricing';
+import { findCoupon, discountedPrice } from '@/lib/coupons';
 
 /**
  * بدء الدفع عبر MyFatoorah. معزول تمامًا.
@@ -19,12 +20,17 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
-  let body: { productId?: string; scopeId?: string };
+  let body: { productId?: string; scopeId?: string; coupon?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
 
   const product = body.productId ? PRODUCTS[body.productId] : undefined;
   if (!product) return NextResponse.json({ error: 'منتج غير معروف' }, { status: 400 });
   if (product.kind === 'games' && !body.scopeId) return NextResponse.json({ error: 'اختاري المادة/الصف' }, { status: 400 });
+
+  // كود الخصم — يُتحقَّق منه هنا دائمًا ويُحسب السعر من جديد
+  // (ما جاء من المتصفّح هو نصّ الكود وحده، لا السعر). كود غلط = السعر كاملًا بلا خطأ.
+  const coupon = findCoupon(body.coupon);
+  const amountKwd = coupon ? discountedPrice(product.priceKwd, coupon.percent) : product.priceKwd;
 
   const key = (process.env.MYFATOORAH_API_KEY || '').trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -45,11 +51,20 @@ export async function POST(req: NextRequest) {
     scope_id: product.kind === 'games' ? body.scopeId : null,
     months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' ? product.months : null,
     credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
-    amount_kwd: product.priceKwd,
+    amount_kwd: amountKwd,
     status: 'pending',
   };
   const { data: order, error: oErr } = await admin.from('payment_orders').insert(orderRow).select('id').single();
   if (oErr || !order) return NextResponse.json({ error: 'تعذّر إنشاء الطلب' }, { status: 500 });
+
+  // توسيم الطلب بالكود — **لا يُفشِل الدفع إن لم يوجد العمودان بعد**،
+  // فالخصم محسوب في amount_kwd وهذا للسجلّ والمحاسبة فقط.
+  if (coupon) {
+    await admin
+      .from('payment_orders')
+      .update({ coupon_code: coupon.code, discount_pct: coupon.percent })
+      .eq('id', order.id);
+  }
 
   const origin = req.nextUrl.origin;
   const callbackBase = `${origin}/api/payments/myfatoorah/callback`;
@@ -57,7 +72,7 @@ export async function POST(req: NextRequest) {
   // SendPayment
   const mfBody = {
     NotificationOption: 'LNK',
-    InvoiceValue: product.priceKwd,
+    InvoiceValue: amountKwd,
     CustomerName: (prof?.full_name as string) || 'معلمة غراس',
     DisplayCurrencyIso: 'KWD',
     MobileCountryCode: '+965',
