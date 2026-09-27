@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { ICON, ICONS, BG_LIST, BG_URL } from './assets';
 import { PASTELS, pastel, type Canvas } from './creative-shared';
 import CreativePlanner from './CreativePlanner';
+import { normalizeImageFile } from '@/lib/heic';
 
 /** أيقونة ثلاثية الأبعاد */
 function Icon({ k, size = 22, className = '' }: { k: string; size?: number; className?: string }) {
@@ -119,7 +120,8 @@ export interface AgendaData {
 }
 
 /* ضغط الصورة في المتصفّح قبل الرفع — جودة عالية بحجم صغير */
-async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<string> {
+async function compressImage(raw: File, maxDim = 1600, quality = 0.82): Promise<string> {
+  const file = await normalizeImageFile(raw); // HEIC (كاميرا آبل) → JPEG
   const dataUrl: string = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result as string);

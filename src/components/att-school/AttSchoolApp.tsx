@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import AttDaily from './AttDaily';
 import { StudentRecord, AuditLog } from './AttRecords';
 import AttReports from './AttReports';
+import { normalizeImageFile } from '@/lib/heic';
 
 /**
  * «إدارة الحضور المدرسية» 🏫 — المرحلة ٢: الإنشاء + الهيكل + الطالبات + المسؤولات + الإعدادات
@@ -519,10 +520,12 @@ function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
     load(classId);
   };
 
-  const readImage = async (file: File | undefined) => {
-    if (!file || !current) return;
+  const readImage = async (raw: File | undefined) => {
+    if (!raw || !current) return;
     setOcr('⏳ جاري قراءة الكشف…');
     try {
+      // صور الآيفون/الآيباد (HEIC) لا يقرؤها نموذج الرؤية — تُحوَّل JPEG أولًا
+      const file = await normalizeImageFile(raw);
       const b64 = await new Promise<string>((res, rej) => {
         const r = new FileReader();
         r.onload = () => res(String(r.result).split(',')[1]);

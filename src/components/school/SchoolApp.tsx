@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeImageFile } from '@/lib/heic';
 
 /**
  * «إدارة المدرسة» — المرحلة ١: لوحة + معالج إعداد + إدارة الهيكل (مراحل/صفوف/فصول).
@@ -315,13 +316,16 @@ function parseRules(
 }
 
 /* ── استيراد الأسماء من صورة/PDF عبر OCR (Claude vision، بوابة معزولة) ── */
-const fileToDataURL = (file: File): Promise<string> =>
-  new Promise((res, rej) => {
+const fileToDataURL = async (raw: File): Promise<string> => {
+  // HEIC (كاميرا آبل) → JPEG قبل الإرسال لنموذج الرؤية
+  const file = await normalizeImageFile(raw);
+  return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result as string);
     r.onerror = rej;
     r.readAsDataURL(file);
   });
+};
 
 async function compressImg(file: File): Promise<{ mime: string; b64: string }> {
   const dataUrl = await fileToDataURL(file);

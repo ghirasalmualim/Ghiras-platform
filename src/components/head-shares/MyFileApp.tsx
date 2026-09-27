@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeImageFile } from '@/lib/heic';
 
 /**
  * «ملفّي» — صفحة المعلمة المُشارَكة. تعرض مشاركاتها هي فقط (RLS في القاعدة يضمن ذلك)،
@@ -26,7 +27,8 @@ type Share = {
   files: ShareFile[];
 };
 
-async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<string> {
+async function compressImage(raw: File, maxDim = 1600, quality = 0.82): Promise<string> {
+  const file = await normalizeImageFile(raw); // HEIC (كاميرا آبل) → JPEG
   const dataUrl: string = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result as string);
@@ -51,13 +53,15 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise
   ctx.drawImage(img, 0, 0, w, h);
   return canvas.toDataURL('image/jpeg', quality);
 }
-const toDataURL = (file: File): Promise<string> =>
-  new Promise((res, rej) => {
+const toDataURL = async (raw: File): Promise<string> => {
+  const file = await normalizeImageFile(raw); // HEIC → JPEG
+  return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result as string);
     r.onerror = rej;
     r.readAsDataURL(file);
   });
+};
 
 /** ترتيب البنود: المطلوبة أولًا، ثم أي عناوين ملفات إضافية، ثم «بدون عنوان». */
 function groupsOf(share: Share, extra: string[]): string[] {
