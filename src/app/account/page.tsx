@@ -337,13 +337,13 @@ export default async function AccountPage() {
               ألعاب غراس التفاعلية — باقةٌ واحدةٌ مشترَكة بين الألعابِ الخمس.
               الشراء يستدعي payment_add_game_credits ← يزيد game_credits
               (رصيدٌ دائمٌ لا مدةَ له). معزولٌ عن admin_add_game_credits،
-              والخصمُ يبقى حصرًا في consume_game_credit عند تثبيتِ لعبةٍ جديدة.
+              والخصمُ صار في /api/game-ai بعد نجاح التوليد (2026-09-27) لا عند التشغيل.
             */}
             <Card title="ألعاب غراس التفاعلية">
               <p className="text-sm leading-relaxed text-ink/70">
                 باقةٌ واحدةٌ تفتح لك <b>٣ ألعاب</b> تختارينها من: من سيربح
                 المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات.
-                الرصيد دائمٌ لا ينتهي، ويُخصم عند تثبيت لعبةٍ جديدة.
+                الرصيد دائمٌ لا ينتهي، ويُخصم عند توليد أسئلة لعبةٍ بالذكاء (والتشغيل بعده مجاني).
               </p>
               <p className="mt-3 flex items-baseline justify-between gap-2 text-sm">
                 <span className="text-ink/55">رصيد الألعاب الحالي</span>
@@ -359,7 +359,7 @@ export default async function AccountPage() {
             {/*
               استوديو الحصة الذكية — شراء رصيد حصص (نموذج الحصص لا المدة).
               الشراء يستدعي payment_add_credits ← يزيد lesson_credits. معزول
-              عن admin_set_tool/admin_grant. الرصيد يبقى دائمًا ويُخصم عند البناء.
+              عن admin_set_tool/admin_grant. الرصيد يبقى دائمًا ويُخصم عند التوليد بالذكاء.
             */}
             <Card title="استوديو الحصة الذكية">
               <p className="text-sm leading-relaxed text-ink/70">

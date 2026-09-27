@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
- * خصم رصيد لعبة واحدة عند تشغيل لعبة نهائية.
- * يُستدعى من أداة «من سيربح المليون» لحظة تثبيت اللعبة واللعب بها.
- * الأدمِن غير محدود (بلا خصم). المعاينة التجريبية لا تستدعي هذا أبداً.
+ * رصيد الألعاب — **قراءة فقط منذ 2026-09-27**.
+ *
+ * كان هذا المسار يخصم رصيدًا عند تشغيل اللعبة النهائية، وصار الخصم عند توليد
+ * الأسئلة بالذكاء (في /api/game-ai) لأنّ التوليد وحده هو ما يكلّف. والتشغيل
+ * بعد التوليد مجانيٌّ بلا حدّ — اللعبة التي دفعت مقابلها مملوكةٌ لها.
+ *
+ * أبقينا المسار وشكل ردّه كما هو لأنّ الألعاب الخمس تناديه لتحديث شارة الرصيد،
+ * فحذفه كان سيكسرها جميعًا. يردّ الآن الرصيد الحالي بلا أي خصم.
  */
 
 export const runtime = 'nodejs';
@@ -20,19 +25,21 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: 'auth' }, { status: 401 });
   }
 
-  const { data, error } = await supabase.rpc('consume_game_credit');
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, game_credits')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role === 'admin') {
+    return NextResponse.json({ ok: true, remaining: 999999, unlimited: true });
   }
 
-  const remaining = data as number;
-  if (remaining === -1) {
-    return NextResponse.json({ ok: false, error: 'no_credit', remaining: 0 }, { status: 402 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    remaining,
-    unlimited: remaining === 999999,
-  });
+  /**
+   * **لا رفض عند الرصيد صفر.** المعلمة التي أنفقت أرصدتها في التوليد يجب أن
+   * تشغّل ألعابها التي ولّدتها — فما دُفع مقابله مملوكٌ لها. والتوليد وحده هو
+   * الحارس المدفوع (يردّ /api/game-ai رفضًا بلا رصيد).
+   */
+  const remaining = Number(profile?.game_credits ?? 0);
+  return NextResponse.json({ ok: true, remaining, unlimited: false });
 }

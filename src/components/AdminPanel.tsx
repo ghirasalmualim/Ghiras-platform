@@ -236,7 +236,7 @@ export default function AdminPanel() {
 
   // ── رصيد ألعاب غراس التفاعلية ──
   // رصيدُ عددٍ دائم لا مدة له: الإضافة جمعية فوق القائم، والخصم يبقى
-  // حصرًا عند تثبيت لعبة جديدة. منتجٌ مستقل عن كل أعمدة _until.
+  // حصرًا عند توليد أسئلة لعبة بالذكاء. منتجٌ مستقل عن كل أعمدة _until.
   const addGameCredits = (id: string, current: number) => {
     const raw = prompt(`الرصيد الحالي: ${current} — كم لعبة تضيف؟`, '3');
     if (raw === null) return;

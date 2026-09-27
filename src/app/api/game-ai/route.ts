@@ -125,6 +125,25 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages }),
     });
     const data = await res.text();
+
+    /**
+     * الخصم عند التوليد (قرار حصة 2026-09-27) — بدل الخصم عند التشغيل.
+     *
+     * السبب: الرصيد كان يُخصم عند تشغيل اللعبة فقط، فصار التوليد بالذكاء —
+     * وهو وحده ما يكلّفنا فاتورة — مجانيًا بلا حدّ عمليّ (٢٥ طلبًا يوميًا).
+     * فمعلمةٌ اشترت ٣ أرصدة بدينارين تولّد عشرات المرات.
+     *
+     * الخصم **بعد نجاح الطلب** حتى لا تُحاسَب معلمةٌ على توليدٍ فشل، والأدمِن
+     * معفى. فشلُ الخصم نفسه لا يُلغي النتيجة — الأسئلة وصلت والمعلمة تستحقها،
+     * والحارس الأوّل (رصيد > 0) يمنع الاستهلاك بلا رصيد أصلًا.
+     */
+    if (!isAdmin && res.ok) {
+      const { error: consumeErr } = await supabase.rpc('consume_game_credit');
+      if (consumeErr) {
+        console.error('[game-ai] consume failed:', consumeErr.message);
+      }
+    }
+
     return new NextResponse(data, {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
