@@ -640,6 +640,9 @@ function StaffTab({ sb, sid, uid, grades, classes, say }: {
     load();
   }, [load]);
 
+  // خمس رئيسيات كحدٍّ أقصى = المنشئة + أربع (قرار حصة 2026-09-27).
+  // الحدّ الحقيقيّ محروس في att_add_member — وهذا للعرض فقط.
+  const MAX_MAINS_BESIDE_OWNER = 4;
   const mainsBesideOwner = members.filter((m) => m.kind === 'main' && !m.is_owner).length;
   const gName = (id: string) => grades.find((g) => g.id === id)?.name || '—';
   const cName = (id: string) => classes.find((c) => c.id === id)?.name || '—';
@@ -719,10 +722,10 @@ function StaffTab({ sb, sid, uid, grades, classes, say }: {
           <button className={`${BTN} flex-1 ${kind === 'grade' ? 'bg-sage text-white' : 'bg-sage-mist text-sage-deep'}`} onClick={() => setKind('grade')}>🧭 مسؤولة صف</button>
           <button
             className={`${BTN} flex-1 ${kind === 'main' ? 'bg-sage text-white' : 'bg-sage-mist text-sage-deep'}`}
-            disabled={!editing && mainsBesideOwner >= 2}
+            disabled={!editing && mainsBesideOwner >= MAX_MAINS_BESIDE_OWNER}
             onClick={() => setKind('main')}
           >
-            👑 رئيسية {mainsBesideOwner >= 2 && !editing ? '(اكتمل العدد)' : `(${toAr(mainsBesideOwner)}/${toAr(2)})`}
+            👑 رئيسية {mainsBesideOwner >= MAX_MAINS_BESIDE_OWNER && !editing ? '(اكتمل العدد)' : `(${toAr(mainsBesideOwner)}/${toAr(MAX_MAINS_BESIDE_OWNER)})`}
           </button>
         </div>
         {kind === 'grade' && (

@@ -226,8 +226,8 @@ begin
     select count(*) into v_mains from public.school_members
      where school_id = p_school and role in ('admin','principal','deputy')
        and user_id is distinct from v_owner and user_id is distinct from v_uid;
-    if v_mains >= 2 then
-      return query select false, 'الحدّ الأقصى رئيسيتان غير المنشئة', null::uuid, null::text; return;
+    if v_mains >= 4 then
+      return query select false, 'الحدّ الأقصى خمس رئيسيات (المنشئة + أربع)', null::uuid, null::text; return;
     end if;
   end if;
 
