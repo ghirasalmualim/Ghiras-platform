@@ -19,8 +19,7 @@ export const COUPONS: Coupon[] = [
   { code: 'ورشة غراس', percent: 20, until: '2026-10-01' },
   { code: 'ilovemath', percent: 20, until: '2026-10-01' },
   { code: 'fanatk21', percent: 20, until: '2026-10-01' },
-  // بلا تاريخ انتهاء — لم تُحدَّد له مدة (الثلاثة قبله لورشةٍ تنتهي ١ أكتوبر)
-  { code: 'جوزاء', percent: 20 },
+  { code: 'جوزاء', percent: 20, until: '2026-10-01' },
 ];
 
 const TASHKEEL = /[ً-ْٰـ]/g;
