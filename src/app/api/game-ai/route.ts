@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * جسر الذكاء الاصطناعي الآمن لأداة «من سيربح المليون».
@@ -17,6 +18,12 @@ const MAX_TOKENS_DEFAULT = 1000;
 
 // حاجز الفاتورة: سقف يومي لكل مستخدم قبل نداء الذكاء (الأدمِن يتخطّى).
 const GAME_DAILY = parseInt(process.env.GAME_DAILY || '25', 10) || 25;
+
+/**
+ * مهلة التصحيح: بعد كل خصم، إعادةُ التوليد خلال هذه الدقائق مجانية.
+ * السبب: أسئلةٌ لم تعجب المعلمة يجب أن تُعاد بلا أن تُحاسَب مرتين على درسٍ واحد.
+ */
+const REGEN_GRACE_MIN = parseInt(process.env.GAME_REGEN_GRACE_MIN || '10', 10) || 10;
 
 export async function POST(req: NextRequest) {
   const supabase = createServerSupabase();
@@ -138,9 +145,38 @@ export async function POST(req: NextRequest) {
      * والحارس الأوّل (رصيد > 0) يمنع الاستهلاك بلا رصيد أصلًا.
      */
     if (!isAdmin && res.ok) {
-      const { error: consumeErr } = await supabase.rpc('consume_game_credit');
-      if (consumeErr) {
-        console.error('[game-ai] consume failed:', consumeErr.message);
+      /**
+       * سجلّ آخر خصم يكتبه الخادم بمفتاح الخدمة — وليس المتصفّح ولا المستخدمة،
+       * وإلا أمكن تمديدُ المهلة يدويًا فيصير التوليد مجانيًا للأبد.
+       * تعذّرُ قراءة السجل = خصمٌ عاديّ (رفضٌ آمن لصالح الفاتورة).
+       */
+      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const admin =
+        supaUrl && serviceKey
+          ? createClient(supaUrl, serviceKey, { auth: { persistSession: false } })
+          : null;
+
+      let inGrace = false;
+      if (admin) {
+        const { data: last } = await admin
+          .from('game_ai_charges')
+          .select('last_charged_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const at = (last as { last_charged_at?: string } | null)?.last_charged_at;
+        if (at) inGrace = Date.now() - new Date(at).getTime() < REGEN_GRACE_MIN * 60_000;
+      }
+
+      if (!inGrace) {
+        const { error: consumeErr } = await supabase.rpc('consume_game_credit');
+        if (consumeErr) {
+          console.error('[game-ai] consume failed:', consumeErr.message);
+        } else if (admin) {
+          await admin
+            .from('game_ai_charges')
+            .upsert({ user_id: user.id, last_charged_at: new Date().toISOString() });
+        }
       }
     }
 
