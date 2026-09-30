@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { PRODUCTS, fmtKwd } from '@/lib/pricing';
-import { findCoupon, discountedPrice } from '@/lib/coupons';
+import { checkCoupon, discountedPrice, startLabel } from '@/lib/coupons';
 
 /**
  * التحقّق من كود الخصم قبل الدفع — للعرضِ وحدَه (السعرُ يُعادُ حسابُه في مسارِ الدفع).
@@ -21,8 +21,17 @@ export async function POST(req: NextRequest) {
   const product = body.productId ? PRODUCTS[body.productId] : undefined;
   if (!product) return NextResponse.json({ error: 'منتج غير معروف' }, { status: 400 });
 
-  const coupon = findCoupon(body.code);
-  if (!coupon) return NextResponse.json({ ok: false, error: 'الكود غير صحيح أو انتهت مدّته.' });
+  const check = checkCoupon(body.code);
+  if (!check.ok) {
+    const error =
+      check.reason === 'early'
+        ? `هذا الكود يبدأ ${startLabel(check.coupon)} — جرّبيه في حينه.`
+        : check.reason === 'expired'
+          ? 'انتهت مدّة هذا الكود.'
+          : 'الكود غير صحيح أو انتهت مدّته.';
+    return NextResponse.json({ ok: false, error });
+  }
+  const coupon = check.coupon;
 
   const price = discountedPrice(product.priceKwd, coupon.percent);
   return NextResponse.json({

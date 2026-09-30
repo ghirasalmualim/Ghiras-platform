@@ -11,6 +11,8 @@ export interface Coupon {
   code: string;
   /** نسبةُ الخصم ٪ */
   percent: number;
+  /** تاريخُ أولِ يومٍ يُقبَلُ فيه (ISO) — بلا قيمةٍ يعني ساريًا من الآن */
+  from?: string;
   /** تاريخُ آخرِ يومٍ يُقبَلُ فيه (ISO) — بلا قيمةٍ يعني مفتوحًا */
   until?: string;
 }
@@ -20,6 +22,8 @@ export const COUPONS: Coupon[] = [
   { code: 'ilovemath', percent: 20, until: '2026-10-01' },
   { code: 'fanatk21', percent: 20, until: '2026-10-01' },
   { code: 'جوزاء', percent: 20, until: '2026-10-01' },
+  // الأحد ٤ أكتوبر حتى الخميس ٨ أكتوبر ٢٠٢٦ (بتوقيت الكويت)
+  { code: 'Walmejbel', percent: 20, from: '2026-10-04', until: '2026-10-08' },
 ];
 
 const TASHKEEL = /[ً-ْٰـ]/g;
@@ -37,18 +41,56 @@ export function normalizeCode(input: string): string {
     .toLowerCase();
 }
 
-/** كودٌ سارٍ أم لا (التاريخُ يُقاسُ بنهايةِ يومِ `until`). */
+/** المدةُ تُقاسُ بتوقيتِ الكويت: من فجرِ `from` إلى آخرِ لحظةٍ في `until`. */
+function startsAt(c: Coupon): number {
+  return c.from ? new Date(`${c.from}T00:00:00+03:00`).getTime() : -Infinity;
+}
+function endsAt(c: Coupon): number {
+  return c.until ? new Date(`${c.until}T23:59:59+03:00`).getTime() : Infinity;
+}
 function isLive(c: Coupon, now = new Date()): boolean {
-  if (!c.until) return true;
-  return now.getTime() <= new Date(`${c.until}T23:59:59+03:00`).getTime();
+  const t = now.getTime();
+  return t >= startsAt(c) && t <= endsAt(c);
+}
+
+export type CouponCheck =
+  | { ok: true; coupon: Coupon }
+  | { ok: false; reason: 'unknown' }
+  | { ok: false; reason: 'early' | 'expired'; coupon: Coupon };
+
+/**
+ * تشخيصُ الكود لا مجرّدُ قبولِه — فكودٌ لم يبدأْ بعدُ ليس كودًا خاطئًا،
+ * والمعلمةُ تستحقُّ أن تعرفَ متى يبدأ بدل «الكود غير صحيح».
+ */
+export function checkCoupon(input?: string | null, now = new Date()): CouponCheck {
+  const key = normalizeCode(input || '');
+  const hit = key ? COUPONS.find((c) => normalizeCode(c.code) === key) : undefined;
+  if (!hit) return { ok: false, reason: 'unknown' };
+  const t = now.getTime();
+  if (t < startsAt(hit)) return { ok: false, reason: 'early', coupon: hit };
+  if (t > endsAt(hit)) return { ok: false, reason: 'expired', coupon: hit };
+  return { ok: true, coupon: hit };
+}
+
+/** يومُ البدءِ بالعربية: «الأحد ٤ أكتوبر» — لرسالةِ الكودِ الذي لم يبدأ بعد. */
+export function startLabel(c: Coupon): string {
+  if (!c.from) return '';
+  try {
+    return new Intl.DateTimeFormat('ar-KW', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'Asia/Kuwait',
+    }).format(new Date(`${c.from}T12:00:00+03:00`));
+  } catch {
+    return c.from;
+  }
 }
 
 /** يُرجعُ الكودَ المطابقَ الساري، أو `null` إن لم يوجد. */
 export function findCoupon(input?: string | null, now = new Date()): Coupon | null {
-  const key = normalizeCode(input || '');
-  if (!key) return null;
-  const hit = COUPONS.find((c) => normalizeCode(c.code) === key);
-  return hit && isLive(hit, now) ? hit : null;
+  const res = checkCoupon(input, now);
+  return res.ok ? res.coupon : null;
 }
 
 /** السعرُ بعدَ الخصم، مجبورًا على الفلس (٣ منازل) ولا ينزلُ تحتَ ١٠٠ فلس. */
