@@ -21,6 +21,7 @@ export const dynamic = 'force-dynamic'; // صفحة محمية — تُبنى ل
 // المفتاح: `${subjectSlug}|${gradeSlug}` — القيمة: رابط اللعبة المجانية.
 // لإضافة نسخة مجانية جديدة مستقبلاً: أضِف سطراً هنا فقط.
 const FREE_GAMES: Record<string, string> = {
+  'homeec|grade-6': 'https://games.ghiras-edu.com/free-homeec-g6/full-review',
   'social|grade-9': 'https://games.ghiras-edu.com/free-social-g9/full-review',
   'social|grade-8': 'https://games.ghiras-edu.com/free-social-g8/full-review',
   'social|grade-7': 'https://games.ghiras-edu.com/free-social-g7/full-review',

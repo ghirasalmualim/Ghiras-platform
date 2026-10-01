@@ -81,6 +81,8 @@ const SUBJECT_DEFS = [
   { name: 'الرياضيات', slug: 'math', icon: '🔢', color: '#C9A84C' },
   { name: 'العلوم', slug: 'science', icon: '🔬', color: '#5BA88F' },
   { name: 'الاجتماعيات', slug: 'social', icon: '🗺️', color: '#C08552' },
+  // الاقتصاد المنزلي: مادة المرحلة المتوسطة — تُعرض حيث تتوفّر ألعابها فقط
+  { name: 'الاقتصاد المنزلي', slug: 'homeec', icon: '🏡', color: '#C4677B' },
 ];
 
 export const SEED_SUBJECTS: Subject[] = SEED_GRADES.flatMap((g) =>
