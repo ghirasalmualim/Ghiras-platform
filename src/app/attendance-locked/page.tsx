@@ -34,7 +34,7 @@ export default function AttendanceLockedPage() {
 
         <div className="mt-6 rounded-2xl border border-sage/25 bg-sage-light/40 p-4">
           <div className="text-lg font-extrabold text-sage-deep">الاشتراك</div>
-          <div className="text-2xl font-black text-sage-dark mt-1">٨ د.ك / ٦ أشهر</div>
+          <div className="text-2xl font-black text-sage-dark mt-1">٨ د.ك / ٤ أشهر</div>
           <div className="text-sm text-ink/55 mt-1">يشمل سجلّين، وكل سجل ١٠ صور لرفع الكشوف</div>
         </div>
 

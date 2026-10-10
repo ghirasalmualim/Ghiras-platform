@@ -3,7 +3,7 @@ import Logo from '@/components/Logo';
 import SubscribeButton from '@/components/SubscribeButton';
 
 /**
- * صفحة الاشتراك في «بنك غراس» — منتج مستقل: ٦ أشهر بثمانية دنانير.
+ * صفحة الاشتراك في «بنك غراس» — منتج مستقل: ٤ أشهر بثمانية دنانير.
  * تظهر لغير المشتركات، والتفعيل عبر إدارة غراس.
  */
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export default function GharasBankLockedPage() {
         <div className="mt-5 inline-flex items-baseline gap-2 rounded-2xl bg-sage/10 border border-sage/30 px-6 py-3">
           <span className="text-4xl font-extrabold text-sage-dark">٨</span>
           <span className="text-lg font-extrabold text-sage-dark">دنانير</span>
-          <span className="text-ink/50 text-sm font-bold">· اشتراك ٦ أشهر</span>
+          <span className="text-ink/50 text-sm font-bold">· اشتراك ٤ أشهر</span>
         </div>
 
         <ul className="mt-6 text-right space-y-2">
@@ -64,7 +64,7 @@ export default function GharasBankLockedPage() {
           💬 تواصل معنا
         </Link>
         <p className="mt-3 text-ink/45 text-xs font-semibold">
-          بعد إتمام الدفع يُفعَّل البنك على حسابك مباشرةً لمدة ستة أشهر.
+          بعد إتمام الدفع يُفعَّل البنك على حسابك مباشرةً لمدة أربعة أشهر.
         </p>
 
         <Link

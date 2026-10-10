@@ -84,7 +84,7 @@ export default function TeacherPage() {
                 <span>
                   <b>
                     بنك غراس
-                    <span className="tag paid">مستقل · ٨ د.ك / ٦ أشهر</span>
+                    <span className="tag paid">مستقل · ٨ د.ك / ٤ أشهر</span>
                   </b>
                   <small>أوراق عمل ووسائل تعليمية جاهزة وقابلة للتخصيص</small>
                 </span>
