@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { PRODUCTS, fmtKwd } from '@/lib/pricing';
+import { addToCart } from '@/lib/cart';
 
 /**
  * زر «اشترك الآن» في صفحات القفل — يبدأ الدفع عبر MyFatoorah ويحوّل لصفحة الدفع.
@@ -10,8 +11,9 @@ import { PRODUCTS, fmtKwd } from '@/lib/pricing';
  * لعرضِ السعرِ الجديد، ثمّ يُرسَلُ نصُّ الكودِ مع الدفع حيث **يُعادُ حسابُ السعر**
  * — فلا يمكن تمريرُ سعرٍ من المتصفّح.
  */
-export default function SubscribeButton({ productId, scopeId, label, hint, hidePrice }: { productId: string; scopeId?: string; label?: string; hint?: string; hidePrice?: boolean }) {
+export default function SubscribeButton({ productId, scopeId, scopeLabel, label, hint, hidePrice }: { productId: string; scopeId?: string; scopeLabel?: string; label?: string; hint?: string; hidePrice?: boolean }) {
   const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState<'' | 'new' | 'dup'>('');
   const [err, setErr] = useState('');
   const [showCode, setShowCode] = useState(false);
   const [code, setCode] = useState('');
@@ -80,6 +82,17 @@ export default function SubscribeButton({ productId, scopeId, label, hint, hideP
       >
         {busy ? '…جارٍ التحويل للدفع' : `🛒 ${label ?? 'اشترك الآن'}${priceText}`}
       </button>
+      <button
+        onClick={() => setAdded(addToCart({ productId, scopeId, scopeLabel }) ? 'new' : 'dup')}
+        className="ms-2 inline-block rounded-xl border-2 border-gold bg-gold-light px-5 py-3 font-extrabold text-gold-dark transition-all hover:-translate-y-0.5"
+      >
+        🛒 أضيفي للسلة
+      </button>
+      {added ? (
+        <div className="mt-2 text-[13px] font-extrabold text-sage-dark">
+          {added === 'new' ? '✅ انضاف للسلة' : 'موجود بالسلة من قبل'} — <a href="/cart" className="underline">افتحي السلة</a>
+        </div>
+      ) : null}
       <div className="mt-1.5 text-[12px] text-ink/45">{hint ?? (months ? `اشتراك ${months} أشهر · تجديد بأي وقت` : '')}</div>
 
       {deal ? (

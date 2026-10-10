@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PRODUCTS } from '@/lib/pricing';
+import { clearCart } from '@/lib/cart';
 
 /**
  * رسالةُ ما بعد الدفع في «مساحتي».
@@ -27,6 +28,11 @@ export default function PaymentResult({ pay, product }: { pay?: string; product?
     } catch {}
   }, [pay]);
 
+  // دفعُ السلّةِ نجح: تُفرَّغ السلّة (الإخفاقُ يُبقيها كما هي لتعيدَ المحاولة)
+  useEffect(() => {
+    if (pay === 'ok' && product === 'cart') clearCart();
+  }, [pay, product]);
+
   if (!open) return null;
 
   if (pay === 'fail') {
@@ -49,7 +55,8 @@ export default function PaymentResult({ pay, product }: { pay?: string; product?
     );
   }
 
-  const known = product ? PRODUCTS[product] : undefined;
+  const isCart = product === 'cart';
+  const known = product && !isCart ? PRODUCTS[product] : undefined;
   const isPack = product === 'teacher_pack';
 
   return (
@@ -63,7 +70,7 @@ export default function PaymentResult({ pay, product }: { pay?: string; product?
         <div className="text-5xl" aria-hidden>{isPack ? '🎉' : '✅'}</div>
         <h2 className="mt-3 text-xl font-black text-sage-deep">تم الدفع بنجاح</h2>
         <p className="mt-2 text-sm leading-relaxed text-ink/65">
-          {known ? <>فُعِّل لك: <b>{known.label}</b></> : 'فُعِّل اشتراكك'}
+          {isCart ? 'فُعِّل لك كل ما في السلة 🛒' : known ? <>فُعِّل لك: <b>{known.label}</b></> : 'فُعِّل اشتراكك'}
         </p>
 
         {isPack && (

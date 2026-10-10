@@ -343,6 +343,7 @@ export default async function SubjectPage({
               <SubscribeButton
                 productId="games_subject"
                 scopeId={subject.id}
+                scopeLabel={`${subjectDisplayName(subject, grade.slug)} — ${grade.name}`}
                 label="اشترك بهذه المادة"
                 hint={`${subjectDisplayName(subject, grade.slug)} · ٤ أشهر · تجديد بأي وقت`}
               />

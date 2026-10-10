@@ -193,6 +193,7 @@ export default async function GradePage({
                 <SubscribeButton
                   productId="games_grade"
                   scopeId={grade.id}
+                  scopeLabel={grade.name}
                   label="اشترك بالصف كامل"
                   hidePrice
                   hint={`كل مواد ${grade.name} · ٤ أشهر · تجديد بأي وقت`}

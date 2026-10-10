@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Tajawal, Cairo } from 'next/font/google';
 import ActivityPing from '@/components/ActivityPing';
+import CartFab from '@/components/CartFab';
 import './globals.css';
 
 const tajawal = Tajawal({
@@ -49,6 +50,8 @@ export default function RootLayout({
         {children}
         {/* تسجيل نشاط المعلمة — مخنوق بساعة، ولا يعرض شيئًا */}
         <ActivityPing />
+        {/* زرّ السلّة العائم — يظهر فقط حين يكون فيها شيء */}
+        <CartFab />
       </body>
     </html>
   );

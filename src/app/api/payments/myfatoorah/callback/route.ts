@@ -66,31 +66,46 @@ async function handle(req: NextRequest) {
   const orderId = mfJson?.Data?.CustomerReference;
   if (!orderId) return done(false);
 
-  const { data: order } = await admin.from('payment_orders').select('id,user_id,product_id,kind,tool,scope,scope_id,months,credits,status').eq('id', orderId).maybeSingle();
-  if (!order) return done(false);
-  const o = order as { id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; status: string };
+  type Order = { id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; status: string };
+  const COLS = 'id,user_id,product_id,kind,tool,scope,scope_id,months,credits,status';
 
-  if (o.status === 'paid') return done(true, o.product_id); // مُفعّل مسبقًا — idempotent
+  // المرجعُ إمّا معرّفُ طلبٍ منفرد، وإمّا معرّفُ سلّةٍ (cart_id) تشتركُ فيه عدّةُ صفوف.
+  const { data: single } = await admin.from('payment_orders').select(COLS).eq('id', orderId).maybeSingle();
+  let orders: Order[] = single ? [single as Order] : [];
+  const isCart = !single;
+  if (isCart) {
+    const { data: rows } = await admin.from('payment_orders').select(COLS).eq('cart_id', orderId);
+    orders = (rows ?? []) as Order[];
+  }
+  if (!orders.length) return done(false);
+  const label = isCart ? 'cart' : orders[0].product_id;
+
+  if (orders.every((o) => o.status === 'paid')) return done(true, label); // مُفعّل مسبقًا — idempotent
 
   if (status !== 'Paid') {
-    await admin.from('payment_orders').update({ status: 'failed', mf_payment_id: paymentId }).eq('id', o.id).eq('status', 'pending');
+    for (const o of orders) {
+      await admin.from('payment_orders').update({ status: 'failed', mf_payment_id: paymentId }).eq('id', o.id).eq('status', 'pending');
+    }
     return done(false);
   }
 
-  // تفعيل ثم وسم الطلب مدفوعًا (الوسم مشروط بأنه ما زال pending → يمنع التكرار)
-  const { data: claimed } = await admin
-    .from('payment_orders')
-    .update({ status: 'paid', paid_at: new Date().toISOString(), mf_payment_id: paymentId })
-    .eq('id', o.id).eq('status', 'pending').select('id').maybeSingle();
-  if (!claimed) return done(true, o.product_id); // فازت نسخة أخرى بالتفعيل
-
-  const { error } = await activate(admin as unknown as RpcClient, o);
-  if (error) {
-    // أعِد الطلب لحالة تحتاج مراجعة يدوية (مدفوع لكن التفعيل تعذّر)
-    await admin.from('payment_orders').update({ status: 'pending' }).eq('id', o.id);
-    return done(false);
+  // لكلِّ صف: وسمُه مدفوعًا (مشروطٌ بأنه ما زال pending → يمنع التكرار) ثم تفعيلُه.
+  // صفٌّ يتعذّر تفعيلُه يعود pending للمراجعة اليدوية ولا يوقفُ بقيّةَ السلّة.
+  let failed = 0;
+  for (const o of orders) {
+    const { data: claimed } = await admin
+      .from('payment_orders')
+      .update({ status: 'paid', paid_at: new Date().toISOString(), mf_payment_id: paymentId })
+      .eq('id', o.id).eq('status', 'pending').select('id').maybeSingle();
+    if (!claimed) continue; // مدفوعٌ من قبل أو فازت به نسخةٌ أخرى
+    const { error } = await activate(admin as unknown as RpcClient, o);
+    if (error) {
+      failed++;
+      await admin.from('payment_orders').update({ status: 'pending' }).eq('id', o.id);
+    }
   }
-  return done(true, o.product_id);
+  if (failed) return done(false);
+  return done(true, label);
 }
 
 export const GET = handle;
