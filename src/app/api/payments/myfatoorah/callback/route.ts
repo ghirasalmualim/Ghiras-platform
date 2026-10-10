@@ -13,7 +13,7 @@ const MF_BASE = process.env.MYFATOORAH_BASE_URL || 'https://api.myfatoorah.com';
 
 type RpcClient = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
 async function activate(admin: RpcClient, order: {
-  id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; qty?: number | null;
+  id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; qty?: number | null; scope_key?: string | null;
 }) {
   if (order.kind === 'tool' && order.tool && order.months) {
     return admin.rpc('payment_activate_tool', { p_user: order.user_id, p_tool: order.tool, p_months: order.months });
@@ -32,6 +32,10 @@ async function activate(admin: RpcClient, order: {
   // إدارة الحضور المدرسية: الدالّةُ تتحقّق أن المشترية من إدارةِ المدرسة وأن الفصول ≥ ١٠
   if (order.kind === 'att_org' && order.scope_id && order.qty && order.months) {
     return admin.rpc('payment_att_org', { p_user: order.user_id, p_school: order.scope_id, p_classes: order.qty, p_months: order.months });
+  }
+  // مكتبة حصص غراس: يُمدَّد اشتراكُ مادةٍ في صفٍّ (يقرؤه الاستوديو بجلسة المعلمة)
+  if (order.kind === 'library' && order.scope_key && order.months) {
+    return admin.rpc('payment_grant_library', { p_user: order.user_id, p_key: order.scope_key, p_months: order.months });
   }
   if (order.kind === 'studio' && order.credits) {
     return admin.rpc('payment_add_credits', { p_user: order.user_id, p_count: order.credits });
@@ -70,9 +74,10 @@ async function handle(req: NextRequest) {
   const orderId = mfJson?.Data?.CustomerReference;
   if (!orderId) return done(false);
 
-  type Order = { id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; qty?: number | null; status: string };
+  type Order = { id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; qty?: number | null; scope_key?: string | null; status: string };
   // ⚠️ عمودُ qty يحتاج supabase/2026-10-10-payment-att-org.sql — يُشغَّل قبل نشرِ هذا الكود
-  const COLS = 'id,user_id,product_id,kind,tool,scope,scope_id,months,credits,qty,status';
+  // ⚠️ scope_key يحتاج supabase/2026-10-10-library-subscriptions.sql قبل النشر
+  const COLS = 'id,user_id,product_id,kind,tool,scope,scope_id,months,credits,qty,scope_key,status';
 
   // المرجعُ إمّا معرّفُ طلبٍ منفرد، وإمّا معرّفُ سلّةٍ (cart_id) تشتركُ فيه عدّةُ صفوف.
   const { data: single } = await admin.from('payment_orders').select(COLS).eq('id', orderId).maybeSingle();

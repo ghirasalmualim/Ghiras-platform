@@ -26,12 +26,14 @@ function orderRow(product: Product, scopeId: string | undefined, qty: number | u
     product_id: product.id,
     kind: product.kind,
     tool: product.kind === 'tool' ? product.tool : null,
-    scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : null,
+    scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : product.kind === 'library' ? 'library' : null,
     scope_id: product.kind === 'games' || product.kind === 'att_org' ? scopeId : null,
-    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' ? product.months : null,
+    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' || product.kind === 'library' ? product.months : null,
     credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
     // عمودُ qty يُرسَل لمنتجِ الكمية وحدَه — فالسلّةُ العاديةُ لا تحتاجه
     ...(product.kind === 'att_org' ? { qty } : {}),
+    // مفتاحُ مادةِ المكتبة نصٌّ لا uuid — عمودُه الخاص
+    ...(product.kind === 'library' ? { scope_key: scopeId } : {}),
   };
 }
 
@@ -59,6 +61,12 @@ export async function POST(req: NextRequest) {
       // المشترية لازم تكون من إدارةِ المدرسة — يُسأل بجلستِها هي
       const { data: isAdm } = await supabase.rpc('school_is_admin', { p_school: scopeId });
       if (!isAdm) return NextResponse.json({ error: 'اشتراك إدارة الحضور تشتريه مسؤولة المدرسة الرئيسية' }, { status: 403 });
+    }
+    if (product.kind === 'library') {
+      // «مرحلة|صف|مادة» — نصٌّ قصيرٌ بثلاثة أجزاء، والاستوديو يقرأ المفتاحَ نفسَه
+      if (!scopeId || scopeId.length > 160 || scopeId.split('|').length !== 3) {
+        return NextResponse.json({ error: 'اشتراك المكتبة ناقصه المادة — أضيفيه من مكتبة الاستوديو' }, { status: 400 });
+      }
     }
     const k = `${product.id}:${scopeId ?? ''}`;
     if (seen.has(k)) continue;

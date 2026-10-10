@@ -114,6 +114,17 @@ export default async function AccountPage() {
     .eq('user_id', user.id);
   const perms = (permRows ?? []) as Perm[];
 
+  // اشتراكاتُ مكتبة حصص غراس (الاستوديو) — «مرحلة|صف|مادة». غيابُ الجدول = لا شيء.
+  const { data: libRows } = await supabase
+    .from('library_subscriptions')
+    .select('scope_key, until')
+    .eq('user_id', user.id)
+    .order('until', { ascending: false });
+  const librarySubs = ((libRows ?? []) as { scope_key: string; until: string }[]).map((r) => {
+    const [, grade, subject] = r.scope_key.split('|');
+    return { label: `${subject ?? ''} — ${grade ?? ''}`, until: r.until, active: new Date(r.until) > new Date() };
+  });
+
   // ⚠️ لا تُعرض المعرّفات للمستخدم — تُترجَم أسماءً من الكتالوج العام
   const ids = {
     stage: perms.map((p) => p.stage_id).filter(Boolean) as string[],
@@ -361,6 +372,22 @@ export default async function AccountPage() {
               الشراء يستدعي payment_add_credits ← يزيد lesson_credits. معزول
               عن admin_set_tool/admin_grant. الرصيد يبقى دائمًا ويُخصم عند التوليد بالذكاء.
             */}
+            {librarySubs.length > 0 && (
+              <Card title="📚 اشتراكات مكتبة حصص غراس">
+                <ul className="space-y-2 text-sm">
+                  {librarySubs.map((l) => (
+                    <li key={l.label} className="flex items-baseline justify-between gap-2">
+                      <span className="font-bold text-ink">{l.label}</span>
+                      <span className={l.active ? 'text-sage-dark' : 'text-red-500'}>
+                        {l.active ? `حتى ${fmtDate(l.until)}` : `انتهى ${fmtDate(l.until)}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-[12.5px] text-ink/50">للتجديد: من مكتبة الحصص في الاستوديو ← المادة ← «جدّدي».</p>
+              </Card>
+            )}
+
             <Card title="استوديو الحصة الذكية">
               <p className="text-sm leading-relaxed text-ink/70">
                 اشترِ رصيد حصص لبناء عروض الحصص في الاستوديو — كل حصة تُخصم عند

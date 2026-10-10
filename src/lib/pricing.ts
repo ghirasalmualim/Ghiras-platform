@@ -10,7 +10,9 @@ export type Product =
   | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number }
   | { id: string; kind: 'bundle'; label: string; tools: string[]; months: number; lessonCredits: number; priceKwd: number }
   // سعرُه للوحدة (الفصل)، والكميةُ تختارها المشترية في السلّة (لا تُباع بزرِّ «اشترك الآن»)
-  | { id: string; kind: 'att_org'; label: string; months: number; priceKwd: number; minQty: number };
+  | { id: string; kind: 'att_org'; label: string; months: number; priceKwd: number; minQty: number }
+  // اشتراكُ مكتبة غراس لمادةٍ في صفٍّ واحد — نطاقُه مفتاحٌ نصّيّ «مرحلة|صف|مادة» من الاستوديو
+  | { id: string; kind: 'library'; label: string; months: number; priceKwd: number };
 
 export const PRODUCTS: Record<string, Product> = {
   gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
@@ -38,6 +40,8 @@ export const PRODUCTS: Record<string, Product> = {
   studio_5:       { id: 'studio_5',       kind: 'studio', label: 'استوديو الحصة — ٥ حصص',    credits: 5, priceKwd: 10 },
   // إدارة الحضور المدرسية: ٤ د.ك لكل فصل، أقلّها ١٠ فصول، ٤ أشهر (قرار حصة) — بالسلّة فقط
   att_school:     { id: 'att_school',     kind: 'att_org', label: 'إدارة الحضور المدرسية', months: 4, priceKwd: 4, minQty: 10 },
+  // مكتبة حصص غراس في الاستوديو: ٢٥ د.ك لمادةٍ في صفٍّ واحد، ٣ أشهر (قرار حصة 2026-10-10) — بالسلّة فقط
+  library:        { id: 'library',        kind: 'library', label: 'مكتبة حصص غراس', months: 3, priceKwd: 25 },
 };
 
 /** سعرُ سطرٍ في السلّة: المنتجاتُ بالكمية (الفصول) سعرُها × الكمية. */
