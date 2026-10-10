@@ -24,6 +24,8 @@ export const COUPONS: Coupon[] = [
   { code: 'جوزاء', percent: 20, until: '2026-10-01' },
   // الأحد ٤ أكتوبر حتى الخميس ٨ أكتوبر ٢٠٢٦ (بتوقيت الكويت)
   { code: 'Walmejbel', percent: 20, from: '2026-10-04', until: '2026-10-08' },
+  // الأحد ١١ أكتوبر حتى الثلاثاء ١٣ أكتوبر ٢٠٢٦ (٣ أيام، بتوقيت الكويت)
+  { code: 'Athraa20', percent: 20, from: '2026-10-11', until: '2026-10-13' },
 ];
 
 const TASHKEEL = /[ً-ْٰـ]/g;
