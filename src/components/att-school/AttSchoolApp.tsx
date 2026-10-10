@@ -7,6 +7,7 @@ import AttDaily from './AttDaily';
 import { StudentRecord, AuditLog } from './AttRecords';
 import AttReports from './AttReports';
 import { normalizeImageFile } from '@/lib/heic';
+import { addToCart } from '@/lib/cart';
 
 /**
  * «إدارة الحضور المدرسية» 🏫 — المرحلة ٢: الإنشاء + الهيكل + الطالبات + المسؤولات + الإعدادات
@@ -325,14 +326,19 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
           {org.active ? (
             <div className="rounded-2xl bg-sage-light text-sage-deep px-4 py-2 text-sm font-bold">
               ✅ مفعّلة حتى {fmtDate(org.att_until)}، مشتركة بـ{toAr(org.att_classes)} فصلًا
+              {isMain && <AttBuy org={org} count={classes.length} renew />}
             </div>
           ) : (
             <div className="rounded-2xl bg-gold-light text-ink px-4 py-3 text-sm max-w-md">
               <div className="font-extrabold text-gold-dark">⏳ بانتظار التفعيل</div>
               <div className="mt-1">
-                جهّزي الصفوف والطالبات والمسؤولات الآن، وتواصلي معنا للتفعيل.
+                جهّزي الصفوف والطالبات والمسؤولات الآن، ثم اشتركي من هنا.
               </div>
-              <Link href="/support" className="inline-block mt-2 font-extrabold text-sage-deep underline">💬 التفعيل عبر التواصل مع غراس</Link>
+              {isMain ? (
+                <AttBuy org={org} count={classes.length} />
+              ) : (
+                <div className="mt-1 text-ink/60">الاشتراك تشتريه المسؤولة الرئيسية للمدرسة.</div>
+              )}
             </div>
           )}
         </div>
@@ -936,5 +942,30 @@ function AdminBoard({ sb, say, onChanged }: { sb: ReturnType<typeof createClient
         </div>
       )}
     </section>
+  );
+}
+
+
+/**
+ * اشتراكُ إدارةِ الحضور بالسلّة (2026-10-10): المسؤولةُ الرئيسيةُ تختار عددَ الفصول
+ * (أقلُّه ١٠) فيُضاف للسلّة، والسعرُ يُعادُ حسابُه في الخادم (٤ د.ك × الفصول).
+ */
+function AttBuy({ org, count, renew }: { org: Org; count: number; renew?: boolean }) {
+  const [n, setN] = useState(Math.max(MIN_CLASSES, count, org.att_classes || 0));
+  const add = () => {
+    addToCart({ productId: 'att_school', scopeId: org.school_id, scopeLabel: org.name, qty: n });
+    window.location.href = '/cart';
+  };
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 font-normal text-ink">
+      <span className="font-bold">{renew ? 'جدّدي بـ' : 'عدد الفصول:'}</span>
+      <input type="number" min={MIN_CLASSES} value={n}
+        onChange={(e) => setN(Math.max(MIN_CLASSES, Math.floor(Number(e.target.value) || MIN_CLASSES)))}
+        className="w-16 rounded-lg border border-sage/30 bg-white px-2 py-1 text-center" />
+      {renew ? <span>فصلًا</span> : null}
+      <span className="font-extrabold">= {toAr(price(n))} د.ك / {toAr(MONTHS)} شهور</span>
+      <button onClick={add} className="rounded-xl border-2 border-gold bg-gold-light px-3 py-1 font-extrabold text-gold-dark">🛒 أضيفي للسلة</button>
+      {n < count ? <span className="w-full text-[12px] text-red-600">عندك {toAr(count)} فصلًا — الاشتراك أقل من عدد فصولك.</span> : null}
+    </div>
   );
 }

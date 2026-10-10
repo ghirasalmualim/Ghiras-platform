@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { PRODUCTS, fmtKwd } from '@/lib/pricing';
-import { CART_EVENT, addToCart, getCart, itemKey, removeFromCart, type CartItem } from '@/lib/cart';
+import { PRODUCTS, fmtKwd, linePrice } from '@/lib/pricing';
+import { CART_EVENT, addToCart, getCart, itemKey, removeFromCart, setQty, type CartItem } from '@/lib/cart';
 
 /**
  * صفحةُ السلّة (2026-10-10): كلُّ ما أضافته المعلمة، وكودُ خصمٍ واحدٌ على
  * المجموع، ودفعةٌ واحدةٌ تفعّل الكلَّ معًا. الأسعارُ هنا للعرض — الخادمُ يعيد
  * حسابَها من `PRODUCTS` في `/api/payments/myfatoorah/cart-checkout`.
  */
-const ICON: Record<string, string> = { tool: '🧰', games: '🎮', studio: '🪄', game_credits: '🎲', bundle: '🎁' };
+const ICON: Record<string, string> = { tool: '🧰', games: '🎮', studio: '🪄', game_credits: '🎲', bundle: '🎁', att_org: '🏫' };
 
 /** منتجاتٌ بلا نطاقٍ تُقترح للإضافة من صفحة السلّة نفسها. */
 const SUGGEST = ['studio_1', 'studio_5', 'games_3', 'gradebook', 'attendance', 'agenda', 'gharas_bank', 'adventure', 'multiplication', 'clock', 'head_records', 'teacher_pack'];
@@ -17,6 +17,7 @@ const monthsOf = (id: string) => {
   const p = PRODUCTS[id];
   if (!p) return '';
   if (p.kind === 'tool' || p.kind === 'games' || p.kind === 'bundle') return `${p.months.toLocaleString('ar')} أشهر`;
+  if (p.kind === 'att_org') return `${p.months.toLocaleString('ar')} أشهر · ${fmtKwd(p.priceKwd)} لكل فصل`;
   if (p.kind === 'studio') return `رصيد ${p.credits.toLocaleString('ar')} ${p.credits === 1 ? 'حصة' : 'حصص'}`;
   if (p.kind === 'game_credits') return `رصيد ${p.credits.toLocaleString('ar')} ألعاب — لا ينتهي`;
   return '';
@@ -39,7 +40,8 @@ export default function CartApp() {
       const u = new URL(window.location.href);
       const add = u.searchParams.get('add');
       if (add) {
-        const ok = addToCart({ productId: add, scopeId: u.searchParams.get('scope') || undefined, scopeLabel: u.searchParams.get('label') || undefined });
+        const q = Number(u.searchParams.get('qty'));
+        const ok = addToCart({ productId: add, scopeId: u.searchParams.get('scope') || undefined, scopeLabel: u.searchParams.get('label') || undefined, qty: Number.isFinite(q) && q > 0 ? q : undefined });
         if (PRODUCTS[add]) setNote(ok ? `انضاف للسلة: ${PRODUCTS[add].label}` : 'هذا المنتج موجود بالسلة من قبل');
         window.history.replaceState(null, '', '/cart');
       }
@@ -51,7 +53,7 @@ export default function CartApp() {
     return () => window.removeEventListener(CART_EVENT, sync);
   }, []);
 
-  const subtotal = items.reduce((s, i) => s + (PRODUCTS[i.productId]?.priceKwd ?? 0), 0);
+  const subtotal = items.reduce((s, i) => s + (PRODUCTS[i.productId] ? linePrice(PRODUCTS[i.productId]!, i.qty) : 0), 0);
   const discount = deal ? Math.round(subtotal * deal.percent * 10) / 1000 : 0;
   const total = Math.max(0, Math.round((subtotal - discount) * 1000) / 1000);
 
@@ -82,7 +84,7 @@ export default function CartApp() {
       const res = await fetch('/api/payments/myfatoorah/cart-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: items.map(({ productId, scopeId }) => ({ productId, scopeId })), coupon: deal ? code : undefined }),
+        body: JSON.stringify({ items: items.map(({ productId, scopeId, qty }) => ({ productId, scopeId, qty })), coupon: deal ? code : undefined }),
       });
       if (res.status === 401) { window.location.href = '/login?next=/cart'; return; }
       const json = await res.json();
@@ -120,8 +122,19 @@ export default function CartApp() {
                   <div className="flex-1">
                     <div className="font-extrabold text-ink">{p.label}{i.scopeLabel ? `: ${i.scopeLabel}` : ''}</div>
                     <div className="text-[13px] text-ink/55">{monthsOf(p.id)}</div>
+                    {p.kind === 'att_org' ? (
+                      <div className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-ink/70">
+                        <span>عدد الفصول:</span>
+                        <button onClick={() => setQty(itemKey(i), Math.max(p.minQty, (i.qty ?? p.minQty) - 1))} className="h-7 w-7 rounded-lg border-2 border-ink/15" aria-label="أنقصي فصلًا">−</button>
+                        <input type="number" min={p.minQty} value={i.qty ?? p.minQty}
+                          onChange={(e) => setQty(itemKey(i), Math.max(p.minQty, Math.floor(Number(e.target.value) || p.minQty)))}
+                          className="w-16 rounded-lg border-2 border-ink/15 px-2 py-0.5 text-center" />
+                        <button onClick={() => setQty(itemKey(i), (i.qty ?? p.minQty) + 1)} className="h-7 w-7 rounded-lg border-2 border-ink/15" aria-label="زيدي فصلًا">+</button>
+                        <span className="text-ink/45">(أقلّها {p.minQty.toLocaleString('ar')})</span>
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="whitespace-nowrap text-lg font-black text-ink">{fmtKwd(p.priceKwd)}</div>
+                  <div className="whitespace-nowrap text-lg font-black text-ink">{fmtKwd(linePrice(p, i.qty))}</div>
                   <button onClick={() => removeFromCart(itemKey(i))} className="px-2 text-xl text-red-500" aria-label={`احذفي ${p.label}`}>✕</button>
                 </div>
               );

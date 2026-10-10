@@ -11,7 +11,7 @@
  */
 import { PRODUCTS } from './pricing';
 
-export type CartItem = { productId: string; scopeId?: string; scopeLabel?: string };
+export type CartItem = { productId: string; scopeId?: string; scopeLabel?: string; qty?: number };
 
 const KEY = 'ghiras_cart_v1';
 export const CART_EVENT = 'ghiras-cart';
@@ -41,11 +41,20 @@ function save(items: CartItem[]) {
 export function addToCart(item: CartItem): boolean {
   const p = PRODUCTS[item.productId];
   if (!p) return false;
-  if (p.kind === 'games' && !item.scopeId) return false;
+  if ((p.kind === 'games' || p.kind === 'att_org') && !item.scopeId) return false;
   const items = getCart();
+  // منتجُ الكمية: إضافتُه ثانيةً تُحدّث الكميةَ بدل الرفض
+  if (p.kind === 'att_org' && items.some((i) => itemKey(i) === itemKey(item))) {
+    save(items.map((i) => (itemKey(i) === itemKey(item) ? { ...i, qty: item.qty } : i)));
+    return true;
+  }
   if (items.some((i) => itemKey(i) === itemKey(item))) return false;
   save([...items, item]);
   return true;
+}
+
+export function setQty(key: string, qty: number) {
+  save(getCart().map((i) => (itemKey(i) === key ? { ...i, qty } : i)));
 }
 
 export function removeFromCart(key: string) {

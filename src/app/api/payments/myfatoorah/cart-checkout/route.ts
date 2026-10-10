@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createServerSupabase } from '@/lib/supabase/server';
-import { PRODUCTS, type Product } from '@/lib/pricing';
+import { PRODUCTS, linePrice, type Product } from '@/lib/pricing';
 import { findCoupon, discountedPrice } from '@/lib/coupons';
 
 /**
@@ -21,15 +21,17 @@ export const dynamic = 'force-dynamic';
 const MF_BASE = process.env.MYFATOORAH_BASE_URL || 'https://api.myfatoorah.com';
 const MAX_ITEMS = 30;
 
-function orderRow(product: Product, scopeId: string | undefined) {
+function orderRow(product: Product, scopeId: string | undefined, qty: number | undefined) {
   return {
     product_id: product.id,
     kind: product.kind,
     tool: product.kind === 'tool' ? product.tool : null,
-    scope: product.kind === 'games' ? product.scope : null,
-    scope_id: product.kind === 'games' ? scopeId : null,
-    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' ? product.months : null,
+    scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : null,
+    scope_id: product.kind === 'games' || product.kind === 'att_org' ? scopeId : null,
+    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' ? product.months : null,
     credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
+    // عمودُ qty يُرسَل لمنتجِ الكمية وحدَه — فالسلّةُ العاديةُ لا تحتاجه
+    ...(product.kind === 'att_org' ? { qty } : {}),
   };
 }
 
@@ -38,26 +40,35 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
-  let body: { items?: { productId?: string; scopeId?: string }[]; coupon?: string };
+  let body: { items?: { productId?: string; scopeId?: string; qty?: number }[]; coupon?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
 
   const raw = Array.isArray(body.items) ? body.items.slice(0, MAX_ITEMS) : [];
   const seen = new Set<string>();
-  const lines: { product: Product; scopeId?: string }[] = [];
+  const lines: { product: Product; scopeId?: string; qty?: number }[] = [];
   for (const it of raw) {
     const product = it?.productId ? PRODUCTS[it.productId] : undefined;
     if (!product) return NextResponse.json({ error: 'في السلة منتج غير معروف — احذفيه وحاولي مرة ثانية' }, { status: 400 });
     const scopeId = typeof it.scopeId === 'string' && it.scopeId ? it.scopeId : undefined;
     if (product.kind === 'games' && !scopeId) return NextResponse.json({ error: `«${product.label}» ناقصها المادة/الصف — احذفيها وأضيفيها من صفحتها` }, { status: 400 });
+    let qty: number | undefined;
+    if (product.kind === 'att_org') {
+      qty = Math.floor(Number(it.qty));
+      if (!scopeId) return NextResponse.json({ error: 'إدارة الحضور ناقصها المدرسة — أضيفيها من صفحة إدارة الحضور' }, { status: 400 });
+      if (!Number.isFinite(qty) || qty < product.minQty || qty > 500) return NextResponse.json({ error: `عدد الفصول أقلّه ${product.minQty}` }, { status: 400 });
+      // المشترية لازم تكون من إدارةِ المدرسة — يُسأل بجلستِها هي
+      const { data: isAdm } = await supabase.rpc('school_is_admin', { p_school: scopeId });
+      if (!isAdm) return NextResponse.json({ error: 'اشتراك إدارة الحضور تشتريه مسؤولة المدرسة الرئيسية' }, { status: 403 });
+    }
     const k = `${product.id}:${scopeId ?? ''}`;
     if (seen.has(k)) continue;
     seen.add(k);
-    lines.push({ product, scopeId });
+    lines.push({ product, scopeId, qty });
   }
   if (!lines.length) return NextResponse.json({ error: 'السلة فاضية' }, { status: 400 });
 
   const coupon = findCoupon(body.coupon);
-  const subtotal = lines.reduce((s, l) => s + l.product.priceKwd, 0);
+  const subtotal = lines.reduce((s, l) => s + linePrice(l.product, l.qty), 0);
   const amountKwd = coupon ? discountedPrice(subtotal, coupon.percent) : Math.round(subtotal * 1000) / 1000;
 
   const key = (process.env.MYFATOORAH_API_KEY || '').trim();
@@ -69,11 +80,11 @@ export async function POST(req: NextRequest) {
   const { data: prof } = await admin.from('profiles').select('full_name, phone').eq('id', user.id).maybeSingle();
 
   const cartId = randomUUID();
-  const rows = lines.map(({ product, scopeId }) => ({
-    ...orderRow(product, scopeId),
+  const rows = lines.map(({ product, scopeId, qty }) => ({
+    ...orderRow(product, scopeId, qty),
     user_id: user.id,
     cart_id: cartId,
-    amount_kwd: coupon ? discountedPrice(product.priceKwd, coupon.percent) : product.priceKwd,
+    amount_kwd: coupon ? discountedPrice(linePrice(product, qty), coupon.percent) : linePrice(product, qty),
     status: 'pending',
     ...(coupon ? { coupon_code: coupon.code, discount_pct: coupon.percent } : {}),
   }));
@@ -97,7 +108,7 @@ export async function POST(req: NextRequest) {
     CallBackUrl: callbackBase,
     ErrorUrl: `${callbackBase}?failed=1`,
     UserDefinedField: 'cart',
-    InvoiceItems: lines.map((l, i) => ({ ItemName: l.product.label.slice(0, 120), Quantity: 1, UnitPrice: rows[i].amount_kwd })),
+    InvoiceItems: lines.map((l, i) => ({ ItemName: (l.qty ? `${l.product.label} (${l.qty} فصلًا)` : l.product.label).slice(0, 120), Quantity: 1, UnitPrice: rows[i].amount_kwd })),
   };
   // InvoiceItems يجب أن يساوي مجموعُها InvoiceValue؛ إن اختلفا بفلسٍ من التقريب نُسقطها.
   const itemsSum = Math.round(rows.reduce((s, r) => s + r.amount_kwd, 0) * 1000) / 1000;

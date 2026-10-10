@@ -8,7 +8,9 @@ export type Product =
   | { id: string; kind: 'games'; label: string; scope: 'subject' | 'grade'; months: number; priceKwd: number }
   | { id: string; kind: 'studio'; label: string; credits: number; priceKwd: number }
   | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number }
-  | { id: string; kind: 'bundle'; label: string; tools: string[]; months: number; lessonCredits: number; priceKwd: number };
+  | { id: string; kind: 'bundle'; label: string; tools: string[]; months: number; lessonCredits: number; priceKwd: number }
+  // سعرُه للوحدة (الفصل)، والكميةُ تختارها المشترية في السلّة (لا تُباع بزرِّ «اشترك الآن»)
+  | { id: string; kind: 'att_org'; label: string; months: number; priceKwd: number; minQty: number };
 
 export const PRODUCTS: Record<string, Product> = {
   gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
@@ -34,7 +36,13 @@ export const PRODUCTS: Record<string, Product> = {
   // الستوديو (حصص)
   studio_1:       { id: 'studio_1',       kind: 'studio', label: 'استوديو الحصة — حصة واحدة', credits: 1, priceKwd: 3 },
   studio_5:       { id: 'studio_5',       kind: 'studio', label: 'استوديو الحصة — ٥ حصص',    credits: 5, priceKwd: 10 },
+  // إدارة الحضور المدرسية: ٤ د.ك لكل فصل، أقلّها ١٠ فصول، ٤ أشهر (قرار حصة) — بالسلّة فقط
+  att_school:     { id: 'att_school',     kind: 'att_org', label: 'إدارة الحضور المدرسية', months: 4, priceKwd: 4, minQty: 10 },
 };
+
+/** سعرُ سطرٍ في السلّة: المنتجاتُ بالكمية (الفصول) سعرُها × الكمية. */
+export const linePrice = (p: Product, qty?: number) =>
+  p.kind === 'att_org' ? p.priceKwd * Math.max(p.minQty, Math.floor(qty ?? p.minQty)) : p.priceKwd;
 
 /** ربط صفحة القفل ← معرّف المنتج (للزر في صفحة القفل). */
 export const LOCK_TO_PRODUCT: Record<string, string> = {
