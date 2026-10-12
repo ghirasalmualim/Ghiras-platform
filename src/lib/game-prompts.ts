@@ -64,15 +64,19 @@ function categories(i: GameInput) {
 ${tail(i.text)}`;
 }
 
-/** التعليماتُ وسقفُ طولِ الجواب لكلِّ لعبة — السقفُ بيدِ الخادمِ لا المتصفّح. */
+/**
+ * التعليماتُ وسقفُ طولِ الجواب لكلِّ لعبة — السقفُ بيدِ الخادمِ لا المتصفّح.
+ * ٣٥٠٠ لا ٢٥٠٠: سجلُّ game_ai_usage أظهرَ جوابَ إكس أو مقطوعًا عند ٢٥٠٠ بالضبط
+ * فخرجتْ ٧ أسئلةٍ بدلَ ١٠ (2026-10-12). التكلفةُ على ما يُكتَبُ فعلًا لا على السقف.
+ */
 export function buildGamePrompt(game: GameId, input: GameInput): { prompt: string; maxTokens: number } {
   switch (game) {
     case 'millionaire':
     case 'balloons':
-      return { prompt: tenWithLevels(input), maxTokens: 2500 };
+      return { prompt: tenWithLevels(input), maxTokens: 3500 };
     case 'xo':
     case 'snake':
-      return { prompt: ten(input), maxTokens: 2500 };
+      return { prompt: ten(input), maxTokens: 3500 };
     case 'sinjim':
       return { prompt: categories(input), maxTokens: 4096 };
   }
