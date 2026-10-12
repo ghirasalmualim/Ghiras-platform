@@ -76,6 +76,32 @@ export default function TeacherPage() {
               </div>
             </div>
 
+            {/* ورش غراس (2026-10-13): عروضُ ورشٍ جاهزةٌ تقدّمها المعلمة — تُعرض في الاستوديو وتُشترى ورشةً ورشة */}
+            <div className="row one">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <a
+                  className="tile"
+                  href="https://studio.ghiras-edu.com/workshops"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="em" aria-hidden="true">
+                    🎓
+                  </span>
+                  <span>
+                    <b>
+                      ورش غراس
+                      <span className="tag paid">٥ د.ك للورشة / شهر</span>
+                    </b>
+                    <small>عروض ورش عمل جاهزة تقدّمينها لزميلاتك داخل غراس</small>
+                  </span>
+                </a>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <AddToMySpace itemType="tool" itemKey="workshops" label="ورش غراس" />
+                </div>
+              </div>
+            </div>
+
             <div className="row one">
               <Link className="tile" href="/gharas-bank">
                 <span className="em" aria-hidden="true">

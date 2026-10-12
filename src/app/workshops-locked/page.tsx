@@ -2,8 +2,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 
 /**
- * صفحة «عروض غراس التفاعلية — خاص بالمشتركين».
- * تظهر عند محاولة فتح العروض بدون اشتراك سارٍ.
+ * صفحة «ورش غراس» القديمة — بقيت لروابط محفوظة. الورش صارت في الاستوديو وتُشترى ورشةً ورشة.
  */
 export const dynamic = 'force-dynamic';
 
@@ -22,15 +21,21 @@ export default function WorkshopsLockedPage() {
           🎓
         </span>
         <h1 className="mt-4 text-xl font-extrabold text-ink">
-          عروض غراس التفاعلية — خاص بالمشتركين
+          ورش غراس — صارت في صفحتها الجديدة
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
-          هذه العروض متاحة لمشتركي غراس المعلم.
+          عروض ورش عمل جاهزة تقدّمينها لزميلاتك داخل غراس.
           <br />
-          فعّلي اشتراكك للاطّلاع على العروض التفاعلية الجاهزة للعرض داخل صفّك.
+          كل ورشة ٥ د.ك وتنفتح لك شهرًا كاملًا.
         </p>
 
         <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+          <a
+            href="https://studio.ghiras-edu.com/workshops"
+            className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
+          >
+            🎓 تصفّحي الورش
+          </a>
           <Link
             href="/support"
             className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"

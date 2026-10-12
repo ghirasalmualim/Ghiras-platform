@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const product = body.productId ? PRODUCTS[body.productId] : undefined;
   if (!product) return NextResponse.json({ error: 'منتج غير معروف' }, { status: 400 });
   if (product.kind === 'games' && !body.scopeId) return NextResponse.json({ error: 'اختاري المادة/الصف' }, { status: 400 });
-  if (product.kind === 'att_org' || product.kind === 'library') return NextResponse.json({ error: 'هذا المنتج يُشترى من السلة' }, { status: 400 });
+  if (product.kind === 'att_org' || product.kind === 'library' || product.kind === 'workshop') return NextResponse.json({ error: 'هذا المنتج يُشترى من السلة' }, { status: 400 });
 
   // كود الخصم — يُتحقَّق منه هنا دائمًا ويُحسب السعر من جديد
   // (ما جاء من المتصفّح هو نصّ الكود وحده، لا السعر). كود غلط = السعر كاملًا بلا خطأ.

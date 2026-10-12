@@ -123,6 +123,10 @@ function home(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const toolKey = req.nextUrl.searchParams.get('tool') || 'gradebook';
+  // «عروض غراس» صارت «ورش غراس» في الاستوديو (2026-10-13) — الروابطُ المحفوظةُ القديمةُ تُحوَّل
+  if (toolKey === 'workshops') {
+    return NextResponse.redirect('https://studio.ghiras-edu.com/workshops', { status: 302 });
+  }
   const tool = TOOLS[toolKey];
   if (!tool) return home(req);
 

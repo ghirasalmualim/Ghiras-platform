@@ -41,7 +41,7 @@ function save(items: CartItem[]) {
 export function addToCart(item: CartItem): boolean {
   const p = PRODUCTS[item.productId];
   if (!p) return false;
-  if ((p.kind === 'games' || p.kind === 'att_org' || p.kind === 'library') && !item.scopeId) return false;
+  if ((p.kind === 'games' || p.kind === 'att_org' || p.kind === 'library' || p.kind === 'workshop') && !item.scopeId) return false;
   const items = getCart();
   // منتجُ الكمية: إضافتُه ثانيةً تُحدّث الكميةَ بدل الرفض
   if (p.kind === 'att_org' && items.some((i) => itemKey(i) === itemKey(item))) {

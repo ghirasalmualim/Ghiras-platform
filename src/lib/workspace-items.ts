@@ -73,10 +73,12 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     key: 'gharas_bank', name: 'بنك غراس', emoji: '🌱',
     href: '/gharas-bank', col: 'gharas_bank_until', locked: '/gharas-bank-locked',
   },
+  // ورش غراس (2026-10-13): كانت «عروض غراس التفاعلية» بعمودِ مدّةٍ وصفحةٍ فارغة.
+  // صارت تُشترى ورشةً ورشة (workshop_subscriptions) ويحرسها الاستوديو بنفسه.
   workshops: {
-    key: 'workshops', name: 'عروض غراس التفاعلية', emoji: '💻',
-    href: '/api/tool-access?tool=workshops', col: 'workshops_until',
-    locked: '/workshops-locked', external: true,
+    key: 'workshops', name: 'ورش غراس', emoji: '🎓',
+    href: 'https://studio.ghiras-edu.com/workshops', col: null, locked: null,
+    external: true, selfGated: true,
   },
   quran: {
     key: 'quran', name: 'القرآن الكريم', emoji: '🌿',
