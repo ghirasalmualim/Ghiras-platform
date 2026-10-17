@@ -80,6 +80,13 @@ export const TOOL_REGISTRY: Record<string, ToolDef> = {
     href: 'https://studio.ghiras-edu.com/workshops', col: null, locked: null,
     external: true, selfGated: true,
   },
+  // مكتبة حصص غراس (2026-10-17): دروسٌ جاهزةٌ من المنهج — معرضٌ في الاستوديو يُفتح بالدخول
+  // وحده، والاشتراكُ (مادةٌ ٢٥ د.ك أو درسٌ ٢ د.ك) يحرسه الاستوديو بنفسه.
+  library: {
+    key: 'library', name: 'مكتبة حصص غراس', emoji: '📚',
+    href: 'https://studio.ghiras-edu.com/templates', col: null, locked: null,
+    external: true, selfGated: true,
+  },
   quran: {
     key: 'quran', name: 'القرآن الكريم', emoji: '🌿',
     href: '/quran', col: null, locked: null,

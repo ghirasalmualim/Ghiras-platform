@@ -76,6 +76,32 @@ export default function TeacherPage() {
               </div>
             </div>
 
+            {/* مكتبة حصص غراس (2026-10-17): دروسٌ جاهزةٌ من المنهج — تُتصفَّح بلا قفلِ الاستوديو */}
+            <div className="row one">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <a
+                  className="tile"
+                  href="https://studio.ghiras-edu.com/templates"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="em" aria-hidden="true">
+                    📚
+                  </span>
+                  <span>
+                    <b>
+                      مكتبة حصص غراس
+                      <span className="tag paid">من ٢ د.ك</span>
+                    </b>
+                    <small>دروس جاهزة من المنهج بالصور والحركة والألعاب، تعرضينها في صفّك مباشرة</small>
+                  </span>
+                </a>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <AddToMySpace itemType="tool" itemKey="library" label="مكتبة حصص غراس" />
+                </div>
+              </div>
+            </div>
+
             {/* ورش غراس (2026-10-13): عروضُ ورشٍ جاهزةٌ تقدّمها المعلمة — تُعرض في الاستوديو وتُشترى ورشةً ورشة */}
             <div className="row one">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

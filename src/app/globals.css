@@ -126,6 +126,52 @@ body {
   grid-column: 1 / -1;
   min-height: 150px;
 }
+/* كرت مكتبة حصص غراس — عنابيٌّ مذهّب (هويّةُ الدروسِ الفاخرة)، بعرضِ السطر تحت
+   الكرتين بالشاشة العريضة، وثانيًا بعد الألعاب بالجوال (ترتيبُ الصفحة). */
+.home .main.lib {
+  background: linear-gradient(155deg, #9e3b4f, #5e1a2c);
+  grid-column: 1 / -1;
+  min-height: 150px;
+  box-shadow: 0 16px 40px rgba(94, 26, 44, 0.28), inset 0 0 0 2px rgba(232, 196, 120, 0.55);
+}
+@media (min-width: 721px) {
+  .home .main.lib {
+    order: 1;
+  }
+  .home .main.q,
+  .home .main.ms {
+    order: 2;
+  }
+}
+/* أزرارُ المراحلِ قابلةٌ للضغط: نُبعدها عن سهمِ الكرت (يسارَ الأسفل) فلا يغطّيها */
+.home .main.lib .chips {
+  padding-left: 34px;
+}
+.home .main .stretch {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+.home .main a.chip {
+  position: relative;
+  z-index: 2;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.home .main a.chip:hover {
+  background: rgba(255, 255, 255, 0.36);
+}
+.home .main .stretch:focus-visible,
+.home .main a.chip:focus-visible {
+  outline: 3px solid #f3d27a;
+  outline-offset: 2px;
+}
+.home .tag.gold {
+  background: #f3d27a;
+  color: #5e1a2c;
+}
 /* كرت مساحتي — مدخلُ اللوحة الشخصية. نبرةٌ ذهبيةٌ هادئة تميّزه عن الأقسام
    دون مزاحمتها، ويمتدّ على العمودين أسفل القرآن. */
 .home .main.ms {

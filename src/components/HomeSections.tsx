@@ -1,11 +1,13 @@
 import Link from 'next/link';
 
 /**
- * تقسيمة الرئيسية: كرتان رئيسيان — «ألعاب» و«المعلّم ورئيس الشعبة».
+ * تقسيمة الرئيسية: كرتان رئيسيان — «ألعاب» و«المعلّم ورئيس الشعبة» — ثم «مكتبة حصص غراس».
  * كل كرت ينقل لصفحته الخاصة (/games-hub و/teacher) بدل التوسّع أسفله،
  * لتكون الخيارات في صفحة مرتّبة ومستقلة أوضح للمستخدم.
  * التصميم والألوان مطابقة للملف المرجعي home-preview.html.
  */
+
+const LIBRARY = 'https://studio.ghiras-edu.com/templates';
 
 export default function HomeSections() {
   return (
@@ -29,6 +31,30 @@ export default function HomeSections() {
             ←
           </div>
         </Link>
+
+        {/* ── مكتبة حصص غراس (2026-10-17): قسمٌ قائمٌ بذاته — دروسٌ جاهزةٌ من المنهج.
+            الكرتُ كلُّه رابطٌ للمكتبة، وأزرارُ المراحلِ فوقه تفتحها على مرحلتها مباشرة
+            (لا يصحّ رابطٌ داخل رابط، فالرابطُ العامُّ طبقةٌ ممدودةٌ والأزرارُ فوقها). ── */}
+        <div className="main lib">
+          <a className="stretch" href={LIBRARY} aria-label="مكتبة حصص غراس" />
+          <div>
+            <div className="ico">📚</div>
+            <h2>
+              مكتبة حصص غراس
+              <span className="tag gold">من ٢ د.ك</span>
+            </h2>
+            <p>دروس جاهزة من المنهج بالصور والحركة والألعاب — اعرضيها في صفّك مباشرة</p>
+            <div className="chips">
+              <a className="chip" href={`${LIBRARY}?stage=primary`}>ابتدائي</a>
+              <a className="chip" href={`${LIBRARY}?stage=middle`}>متوسط</a>
+              <a className="chip" href={`${LIBRARY}?stage=high`}>ثانوي</a>
+              <a className="chip" href={`${LIBRARY}?stage=deeni`}>التعليم الديني</a>
+            </div>
+          </div>
+          <div className="arrow" aria-hidden="true">
+            ←
+          </div>
+        </div>
 
         <Link className="main p" href="/teacher">
           <div>
