@@ -8,7 +8,7 @@ import { CART_EVENT, addToCart, getCart, itemKey, removeFromCart, setQty, type C
  * المجموع، ودفعةٌ واحدةٌ تفعّل الكلَّ معًا. الأسعارُ هنا للعرض — الخادمُ يعيد
  * حسابَها من `PRODUCTS` في `/api/payments/myfatoorah/cart-checkout`.
  */
-const ICON: Record<string, string> = { tool: '🧰', games: '🎮', studio: '🪄', game_credits: '🎲', bundle: '🎁', att_org: '🏫', library: '📚', workshop: '🎓' };
+const ICON: Record<string, string> = { tool: '🧰', games: '🎮', studio: '🪄', game_credits: '🎲', bundle: '🎁', att_org: '🏫', library: '📚', workshop: '🎓', lesson: '📖' };
 
 /** منتجاتٌ بلا نطاقٍ تُقترح للإضافة من صفحة السلّة نفسها. */
 const SUGGEST = ['studio_1', 'studio_5', 'games_3', 'gradebook', 'attendance', 'agenda', 'gharas_bank', 'adventure', 'multiplication', 'clock', 'head_records', 'teacher_pack'];
@@ -19,6 +19,7 @@ const monthsOf = (id: string) => {
   if (p.kind === 'tool' || p.kind === 'games' || p.kind === 'bundle') return `${p.months.toLocaleString('ar')} أشهر`;
   if (p.kind === 'library') return `${p.months.toLocaleString('ar')} أشهر · كل حصص المادة في الاستوديو`;
   if (p.kind === 'workshop') return 'شهر واحد · عرضٌ تقديميٌّ تقدّمينه داخل غراس';
+  if (p.kind === 'lesson') return `${p.months.toLocaleString('ar')} أشهر · هذا العرضُ وحدَه في مكتبة الاستوديو`;
   if (p.kind === 'att_org') return `${p.months.toLocaleString('ar')} أشهر · ${fmtKwd(p.priceKwd)} لكل فصل`;
   if (p.kind === 'studio') return `رصيد ${p.credits.toLocaleString('ar')} ${p.credits === 1 ? 'حصة' : 'حصص'}`;
   if (p.kind === 'game_credits') return `رصيد ${p.credits.toLocaleString('ar')} ألعاب — لا ينتهي`;

@@ -26,14 +26,14 @@ function orderRow(product: Product, scopeId: string | undefined, qty: number | u
     product_id: product.id,
     kind: product.kind,
     tool: product.kind === 'tool' ? product.tool : null,
-    scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : product.kind === 'library' ? 'library' : product.kind === 'workshop' ? 'workshop' : null,
+    scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : product.kind === 'library' ? 'library' : product.kind === 'workshop' ? 'workshop' : product.kind === 'lesson' ? 'lesson' : null,
     scope_id: product.kind === 'games' || product.kind === 'att_org' ? scopeId : null,
-    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' || product.kind === 'library' || product.kind === 'workshop' ? product.months : null,
+    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' || product.kind === 'library' || product.kind === 'workshop' || product.kind === 'lesson' ? product.months : null,
     credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
     // عمودُ qty يُرسَل لمنتجِ الكمية وحدَه — فالسلّةُ العاديةُ لا تحتاجه
     ...(product.kind === 'att_org' ? { qty } : {}),
     // مفتاحُ مادةِ المكتبة نصٌّ لا uuid — عمودُه الخاص
-    ...(product.kind === 'library' || product.kind === 'workshop' ? { scope_key: scopeId } : {}),
+    ...(product.kind === 'library' || product.kind === 'workshop' || product.kind === 'lesson' ? { scope_key: scopeId } : {}),
   };
 }
 
@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
       // معرّفُ قالبِ الورشة في الاستوديو — نصٌّ قصيرٌ آمن
       if (!scopeId || !/^[A-Za-z0-9_-]{4,64}$/.test(scopeId)) {
         return NextResponse.json({ error: 'الورشة ناقصها التحديد — أضيفيها من صفحة ورش غراس' }, { status: 400 });
+      }
+    }
+    if (product.kind === 'lesson') {
+      // معرّفُ قالبِ العرض في مكتبة الاستوديو — نصٌّ قصيرٌ آمن
+      if (!scopeId || !/^[A-Za-z0-9_-]{4,64}$/.test(scopeId)) {
+        return NextResponse.json({ error: 'العرض ناقصه التحديد — أضيفيه من مكتبة الاستوديو' }, { status: 400 });
       }
     }
     const k = `${product.id}:${scopeId ?? ''}`;

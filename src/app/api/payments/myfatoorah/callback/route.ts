@@ -41,6 +41,10 @@ async function activate(admin: RpcClient, order: {
   if (order.kind === 'workshop' && order.scope_key && order.months) {
     return admin.rpc('payment_grant_workshop', { p_user: order.user_id, p_key: order.scope_key, p_months: order.months });
   }
+  // عرضٌ واحدٌ من مكتبة الاستوديو: يُفتح ثلاثةَ أشهر (يقرؤه الاستوديو بجلسة المعلمة)، والتجديدُ يمدّ
+  if (order.kind === 'lesson' && order.scope_key && order.months) {
+    return admin.rpc('payment_grant_lesson', { p_user: order.user_id, p_key: order.scope_key, p_months: order.months });
+  }
   if (order.kind === 'studio' && order.credits) {
     return admin.rpc('payment_add_credits', { p_user: order.user_id, p_count: order.credits });
   }

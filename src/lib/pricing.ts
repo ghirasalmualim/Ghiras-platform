@@ -14,7 +14,9 @@ export type Product =
   // اشتراكُ مكتبة غراس لمادةٍ في صفٍّ واحد — نطاقُه مفتاحٌ نصّيّ «مرحلة|صف|مادة» من الاستوديو
   | { id: string; kind: 'library'; label: string; months: number; priceKwd: number }
   // ورشةٌ واحدةٌ من ورش غراس لشهر — نطاقُه معرّفُ قالبِ الورشة في الاستوديو
-  | { id: string; kind: 'workshop'; label: string; months: number; priceKwd: number };
+  | { id: string; kind: 'workshop'; label: string; months: number; priceKwd: number }
+  // عرضٌ واحدٌ من مكتبة الاستوديو (كلُّ جزءٍ وحدَه) — نطاقُه معرّفُ قالبِ العرض
+  | { id: string; kind: 'lesson'; label: string; months: number; priceKwd: number };
 
 export const PRODUCTS: Record<string, Product> = {
   gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
@@ -46,6 +48,8 @@ export const PRODUCTS: Record<string, Product> = {
   library:        { id: 'library',        kind: 'library', label: 'مكتبة حصص غراس', months: 3, priceKwd: 25 },
   // ورش غراس: عرضٌ تقديميٌّ جاهزٌ تقدّمه المعلمة، ٥ د.ك للورشة الواحدة لشهر (قرار حصة 2026-10-12) — بالسلّة فقط
   workshop:       { id: 'workshop',       kind: 'workshop', label: 'ورش غراس', months: 1, priceKwd: 5 },
+  // عرضٌ واحدٌ من مكتبة الاستوديو: ٢ د.ك لثلاثة أشهر، كلُّ جزءٍ بروحه (قرار حصة 2026-10-17) — بالسلّة فقط
+  lesson:         { id: 'lesson',         kind: 'lesson', label: 'عرضٌ من مكتبة غراس', months: 3, priceKwd: 2 },
 };
 
 /** سعرُ سطرٍ في السلّة: المنتجاتُ بالكمية (الفصول) سعرُها × الكمية. */
