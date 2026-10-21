@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { recordSlots } from '@/lib/recordSlots';
 
 /**
  * تحميل/حفظ بيانات سجل الحضور لكل معلمة (صف JSON واحد لكل مستخدم).
@@ -11,7 +12,6 @@ import { createServerSupabase } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const BASE_REGISTERS = 4; // أربعة سجلات ضمن الاشتراك (قرار حصة 2026-09-25)
 
 async function guard() {
   const supabase = createServerSupabase();
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   const allowance = isAdmin
     ? 9999
-    : BASE_REGISTERS + (((profile?.attendance_extra as number) ?? 0) || 0);
+    : await recordSlots(supabase!, user!.id, 'attendance', ((profile?.attendance_extra as number) ?? 0) || 0);
 
   // حدّ الأجهزة ٤ (للمشترِكات فقط، الأدمِن مُعفى) — يعيد استخدام register_device
   let newDevice = false;

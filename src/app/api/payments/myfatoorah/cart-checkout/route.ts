@@ -28,8 +28,9 @@ function orderRow(product: Product, scopeId: string | undefined, qty: number | u
     tool: product.kind === 'tool' ? product.tool : null,
     scope: product.kind === 'games' ? product.scope : product.kind === 'att_org' ? 'school' : product.kind === 'library' ? 'library' : product.kind === 'workshop' ? 'workshop' : product.kind === 'lesson' ? 'lesson' : null,
     scope_id: product.kind === 'games' || product.kind === 'att_org' ? scopeId : null,
-    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' || product.kind === 'library' || product.kind === 'workshop' || product.kind === 'lesson' ? product.months : null,
-    credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
+    months: product.kind === 'tool' && product.extra ? null : product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' || product.kind === 'att_org' || product.kind === 'library' || product.kind === 'workshop' || product.kind === 'lesson' ? product.months : null,
+    // سجلّا الدرجات والحضور: credits = عددُ سجلّاتِ الباقة، أو ١ للسجلّ الإضافي
+    credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : product.kind === 'tool' ? (product.extra ? 1 : product.slots ?? null) : null,
     // عمودُ qty يُرسَل لمنتجِ الكمية وحدَه — فالسلّةُ العاديةُ لا تحتاجه
     ...(product.kind === 'att_org' ? { qty } : {}),
     // مفتاحُ مادةِ المكتبة نصٌّ لا uuid — عمودُه الخاص

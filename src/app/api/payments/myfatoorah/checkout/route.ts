@@ -50,8 +50,9 @@ export async function POST(req: NextRequest) {
     tool: product.kind === 'tool' ? product.tool : null,
     scope: product.kind === 'games' ? product.scope : null,
     scope_id: product.kind === 'games' ? body.scopeId : null,
-    months: product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' ? product.months : null,
-    credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : null,
+    months: product.kind === 'tool' && product.extra ? null : product.kind === 'tool' || product.kind === 'games' || product.kind === 'bundle' ? product.months : null,
+    // سجلّا الدرجات والحضور: credits = عددُ سجلّاتِ الباقة، أو ١ للسجلّ الإضافي
+    credits: product.kind === 'studio' || product.kind === 'game_credits' ? product.credits : product.kind === 'tool' ? (product.extra ? 1 : product.slots ?? null) : null,
     amount_kwd: amountKwd,
     status: 'pending',
   };

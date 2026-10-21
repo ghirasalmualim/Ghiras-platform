@@ -266,6 +266,18 @@ export default function AdminPanel() {
     );
   };
 
+  // ── صفٌّ (سجلٌّ) إضافيٌّ لسجلّي الدرجات والحضور ──
+  // المعلمةُ تشتريه بنفسها (٤ د.ك) ويتفعّل تلقائيًّا، وهذا للمنح أو التصحيح اليدوي.
+  const addToolRecords = (id: string, tool: 'gradebook' | 'attendance', label: string, n: number) => {
+    if (!confirm(n > 0 ? `إضافة صفّ (سجل) لـ«${label}»؟` : `سحب صفّ (سجل) من «${label}»؟`)) return;
+    const supabase = createClient();
+    act(
+      id,
+      () => supabase.rpc('admin_add_tool_records', { p_user: id, p_tool: tool, p_count: n }),
+      n > 0 ? `تمت إضافة صفّ لـ${label} ✅` : `تم سحب صفّ من ${label}`
+    );
+  };
+
   const setTool = (id: string, tool: string, label: string, months: number) => {
     const q =
       months > 0
@@ -949,6 +961,21 @@ export default function AdminPanel() {
                     </span>
                     );
                   })()}
+                  {([['gradebook', 'سجل الدرجات', '📊'], ['attendance', 'سجل الحضور', '🗓️']] as const).map(([tk, tl, te]) => (
+                    <span key={tk} className="inline-flex items-center rounded-lg border overflow-hidden border-sage/25 bg-white">
+                      <span className="px-2.5 py-1.5 text-sm font-bold text-ink/75">{te} صفوف {tl}</span>
+                      <button disabled={isBusy} onClick={() => addToolRecords(r.id, tk, tl, 1)}
+                        title="صفّ (سجل) إضافي — ٤ د.ك"
+                        className="px-2.5 py-1.5 text-sm font-black text-sage-deep hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        ＋ صف
+                      </button>
+                      <button disabled={isBusy} onClick={() => addToolRecords(r.id, tk, tl, -1)}
+                        title="سحب صفّ (للتصحيح)"
+                        className="px-2.5 py-1.5 text-sm font-black text-ink/50 hover:bg-sage-light border-r border-sage/20 disabled:opacity-40 transition">
+                        − صف
+                      </button>
+                    </span>
+                  ))}
                   {(() => {
                     const lc = Number((tools[r.id] as Record<string, unknown> | undefined)?.lesson_credits ?? 0) || 0;
                     return (

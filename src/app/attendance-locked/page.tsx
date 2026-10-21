@@ -33,18 +33,12 @@ export default function AttendanceLockedPage() {
         </p>
 
         <div className="mt-6 rounded-2xl border border-sage/25 bg-sage-light/40 p-4">
-          <div className="text-lg font-extrabold text-sage-deep">الاشتراك</div>
-          <div className="text-2xl font-black text-sage-dark mt-1">٨ د.ك / ٤ أشهر</div>
-          <div className="text-sm text-ink/55 mt-1">يشمل سجلّين، وكل سجل ١٠ صور لرفع الكشوف</div>
+          <div className="text-lg font-extrabold text-sage-deep">اختاري باقتك — ٤ أشهر</div>
+          <div className="text-sm text-ink/55 mt-1">كل صف (سجل) معه ١٠ صور لرفع الكشوف، وتقدرين تضيفين صفًّا بـ٤ د.ك متى احتجتِ</div>
         </div>
 
-        <p className="mt-5 text-sm text-ink/50 leading-relaxed">
-          لتفعيل الاشتراك يرجى التواصل مع إدارة غراس المعلم.
-          <br />
-          والدفع الإلكتروني المباشر قريبًا 🌱
-        </p>
-
-        <SubscribeButton productId="attendance" />
+        <SubscribeButton productId="attendance" label="٤ صفوف" hint="اشتراك ٤ أشهر · ٤ صفوف · تجديد بأي وقت" />
+        <SubscribeButton productId="attendance_lite" label="صفّان" hint="اشتراك ٤ أشهر · صفّان · تجديد بأي وقت" />
 
 
         <Link

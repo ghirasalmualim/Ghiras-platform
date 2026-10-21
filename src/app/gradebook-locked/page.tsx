@@ -28,10 +28,11 @@ export default function GradebookLockedPage() {
         <p className="mt-3 text-ink/60 leading-relaxed">
           اشتراكك الحالي لا يشمل هذه الأداة.
           <br />
-          للاشتراك أو التفعيل، يرجى التواصل مع إدارة غراس المعلم.
+          اختاري باقتك — ٤ أشهر، وكل صف (سجل) معه ١٠ صور للمسح الذكي، وتقدرين تضيفين صفًّا بـ٤ د.ك متى احتجتِ.
         </p>
 
-        <SubscribeButton productId="gradebook" />
+        <SubscribeButton productId="gradebook" label="٤ صفوف" hint="اشتراك ٤ أشهر · ٤ صفوف · تجديد بأي وقت" />
+        <SubscribeButton productId="gradebook_lite" label="صفّان" hint="اشتراك ٤ أشهر · صفّان · تجديد بأي وقت" />
 
 
         <Link

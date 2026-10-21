@@ -4,7 +4,8 @@
  * كل «قابل للتجديد» — أي دفعة تمدّد الاشتراك (منطق التمديد في payment_activate_tool).
  */
 export type Product =
-  | { id: string; kind: 'tool'; label: string; tool: string; months: number; priceKwd: number }
+  // slots: عددُ سجلّاتِ الباقة (سجلّا الدرجات والحضور)، وextra: سجلٌّ إضافيٌّ يُضاف للعدد بلا مدّة
+  | { id: string; kind: 'tool'; label: string; tool: string; months: number; priceKwd: number; slots?: number; extra?: boolean }
   | { id: string; kind: 'games'; label: string; scope: 'subject' | 'grade'; months: number; priceKwd: number }
   | { id: string; kind: 'studio'; label: string; credits: number; priceKwd: number }
   | { id: string; kind: 'game_credits'; label: string; credits: number; priceKwd: number }
@@ -19,8 +20,13 @@ export type Product =
   | { id: string; kind: 'lesson'; label: string; months: number; priceKwd: number };
 
 export const PRODUCTS: Record<string, Product> = {
-  gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي',        tool: 'gradebook',      months: 4,  priceKwd: 8 },
-  attendance:     { id: 'attendance',     kind: 'tool', label: 'سجل الحضور الذكي',         tool: 'attendance',     months: 4,  priceKwd: 8 },
+  // سجلّا الدرجات والحضور: باقةٌ كاملة (٤ سجلّات) ومختصرة (سجلّان)، وسجلٌّ إضافيٌّ ٤ د.ك (قرار حصة 2026-10-21)
+  gradebook:      { id: 'gradebook',      kind: 'tool', label: 'سجل الدرجات الذكي — ٤ صفوف', tool: 'gradebook',  months: 4,  priceKwd: 8, slots: 4 },
+  gradebook_lite: { id: 'gradebook_lite', kind: 'tool', label: 'سجل الدرجات الذكي — صفّان',   tool: 'gradebook',  months: 4,  priceKwd: 4, slots: 2 },
+  gradebook_extra:{ id: 'gradebook_extra', kind: 'tool', label: 'سجل درجات إضافي (صف واحد)', tool: 'gradebook',  months: 0,  priceKwd: 4, extra: true },
+  attendance:     { id: 'attendance',     kind: 'tool', label: 'سجل الحضور الذكي — ٤ صفوف',  tool: 'attendance', months: 4,  priceKwd: 8, slots: 4 },
+  attendance_lite:{ id: 'attendance_lite', kind: 'tool', label: 'سجل الحضور الذكي — صفّان',  tool: 'attendance', months: 4,  priceKwd: 4, slots: 2 },
+  attendance_extra:{ id: 'attendance_extra', kind: 'tool', label: 'سجل حضور إضافي (صف واحد)', tool: 'attendance', months: 0,  priceKwd: 4, extra: true },
   agenda:         { id: 'agenda',         kind: 'tool', label: 'أجندتي',                    tool: 'agenda',         months: 4,  priceKwd: 8 },
   gharas_bank:    { id: 'gharas_bank',    kind: 'tool', label: 'بنك غراس',                  tool: 'gharas_bank',    months: 4,  priceKwd: 8 },
   adventure:      { id: 'adventure',      kind: 'tool', label: 'مغامرة المجموعات التفاعلية', tool: 'adventure',      months: 4,  priceKwd: 8 },

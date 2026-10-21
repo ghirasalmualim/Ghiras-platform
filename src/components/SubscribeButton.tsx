@@ -93,7 +93,7 @@ export default function SubscribeButton({ productId, scopeId, scopeLabel, label,
           {added === 'new' ? '✅ انضاف للسلة' : 'موجود بالسلة من قبل'} — <a href="/cart" className="underline">افتحي السلة</a>
         </div>
       ) : null}
-      <div className="mt-1.5 text-[12px] text-ink/45">{hint ?? (months ? `اشتراك ${months} أشهر · تجديد بأي وقت` : '')}</div>
+      <div className="mt-1.5 text-[12px] text-ink/45">{hint ?? (months ? `اشتراك ${months} أشهر${product.kind === 'tool' && product.slots ? ` · ${product.slots === 2 ? 'صفّان' : `${product.slots.toLocaleString('ar')} صفوف`}` : ''} · تجديد بأي وقت` : '')}</div>
 
       {deal ? (
         <div className="mt-2 text-[13px] font-extrabold text-sage-dark">

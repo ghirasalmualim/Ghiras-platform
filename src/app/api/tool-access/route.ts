@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { recordSlots } from '@/lib/recordSlots';
 import { isStillValid } from '@/lib/entitlements';
 import { getStageBySlug, getGradeBySlug, getSubjects } from '@/lib/supabase/data';
 
@@ -226,9 +227,10 @@ export async function GET(req: NextRequest) {
     dest.searchParams.set('k', `${kExp}.${user.id}.${kSig}`);
     // الأدمِن: سجلات وحذف وصور مسح بلا حدّ (الدفتر يقرأ ?slots=N و ?adm=1).
     // موقّعة بـ ?l= — حارس الألعاب يحذف أي slots/adm/demo بلا توقيع صالح.
-    if (isAdmin) {
-      const slots = '999';
-      const adm = '1';
+    // المعلمة: عددُ صفوفِ باقتها (٤ أو ٢) + الإضافيّة — موقّعًا كذلك (adm=0)
+    {
+      const slots = isAdmin ? '999' : String(await recordSlots(supabase, user.id, 'gradebook'));
+      const adm = isAdmin ? '1' : '0';
       const lSig = await hmac(`l|gradebook|${kExp}|${slots}|${adm}`);
       dest.searchParams.set('slots', slots);
       dest.searchParams.set('adm', adm);

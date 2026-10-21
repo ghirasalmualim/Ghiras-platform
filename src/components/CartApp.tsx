@@ -16,6 +16,8 @@ const SUGGEST = ['studio_1', 'studio_5', 'games_3', 'gradebook', 'attendance', '
 const monthsOf = (id: string) => {
   const p = PRODUCTS[id];
   if (!p) return '';
+  if (p.kind === 'tool' && p.extra) return 'صفٌّ إضافيٌّ مع اشتراكك · ومعه ١٠ صور للمسح';
+  if (p.kind === 'tool' && p.slots) return `${p.months.toLocaleString('ar')} أشهر · ${p.slots === 2 ? 'صفّان' : `${p.slots.toLocaleString('ar')} صفوف`}`;
   if (p.kind === 'tool' || p.kind === 'games' || p.kind === 'bundle') return `${p.months.toLocaleString('ar')} أشهر`;
   if (p.kind === 'library') return `${p.months.toLocaleString('ar')} أشهر · كل حصص المادة في الاستوديو`;
   if (p.kind === 'workshop') return 'شهر واحد · عرضٌ تقديميٌّ تقدّمينه داخل غراس';

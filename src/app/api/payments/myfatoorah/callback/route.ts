@@ -15,6 +15,17 @@ type RpcClient = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{
 async function activate(admin: RpcClient, order: {
   id: string; user_id: string; product_id: string; kind: string; tool: string | null; scope: string | null; scope_id: string | null; months: number | null; credits: number | null; qty?: number | null; scope_key?: string | null;
 }) {
+  // سجلٌّ إضافيٌّ (درجات/حضور): بلا مدّة، يُضاف لعددِ السجلّات
+  if (order.kind === 'tool' && order.tool && !order.months && order.credits) {
+    return admin.rpc('payment_add_tool_records', { p_user: order.user_id, p_tool: order.tool, p_count: order.credits });
+  }
+  // باقةٌ بعددِ سجلّات (٤ أو ٢) — تمدّد المدّة وتضبط العدد
+  if (order.kind === 'tool' && order.tool && order.months && order.credits && (order.tool === 'gradebook' || order.tool === 'attendance')) {
+    const r = await admin.rpc('payment_activate_tool_slots', { p_user: order.user_id, p_tool: order.tool, p_months: order.months, p_slots: order.credits });
+    // احتياط: إن لم تُشغَّل مايجريشن 2026-10-21 بعد، فالباقةُ الكاملةُ (٤) تُفعَّل بالدالّة القديمة كما كانت
+    if (r.error && order.credits >= 4) return admin.rpc('payment_activate_tool', { p_user: order.user_id, p_tool: order.tool, p_months: order.months });
+    return r;
+  }
   if (order.kind === 'tool' && order.tool && order.months) {
     return admin.rpc('payment_activate_tool', { p_user: order.user_id, p_tool: order.tool, p_months: order.months });
   }
