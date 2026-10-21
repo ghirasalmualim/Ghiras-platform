@@ -163,7 +163,7 @@ export default async function GradePage({
           </div>
         )}
 
-        {/* ── اشتراك الصف الكامل — كل مواد الصف باشتراك واحد (٥٠ د.ك / ٤ أشهر) ── */}
+        {/* ── اشتراك الصف الكامل — كل مواد الصف باشتراك واحد (٣٠ د.ك / ٤ أشهر) ── */}
         {subjects.length > 0 && (
           <div
             className="mt-8 animate-float-in"

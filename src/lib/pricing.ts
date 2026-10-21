@@ -28,8 +28,8 @@ export const PRODUCTS: Record<string, Product> = {
   clock:          { id: 'clock',          kind: 'tool', label: 'الساعة التفاعلية',          tool: 'clock',          months: 4,  priceKwd: 3 },
   head_records:   { id: 'head_records',   kind: 'tool', label: 'سجلات رئيسة الشعبة',        tool: 'head_records',   months: 12, priceKwd: 30 },
   // الألعاب (تختار المشترية المادة/الصف عند الدفع)
-  games_subject:  { id: 'games_subject',  kind: 'games', label: 'ألعاب مادة واحدة', scope: 'subject', months: 4, priceKwd: 20 },
-  games_grade:    { id: 'games_grade',    kind: 'games', label: 'ألعاب صف كامل',   scope: 'grade',   months: 4, priceKwd: 50 },
+  games_subject:  { id: 'games_subject',  kind: 'games', label: 'ألعاب مادة واحدة', scope: 'subject', months: 4, priceKwd: 10 },
+  games_grade:    { id: 'games_grade',    kind: 'games', label: 'ألعاب صف كامل',   scope: 'grade',   months: 4, priceKwd: 30 },
   // ألعاب غراس التفاعلية (المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات)
   // رصيدٌ دائم لا مدةَ له: ٣ توليدات بالذكاء تختار لها المعلمة أيَّ لعبةٍ من الخمس،
   // والخصم عند نجاح التوليد (لا عند التشغيل — التشغيل بعده مجاني بلا حدّ).
