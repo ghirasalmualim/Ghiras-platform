@@ -121,6 +121,8 @@ export default async function AccountPage() {
     .eq('user_id', user.id)
     .order('until', { ascending: false });
   const librarySubs = ((libRows ?? []) as { scope_key: string; until: string }[]).map((r) => {
+    // «*» = المكتبة كاملة (إهداءٌ من الإدارة)
+    if (r.scope_key === '*') return { label: 'المكتبة كاملة — كل الصفوف والمواد', until: r.until, active: new Date(r.until) > new Date() };
     const [, grade, subject] = r.scope_key.split('|');
     return { label: `${subject ?? ''} — ${grade ?? ''}`, until: r.until, active: new Date(r.until) > new Date() };
   });
