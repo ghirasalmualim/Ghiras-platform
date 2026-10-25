@@ -111,19 +111,19 @@ export async function POST(req: Request) {
     });
     if (reserveErr || !reserve) {
       return new Response(
-        JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل." } }),
+        JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاول بعد قليل." } }),
         { status: 503, headers }
       );
     }
     if (!(reserve as { allowed?: boolean }).allowed) {
       return new Response(
-        JSON.stringify({ error: { message: "وصلتِ الحدّ اليومي لاستخدام الدفتر. جرّبي غدًا أو تواصلي مع إدارة غراس." } }),
+        JSON.stringify({ error: { message: "وصلت الحدّ اليومي لاستخدام الدفتر. جرّب غدًا أو تواصل مع إدارة غراس." } }),
         { status: 429, headers }
       );
     }
   } catch {
     return new Response(
-      JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل." } }),
+      JSON.stringify({ error: { message: "تعذّر التحقق من حدّ الاستخدام اليومي — حاول بعد قليل." } }),
       { status: 503, headers }
     );
   }

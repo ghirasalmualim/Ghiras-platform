@@ -147,7 +147,7 @@ export default function AttReports({ sb, org, grades, classes }: {
     if (!scopeClasses.length) { setData({ students: [], exc: {}, days: {}, approved: {} }); return; }
     loadData(sb, scopeClasses.map((c) => c.id), range.from, range.to)
       .then((d) => { if (!dead) setData(d); })
-      .catch(() => { if (!dead) setErr('تعذّر تحميل البيانات — تحقّقي من الاتصال'); });
+      .catch(() => { if (!dead) setErr('تعذّر تحميل البيانات — تحقّق من الاتصال'); });
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sb, key]);

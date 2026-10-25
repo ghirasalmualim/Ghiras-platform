@@ -29,18 +29,18 @@ const fmtDate = (iso: string | null) => {
   return toAr(`${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`);
 };
 const ERR: Record<string, string> = {
-  att_quota: 'وصلتِ عدد الفصول المشترك فيه — لإضافة فصول تواصلي مع غراس المعلم.',
+  att_quota: 'وصلت عدد الفصول المشترك فيه — لإضافة فصول تواصل مع غراس المعلم.',
   inactive: 'الإدارة غير مفعّلة بعد.',
-  forbidden: 'غير مصرّح لكِ بهذه العملية.',
-  too_many_orgs: 'وصلتِ الحدّ الأقصى لعدد الإدارات.',
-  name_required: 'اكتبي اسم المدرسة.',
-  bad_structure: 'راجعي الصفوف وعدد الفصول.',
+  forbidden: 'غير مصرّح لك بهذه العملية.',
+  too_many_orgs: 'وصلت الحدّ الأقصى لعدد الإدارات.',
+  name_required: 'اكتب اسم المدرسة.',
+  bad_structure: 'راجع الصفوف وعدد الفصول.',
   cannot_remove_owner: 'لا يمكن حذف المنشئة.',
 };
 const errMsg = (e: { message?: string } | null | undefined) => {
   const m = e?.message || '';
   const k = Object.keys(ERR).find((x) => m.includes(x));
-  return k ? ERR[k] : m || 'حدث خطأ — حاولي مرة أخرى.';
+  return k ? ERR[k] : m || 'حدث خطأ — حاول مرة أخرى.';
 };
 const parseNames = (txt: string) =>
   txt
@@ -191,9 +191,9 @@ function CreateWizard({ sb, say, onDone, onCancel }: {
   const total = grades.reduce((s, g) => s + (g.n || 0), 0);
 
   const submit = async () => {
-    if (!name.trim()) return say('اكتبي اسم المدرسة');
+    if (!name.trim()) return say('اكتب اسم المدرسة');
     const clean = grades.filter((g) => g.name.trim() && g.n > 0);
-    if (!clean.length) return say('أضيفي صفًّا واحدًا على الأقل');
+    if (!clean.length) return say('أضف صفًّا واحدًا على الأقل');
     setBusy(true);
     const { data, error } = await sb.rpc('att_org_create', {
       p_name: name.trim(), p_gender: gender, p_year: year.trim(), p_stage: stage.trim(),
@@ -332,7 +332,7 @@ function OrgView({ sb, org, uid, fullName, say, reloadOrgs }: {
             <div className="rounded-2xl bg-gold-light text-ink px-4 py-3 text-sm max-w-md">
               <div className="font-extrabold text-gold-dark">⏳ بانتظار التفعيل</div>
               <div className="mt-1">
-                جهّزي الصفوف والطالبات والمسؤولات الآن، ثم اشتركي من هنا.
+                جهّز الصفوف والطالبات والمسؤولات الآن، ثم اشترك من هنا.
               </div>
               {isMain ? (
                 <AttBuy org={org} count={classes.length} />
@@ -418,7 +418,7 @@ function StructureTab({ sb, sid, stages, grades, classes, say, reload }: {
   const addGrade = (st: Stage) => {
     const inStage = grades.filter((g) => g.stage_id === st.id);
     const n = window.prompt('اسم الصف الجديد', GRADE_NAMES[inStage.length] || '');
-    if (n && n.trim()) run(() => sb.from('school_grades').insert({ school_id: sid, stage_id: st.id, name: n.trim(), sort: inStage.length + 1 }), '➕ أُضيف صف — أضيفي فصوله');
+    if (n && n.trim()) run(() => sb.from('school_grades').insert({ school_id: sid, stage_id: st.id, name: n.trim(), sort: inStage.length + 1 }), '➕ أُضيف صف — أضف فصوله');
   };
   const renameStage = (st: Stage) => {
     const n = window.prompt('اسم المرحلة', st.name);
@@ -556,9 +556,9 @@ function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
       const names = parseNames(text);
       if (!names.length) throw new Error('empty');
       setPaste((p) => (p.trim() ? p.trim() + '\n' : '') + names.join('\n'));
-      setOcr(`✅ استُخرج ${toAr(names.length)} اسمًا — راجعيها ثم اضغطي «إضافة»`);
+      setOcr(`✅ استُخرج ${toAr(names.length)} اسمًا — راجعيها ثم اضغط «إضافة»`);
     } catch (e) {
-      setOcr(`⚠️ تعذّرت القراءة${e instanceof Error && e.message !== 'api' && e.message !== 'empty' ? ` — ${e.message}` : ''}. جرّبي صورة أوضح أو الصقي الأسماء.`);
+      setOcr(`⚠️ تعذّرت القراءة${e instanceof Error && e.message !== 'api' && e.message !== 'empty' ? ` — ${e.message}` : ''}. جرّب صورة أوضح أو الصق الأسماء.`);
     }
   };
 
@@ -582,7 +582,7 @@ function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
 
       <div className={`${CARD} p-4`}>
         {!current ? (
-          <p className="text-center text-ink/60 py-16">اختاري فصلًا من القائمة لإدارة طالباته</p>
+          <p className="text-center text-ink/60 py-16">اختر فصلًا من القائمة لإدارة طالباته</p>
         ) : (
           <>
             <div className="flex items-center gap-2">
@@ -603,7 +603,7 @@ function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
 
             <div className="mt-4 rounded-2xl bg-sage-mist/60 border border-sage/15 p-3">
               <div className="font-extrabold text-sm mb-2">➕ إضافة طالبات</div>
-              <textarea className={`${IPT} min-h-[120px]`} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="الصقي الأسماء — اسم في كل سطر" />
+              <textarea className={`${IPT} min-h-[120px]`} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="الصق الأسماء — اسم في كل سطر" />
               <div className="flex flex-wrap gap-2 mt-2 items-center">
                 <button className={B_SAGE} disabled={busy || !parseNames(paste).length} onClick={() => addNames(parseNames(paste))}>
                   إضافة {parseNames(paste).length ? toAr(parseNames(paste).length) : ''}
@@ -616,7 +616,7 @@ function StudentsTab({ sb, sid, grades, classes, gender, active, say }: {
                 ) : (
                   <span className={`${B_GHOST} opacity-60 cursor-not-allowed`} title="تعمل بعد تفعيل الإدارة">📸 تصوير كشف 🔒</span>
                 )}
-                {!active && !ocr && <span className="text-xs text-ink/60">قراءة الكشف بالتصوير تعمل بعد تفعيل الإدارة — الصقي الأسماء الآن</span>}
+                {!active && !ocr && <span className="text-xs text-ink/60">قراءة الكشف بالتصوير تعمل بعد تفعيل الإدارة — الصق الأسماء الآن</span>}
                 {ocr && <span className="text-sm text-ink/70">{ocr}</span>}
               </div>
             </div>
@@ -658,8 +658,8 @@ function StaffTab({ sb, sid, uid, grades, classes, say }: {
   const toggle = (arr: string[], id: string) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
 
   const save = async () => {
-    if (!phone.trim()) return say('اكتبي رقم هاتف المسؤولة');
-    if (kind === 'grade' && !selGrades.length && !selClasses.length) return say('اختاري صفًّا أو فصلًا على الأقل');
+    if (!phone.trim()) return say('اكتب رقم هاتف المسؤولة');
+    if (kind === 'grade' && !selGrades.length && !selClasses.length) return say('اختر صفًّا أو فصلًا على الأقل');
     setBusy(true);
     const { data, error } = await sb.rpc('att_add_member', {
       p_school: sid, p_identifier: phone.trim(), p_kind: kind, p_grades: kind === 'grade' ? selGrades : [], p_classes: kind === 'grade' ? selClasses : [],
@@ -697,7 +697,7 @@ function StaffTab({ sb, sid, uid, grades, classes, say }: {
           {members.map((m) => (
             <div key={m.member_id} className="py-3 flex flex-wrap items-center gap-2">
               <div className="flex-1 min-w-[180px]">
-                <div className="font-extrabold">{m.name || 'بدون اسم'} {m.user_id === uid && <span className="text-xs text-ink/50">(أنتِ)</span>}</div>
+                <div className="font-extrabold">{m.name || 'بدون اسم'} {m.user_id === uid && <span className="text-xs text-ink/50">(أنت)</span>}</div>
                 <div className="text-sm text-ink/60">
                   {m.is_owner ? '👑 المنشئة' : m.kind === 'main' ? '👑 مسؤولة رئيسية' : '🧭 مسؤولة صف'}
                   {m.phone ? `، ${toAr(m.phone)}` : ''}
@@ -930,7 +930,7 @@ function AdminBoard({ sb, say, onChanged }: { sb: ReturnType<typeof createClient
               <li>المسؤولات وصلاحياتهن وسجل التعديلات</li>
             </ul>
             <p className="mt-2 text-sm font-extrabold text-red-600">لا يمكن التراجع عن الحذف.</p>
-            <label className="block mt-3 text-sm font-bold">للتأكيد اكتبي كلمة «حذف»:</label>
+            <label className="block mt-3 text-sm font-bold">للتأكيد اكتب كلمة «حذف»:</label>
             <input autoFocus className="mt-1 w-full rounded-xl border border-red-200 px-3 py-2" value={delTyped} onChange={(e) => setDelTyped(e.target.value)} placeholder="حذف" />
             <div className="flex gap-2 mt-4">
               <button className={`${BTN} flex-1 bg-red-600 text-white disabled:opacity-40`} disabled={delBusy || delTyped.trim() !== 'حذف'} onClick={doDelete}>
@@ -958,13 +958,13 @@ function AttBuy({ org, count, renew }: { org: Org; count: number; renew?: boolea
   };
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 font-normal text-ink">
-      <span className="font-bold">{renew ? 'جدّدي بـ' : 'عدد الفصول:'}</span>
+      <span className="font-bold">{renew ? 'جدّد بـ' : 'عدد الفصول:'}</span>
       <input type="number" min={MIN_CLASSES} value={n}
         onChange={(e) => setN(Math.max(MIN_CLASSES, Math.floor(Number(e.target.value) || MIN_CLASSES)))}
         className="w-16 rounded-lg border border-sage/30 bg-white px-2 py-1 text-center" />
       {renew ? <span>فصلًا</span> : null}
       <span className="font-extrabold">= {toAr(price(n))} د.ك / {toAr(MONTHS)} شهور</span>
-      <button onClick={add} className="rounded-xl border-2 border-gold bg-gold-light px-3 py-1 font-extrabold text-gold-dark">🛒 أضيفي للسلة</button>
+      <button onClick={add} className="rounded-xl border-2 border-gold bg-gold-light px-3 py-1 font-extrabold text-gold-dark">🛒 أضف للسلة</button>
       {n < count ? <span className="w-full text-[12px] text-red-600">عندك {toAr(count)} فصلًا — الاشتراك أقل من عدد فصولك.</span> : null}
     </div>
   );

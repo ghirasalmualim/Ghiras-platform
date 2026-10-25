@@ -59,7 +59,7 @@ export default async function MyWorkPage() {
 
       <header className="max-w-5xl mx-auto mb-7">
         <h1 className="text-2xl md:text-3xl font-extrabold text-sage-dark">أعمالي 🗂️</h1>
-        <p className="text-gray-500 mt-1 text-sm md:text-base">كل ما حفظتِه في أدوات غراس.</p>
+        <p className="text-gray-500 mt-1 text-sm md:text-base">كل ما حفظته في أدوات غراس.</p>
       </header>
 
       <div className="max-w-5xl mx-auto flex flex-col gap-7">

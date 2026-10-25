@@ -332,7 +332,7 @@ async function compressImg(file: File): Promise<{ mime: string; b64: string }> {
   const img: HTMLImageElement = await new Promise((res, rej) => {
     const im = new Image();
     im.onload = () => res(im);
-    im.onerror = () => rej(new Error('تعذّر فتح الصورة. لو الصورة من الآيفون (صيغة HEIC)، حوّليها إلى JPG أو خذي لها لقطة شاشة ثم ارفعيها.'));
+    im.onerror = () => rej(new Error('تعذّر فتح الصورة. لو الصورة من الآيفون (صيغة HEIC)، حوّلها إلى JPG أو خذ لها لقطة شاشة ثم ارفعها.'));
     im.src = dataUrl;
   });
   const scale = Math.min(1, 1700 / Math.max(img.width, img.height));
@@ -364,7 +364,7 @@ async function extractNames(file: File): Promise<string[]> {
   try {
     res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
   } catch {
-    throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).');
+    throw new Error('تعذّر الاتصال بالخدمة (تحقّق من الإنترنت).');
   }
   const raw = await res.text();
   let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
@@ -404,7 +404,7 @@ async function extractGradeColumns(file: File): Promise<{ name: string; max: num
   try {
     res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 1500 }) });
   } catch {
-    throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).');
+    throw new Error('تعذّر الاتصال بالخدمة (تحقّق من الإنترنت).');
   }
   const raw = await res.text();
   let json: { error?: { message?: string }; content?: { type?: string; text?: string }[] } = {};
@@ -455,13 +455,13 @@ async function extractTimetable(file: File): Promise<{ subject: string; entries:
   let res: Response;
   try {
     res = await fetch('/api/school/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: 12000 }) });
-  } catch { throw new Error('تعذّر الاتصال بالخدمة (تحقّقي من الإنترنت).'); }
+  } catch { throw new Error('تعذّر الاتصال بالخدمة (تحقّق من الإنترنت).'); }
   const raw = await res.text();
   let json: { error?: { message?: string }; stop_reason?: string; content?: { type?: string; text?: string }[] } = {};
   try { json = JSON.parse(raw); } catch { /* غير JSON */ }
   if (!res.ok) throw new Error(`(${res.status}) ${json?.error?.message || raw.slice(0, 160) || 'خطأ من الخدمة'}`);
   const text: string = (json?.content || []).filter((b) => b?.type === 'text' && b?.text).map((b) => b.text).join('\n') || '';
-  if (!text && json?.stop_reason === 'max_tokens') throw new Error('الجدول كبير على القراءة دفعة واحدة. صوّري جزءًا أصغر (صف/صفّين) أو صورة أوضح وأقرب.');
+  if (!text && json?.stop_reason === 'max_tokens') throw new Error('الجدول كبير على القراءة دفعة واحدة. صوّر جزءًا أصغر (صف/صفّين) أو صورة أوضح وأقرب.');
   const obj = text.match(/\{[\s\S]*\}/);
   let parsed: { subject?: string; entries?: { teacher?: string; class?: string; day?: string; period?: number | string }[] } = {};
   if (obj) { try { parsed = JSON.parse(obj[0]); } catch { /* تجاهل */ } }
@@ -484,7 +484,7 @@ function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) =
     setBusy(true);
     try {
       const names = await extractNames(f);
-      if (!names.length) window.alert('ما قدرت أطلّع أسماء واضحة من الصورة. جرّبي صورة أوضح.');
+      if (!names.length) window.alert('ما قدرت أطلّع أسماء واضحة من الصورة. جرّب صورة أوضح.');
       setDraft(names.join('\n'));
     } catch (e) {
       window.alert((e as Error).message || 'تعذّرت القراءة');
@@ -500,7 +500,7 @@ function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) =
       <input ref={ref} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => pick(e.target.files)} />
       {draft !== null ? (
         <div className="mt-2 rounded-xl border border-sage/20 p-2">
-          <div className="text-[11.5px] text-ink/60 mb-1">راجعي الأسماء (اسم لكل سطر) — عدّلي أو احذفي الغلط ثم أضيفي:</div>
+          <div className="text-[11.5px] text-ink/60 mb-1">راجع الأسماء (اسم لكل سطر) — عدّل أو احذف الغلط ثم أضف:</div>
           <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={Math.min(12, Math.max(4, draft.split('\n').length))} className="w-full rounded-lg border border-sage/25 bg-white text-[13px] p-2 focus:outline-none focus:border-sage" />
           <div className="flex gap-2 mt-1.5">
             <button
@@ -511,7 +511,7 @@ function ImportNames({ what, onAdd }: { what: string; onAdd: (names: string[]) =
               }}
               className="rounded-lg bg-sage-deep text-white font-bold text-[12px] px-4 py-1.5"
             >
-              ＋ أضيفي الكل ({draft.split('\n').map((s) => s.trim()).filter(Boolean).length})
+              ＋ أضف الكل ({draft.split('\n').map((s) => s.trim()).filter(Boolean).length})
             </button>
             <button onClick={() => setDraft(null)} className="rounded-lg border border-sage/25 text-sage-deep font-bold text-[12px] px-3 py-1.5">إلغاء</button>
           </div>
@@ -653,7 +653,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   // ── فتح مدرسة للإدارة ─────────────────────────────────────────
   const openSchool = (row: SchoolRow) => {
     if (!isAdmin && !subActive(row.subscription_until)) {
-      showToast('اشتراك المدرسة منتهٍ — تواصلي مع الإدارة');
+      showToast('اشتراك المدرسة منتهٍ — تواصل مع الإدارة');
       return;
     }
     setMyRole(row.role);
@@ -796,7 +796,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
   const delStage = async (id: string) => {
     const kids = grades.filter((g) => g.stage_id === id).length;
-    if (!window.confirm(kids ? `هذه المرحلة فيها ${kids} صف. حذفها يحذف صفوفها وفصولها. متأكدة؟` : 'حذف المرحلة؟')) return;
+    if (!window.confirm(kids ? `هذه المرحلة فيها ${kids} صف. حذفها يحذف صفوفها وفصولها. متأكد؟` : 'حذف المرحلة؟')) return;
     const { error } = await supabase.from('school_stages').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
     setStages((s) => s.filter((x) => x.id !== id));
@@ -804,7 +804,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   };
   const delGrade = async (id: string) => {
     const kids = classes.filter((c) => c.grade_id === id).length;
-    if (!window.confirm(kids ? `هذا الصف فيه ${kids} فصل. حذفه يحذف فصوله. متأكدة؟` : 'حذف الصف؟')) return;
+    if (!window.confirm(kids ? `هذا الصف فيه ${kids} فصل. حذفه يحذف فصوله. متأكد؟` : 'حذف الصف؟')) return;
     const { error } = await supabase.from('school_grades').delete().eq('id', id);
     if (error) return showToast('تعذّر الحذف');
     setGrades((g) => g.filter((x) => x.id !== id));
@@ -914,7 +914,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     ],
   };
   const applyPreset = async (member: Member, preset: 'deputy' | 'student_affairs' | 'teacher') => {
-    if (!member.user_id) return showToast('اربطي حساب المعلمة أولًا 🔗');
+    if (!member.user_id) return showToast('اربط حساب المعلمة أولًا 🔗');
     const role = preset === 'deputy' ? 'deputy' : preset === 'student_affairs' ? 'student_affairs' : 'teacher';
     const { error: re } = await supabase.from('school_members').update({ role }).eq('id', member.id);
     if (re) return showToast('تعذّر تطبيق الدور');
@@ -1110,7 +1110,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
   // ── استيراد جدول شعبة من صورة: ينشئ الناقص ويبني التوزيع والجدول ──
   const applyTimetableImport = async (subjectName: string, entries: TTEntry[]): Promise<string> => {
     if (!schoolId) return 'لا مدرسة';
-    if (!subjectName.trim()) return 'حدّدي اسم المادة أولًا';
+    if (!subjectName.trim()) return 'حدّد اسم المادة أولًا';
     const c = { teachers: 0, classes: 0, grades: 0, periods: 0, teaching: 0, lessons: 0, skipped: 0 };
     const de = (s: string) => s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
     // 1) المرحلة (وحدة — الابتدائي)
@@ -1285,7 +1285,7 @@ export default function SchoolApp({ firstName, isAdmin, uid }: { firstName: stri
     if (!schoolId) return;
     const lessonPids = periods.filter((p) => p.kind === 'lesson').sort((a, b) => a.sort - b.sort).map((p) => p.id);
     const wd = school?.work_days && school.work_days.length ? school.work_days : [0, 1, 2, 3, 4];
-    if (!teaching.length || !lessonPids.length) return showToast('أضيفي توزيعًا وحصصًا أولًا');
+    if (!teaching.length || !lessonPids.length) return showToast('أضف توزيعًا وحصصًا أولًا');
     if (!window.confirm('توليد الجدول تلقائيًا؟ سيستبدل الجدول الحالي (مسودة).')) return;
     setGenerating(true);
     // ضمّ ملاحظات المعلمات كقيود (تُقرأ بنفس محلّل العربي)
@@ -1902,7 +1902,7 @@ function SchoolsList({
 
       {schools.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-8 text-center text-ink/70">
-          {isAdmin ? 'ما فيه مدارس بعد — أنشئي أول مدرسة.' : 'لا توجد مدرسة مرتبطة بحسابك بعد.'}
+          {isAdmin ? 'ما فيه مدارس بعد — أنشئ أول مدرسة.' : 'لا توجد مدرسة مرتبطة بحسابك بعد.'}
         </div>
       ) : (
         schools.map((s) => {
@@ -1990,7 +1990,7 @@ function SetupWizard({ onCreate }: { onCreate: (name: string, year: string, term
     <div className="card-3d bg-white rounded-2xl p-6 space-y-4">
       <div>
         <div className="text-lg font-extrabold text-sage-deep">إعداد المدرسة</div>
-        <div className="text-[13px] text-ink/55">عبّئي بيانات مدرستك مرة واحدة للبدء.</div>
+        <div className="text-[13px] text-ink/55">عبّئ بيانات مدرستك مرة واحدة للبدء.</div>
       </div>
       <Field label="اسم المدرسة">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مشرف الابتدائية" className={IPT} />
@@ -2101,7 +2101,7 @@ function DepartmentsView({
           {depts.find((x) => x.id === m.department_id)?.block ? (
             <button
               onClick={() => setMemberBlockOff(m.id, !m.block_off)}
-              title={m.block_off ? 'البلوك متوقف لهذه المعلمة — اضغطي لتفعيله' : 'البلوك مفعّل — اضغطي لإيقافه لهذه المعلمة'}
+              title={m.block_off ? 'البلوك متوقف لهذه المعلمة — اضغط لتفعيله' : 'البلوك مفعّل — اضغط لإيقافه لهذه المعلمة'}
               className={`text-[10px] rounded-full px-1.5 py-0.5 border ${m.block_off ? 'bg-white text-ink/45 border-ink/20' : 'bg-sage/10 text-sage-deep border-transparent'}`}
             >
               {m.block_off ? 'بلوك ⛔' : 'بلوك ✓'}
@@ -2123,7 +2123,7 @@ function DepartmentsView({
           ) : (
             <button
               onClick={() => {
-                const id = window.prompt(`ربط «${m.name || 'العضو'}» بحساب — أدخلي اسم المستخدم أو رقم الهاتف:`);
+                const id = window.prompt(`ربط «${m.name || 'العضو'}» بحساب — أدخل اسم المستخدم أو رقم الهاتف:`);
                 if (id && id.trim()) linkMember(m.id, id.trim());
               }}
               aria-label="ربط بحساب"
@@ -2180,7 +2180,7 @@ function DepartmentsView({
       ) : null}
 
       {depts.length === 0 ? (
-        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">لا شُعب بعد.{canManage ? ' أضيفي أول شعبة.' : ''}</div>
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">لا شُعب بعد.{canManage ? ' أضف أول شعبة.' : ''}</div>
       ) : (
         depts.map((d) => {
           const mm = members
@@ -2354,12 +2354,12 @@ function TeacherPlanView({
       </div>
 
       <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
-        اختاري المعلمة والفصل، ثم اضغطي خانات حصصها في الشبكة. المادة تُعرف تلقائيًا من شعبتها. يُبنى الجدول والتوزيع تلقائيًا (عدد الحصص = عدد الخانات).
+        اختر المعلمة والفصل، ثم اضغط خانات حصصها في الشبكة. المادة تُعرف تلقائيًا من شعبتها. يُبنى الجدول والتوزيع تلقائيًا (عدد الحصص = عدد الخانات).
       </div>
 
       <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
         <select value={mem} onChange={(e) => setMem(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-          <option value="">اختاري المعلمة</option>
+          <option value="">اختر المعلمة</option>
           {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         {mem ? (
@@ -2367,24 +2367,24 @@ function TeacherPlanView({
             <div className="text-[12px] text-ink/70">المادة: <b className="text-sage-deep">{subjName}</b> <span className="text-[10px] text-ink/40">(من شعبتها)</span></div>
           ) : (
             <select value={manualSubj} onChange={(e) => setManualSubj(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-              <option value="">اختاري المادة (المعلمة بلا شعبة)</option>
+              <option value="">اختر المادة (المعلمة بلا شعبة)</option>
               {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )
         ) : null}
         <select value={cls} onChange={(e) => setCls(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-          <option value="">اختاري الفصل</option>
+          <option value="">اختر الفصل</option>
           {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
         </select>
       </div>
 
       {!ready ? (
-        <div className="text-[12px] text-ink/40 text-center py-4">اختاري المعلمة والفصل لتظهر الشبكة.</div>
+        <div className="text-[12px] text-ink/40 text-center py-4">اختر المعلمة والفصل لتظهر الشبكة.</div>
       ) : lessonPeriods.length === 0 ? (
-        <div className="text-[12px] text-ink/45 text-center py-4">أضيفي «أوقات اليوم» (حصص) من «الجدول المدرسي» أولًا.</div>
+        <div className="text-[12px] text-ink/45 text-center py-4">أضف «أوقات اليوم» (حصص) من «الجدول المدرسي» أولًا.</div>
       ) : (
         <div className="card-3d bg-white rounded-2xl p-2 overflow-x-auto">
-          <div className="text-[11px] text-ink/55 px-1 mb-1">حصص هذا الفصل لهذه المعلمة: <b className="text-sage-deep">{myCount}</b> — اضغطي الخانة للإضافة/الإلغاء.</div>
+          <div className="text-[11px] text-ink/55 px-1 mb-1">حصص هذا الفصل لهذه المعلمة: <b className="text-sage-deep">{myCount}</b> — اضغط الخانة للإضافة/الإلغاء.</div>
           <table className="border-collapse text-[11px]">
             <thead>
               <tr>
@@ -2520,7 +2520,7 @@ function TimetableView({
       </div>
 
       <div className="rounded-2xl bg-sage-light/40 border border-sage/15 p-3 text-[12.5px] text-ink/70">
-        الخطوة الأولى: حدّدي <b>أوقات اليوم الدراسي</b> (الحصص والفسح والتجمّع). بعد ضبطها، نبني <b>شبكة الجدول</b> ثم <b>الجدول الذكي</b>.
+        الخطوة الأولى: حدّد <b>أوقات اليوم الدراسي</b> (الحصص والفسح والتجمّع). بعد ضبطها، نبني <b>شبكة الجدول</b> ثم <b>الجدول الذكي</b>.
       </div>
 
       <div className="card-3d bg-white rounded-2xl p-3">
@@ -2601,7 +2601,7 @@ function TimetableView({
       {canManage ? (
         <div className="card-3d bg-white rounded-2xl p-3">
           <div className="font-extrabold text-sage-deep mb-1">✨ إنشاء الجدول الذكي</div>
-          <div className="text-[11.5px] text-ink/55 mb-2">اكتبي قيودك بالعربي (اختياري)، والنظام يفهمها ويعرضها لك للتأكيد قبل التوليد.</div>
+          <div className="text-[11.5px] text-ink/55 mb-2">اكتب قيودك بالعربي (اختياري)، والنظام يفهمها ويعرضها لك للتأكيد قبل التوليد.</div>
 
           <textarea
             value={rulesText}
@@ -2642,7 +2642,7 @@ function TimetableView({
                   <div className="text-[11px] text-ink/50 mt-1">🔴 إلزامي (لا يُخالَف) · 🟡 تفضيل (يُحاوَل قدر الإمكان)</div>
                 </>
               ) : (
-                <div className="text-ink/60">ما فهمت أي قاعدة. جرّبي صياغة أوضح (اسم المعلمة + اليوم/الحصة).</div>
+                <div className="text-ink/60">ما فهمت أي قاعدة. جرّب صياغة أوضح (اسم المعلمة + اليوم/الحصة).</div>
               )}
               {parsed.unknown.length ? (
                 <div className="mt-1 text-[11.5px] text-gold-deep">لم أفهم: {parsed.unknown.slice(0, 4).join(' · ')}</div>
@@ -2663,7 +2663,7 @@ function TimetableView({
                     ))}
                     {genReport.unplaced.length > 12 ? <div>…و{genReport.unplaced.length - 12} غيرها</div> : null}
                   </div>
-                  <div className="text-[11.5px] text-ink/50 mt-1">جرّبي: زيادة الحصص في اليوم، أو تقليل نصاب المعلمة، أو إعادة التوليد.</div>
+                  <div className="text-[11.5px] text-ink/50 mt-1">جرّب: زيادة الحصص في اليوم، أو تقليل نصاب المعلمة، أو إعادة التوليد.</div>
                 </div>
               ) : (
                 <div className="text-sage-deep mt-0.5">كل النُّصُب مكتملة بلا تعارضات ✅</div>
@@ -2677,11 +2677,11 @@ function TimetableView({
       <div className="card-3d bg-white rounded-2xl p-3">
         <div className="font-extrabold text-sage-deep mb-2">الجدول (حسب الفصل)</div>
         {lessonPeriods.length === 0 || classes.length === 0 ? (
-          <div className="text-[12px] text-ink/45">أضيفي حصصًا (نوع «حصة») وفصولًا أولًا.</div>
+          <div className="text-[12px] text-ink/45">أضف حصصًا (نوع «حصة») وفصولًا أولًا.</div>
         ) : (
           <>
             <select value={gridClass} onChange={(e) => setGridClass(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[13px] p-2 mb-3">
-              <option value="">اختاري الفصل…</option>
+              <option value="">اختر الفصل…</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
             </select>
 
@@ -2737,11 +2737,11 @@ function TimetableView({
                   </tbody>
                 </table>
                 {canManage && classTeaching.length === 0 ? (
-                  <div className="text-[12px] text-gold-deep mt-2">وزّعي معلمات على هذا الفصل من «المواد والتوزيع» عشان تظهر خيارات الحصص.</div>
+                  <div className="text-[12px] text-gold-deep mt-2">وزّع معلمات على هذا الفصل من «المواد والتوزيع» عشان تظهر خيارات الحصص.</div>
                 ) : null}
               </div>
             ) : (
-              <div className="text-[12px] text-ink/40">اختاري فصلًا لعرض جدوله.</div>
+              <div className="text-[12px] text-ink/40">اختر فصلًا لعرض جدوله.</div>
             )}
           </>
         )}
@@ -2855,7 +2855,7 @@ function TeachingView({
       {sm && importTimetable ? (
         <div className="card-3d bg-white rounded-2xl p-3 space-y-2">
           <div className="font-extrabold text-sage-deep">📸 استيراد جدول شعبة من صورة</div>
-          <div className="text-[11px] text-ink/55 leading-relaxed">صوّري جدول مادة/شعبة واحدة، والذكاء يقرأه وينشئ المعلمات والفصول الناقصة، ويبني التوزيع والجدول — بعد مراجعتك.</div>
+          <div className="text-[11px] text-ink/55 leading-relaxed">صوّر جدول مادة/شعبة واحدة، والذكاء يقرأه وينشئ المعلمات والفصول الناقصة، ويبني التوزيع والجدول — بعد مراجعتك.</div>
           <input ref={ttRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={async (e) => {
             const f = e.target.files?.[0]; if (!f) return; setTtBusy(true); setTtMsg('');
             try { const r = await extractTimetable(f); setTtDraft(r); } catch (err) { window.alert((err as Error).message || 'تعذّرت القراءة'); }
@@ -2869,7 +2869,7 @@ function TeachingView({
                 <span className="text-[11px] text-ink/55 whitespace-nowrap">المادة:</span>
                 <input value={ttDraft.subject} onChange={(e) => setTtDraft({ ...ttDraft, subject: e.target.value })} placeholder="اسم المادة" className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5" />
               </div>
-              <div className="text-[11px] text-ink/55">قُرئ {ttDraft.entries.length} حصة — راجعي واحذفي الخطأ:</div>
+              <div className="text-[11px] text-ink/55">قُرئ {ttDraft.entries.length} حصة — راجع واحذف الخطأ:</div>
               <div className="max-h-52 overflow-y-auto space-y-1">
                 {ttDraft.entries.map((en, i) => (
                   <div key={i} className="flex items-center gap-2 text-[11.5px] bg-white rounded px-2 py-1">
@@ -2943,17 +2943,17 @@ function TeachingView({
               return (
                 <div className="space-y-1.5 mb-3">
                   <select value={sSel} onChange={(e) => { setSSel(e.target.value); setMSel(''); }} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                    <option value="">اختاري المادة</option>
+                    <option value="">اختر المادة</option>
                     {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                   {sSel ? (
                     <>
-                      <input value={mSearch} onChange={(e) => setMSearch(e.target.value)} placeholder="🔍 ابحثي عن معلمة" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
+                      <input value={mSearch} onChange={(e) => setMSearch(e.target.value)} placeholder="🔍 ابحث عن معلمة" className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
                       <select value={mSel} onChange={(e) => setMSel(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
                         <option value="">{filteredBySubject ? `معلمات المادة (${shownTeachers.length})` : 'المعلمة (كل المدرسة)'}</option>
                         {shownTeachers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                       </select>
-                      {!filteredBySubject ? <div className="text-[10px] text-gold-deep">لا معلمات مربوطات بشعبة هذه المادة — تأكدي أن معلمات الإسلامية داخل شعبتها في «الشُّعب والمعلمات».</div> : null}
+                      {!filteredBySubject ? <div className="text-[10px] text-gold-deep">لا معلمات مربوطات بشعبة هذه المادة — تأكد أن معلمات الإسلامية داخل شعبتها في «الشُّعب والمعلمات».</div> : null}
                     </>
                   ) : null}
                   <div className="grid grid-cols-2 gap-1.5">
@@ -2969,7 +2969,7 @@ function TeachingView({
                           const other = teaching.find((t) => t.subject_id === sSel && t.class_id === cSel && t.member_id !== mSel);
                           if (other) {
                             const otherName = members.find((m) => m.id === other.member_id)?.name || 'معلمة أخرى';
-                            if (!window.confirm(`⚠️ الفصل «${classLabel(cSel)}» مُسند أصلًا إلى «${otherName}» لنفس المادة.\nتبين تضيفين هذه المعلمة معها (يشاركن الفصل)؟\n\nموافق = أضيفها · إلغاء = غيّري الفصل/المعلمة`)) return;
+                            if (!window.confirm(`⚠️ الفصل «${classLabel(cSel)}» مُسند أصلًا إلى «${otherName}» لنفس المادة.\nتبين تضيف هذه المعلمة معها (يشاركن الفصل)؟\n\nموافق = أضيفها · إلغاء = غيّر الفصل/المعلمة`)) return;
                           }
                           addTeaching(mSel, sSel, cSel, Math.max(1, +hSel || 1));
                           setCSel('');
@@ -2985,7 +2985,7 @@ function TeachingView({
               );
             })()
           ) : (
-            <div className="text-[12px] text-ink/45 mb-2">أضيفي مواد ومعلمات وفصولًا أولًا.</div>
+            <div className="text-[12px] text-ink/45 mb-2">أضف مواد ومعلمات وفصولًا أولًا.</div>
           )
         ) : null}
 
@@ -3114,12 +3114,12 @@ function ReportsView({
         </select>
         {type === 'class' ? (
           <select value={pick} onChange={(e) => setPick(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-2">
-            <option value="">اختاري الفصل…</option>
+            <option value="">اختر الفصل…</option>
             {classes.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
           </select>
         ) : type === 'teacher' ? (
           <select value={pick} onChange={(e) => setPick(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[13px] p-2">
-            <option value="">اختاري المعلمة…</option>
+            <option value="">اختر المعلمة…</option>
             {members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar')).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         ) : null}
@@ -3149,7 +3149,7 @@ function ReportsView({
             })
           )
         ) : !pick ? (
-          <div className="text-center text-ink/40 py-6">اختاري {type === 'class' ? 'فصلًا' : 'معلمة'} من الأعلى.</div>
+          <div className="text-center text-ink/40 py-6">اختر {type === 'class' ? 'فصلًا' : 'معلمة'} من الأعلى.</div>
         ) : lessonPeriods.length === 0 ? (
           <div className="text-center text-ink/40 py-6">لا حصص محدّدة في «أوقات اليوم».</div>
         ) : (
@@ -3299,7 +3299,7 @@ function DutyView({
               </div>
             </div>
           ) : (
-            <div className="text-[12px] text-ink/45 mb-2">أضيفي أماكن ومعلمات وحدّدي أوقات اليوم أولًا.</div>
+            <div className="text-[12px] text-ink/45 mb-2">أضف أماكن ومعلمات وحدّد أوقات اليوم أولًا.</div>
           )
         ) : null}
 
@@ -3387,7 +3387,7 @@ function SupervisionView({
       </div>
 
       <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
-        عيّني معلمةً مشرفةً على مرحلة أو صف أو فصل. يُسجَّل نطاق إشرافها هنا؛ وعند ربط حسابها لتسجيل الدخول يُطبَّق النطاق تلقائيًا فترى بيانات ما تُشرف عليه فقط.
+        عيّن معلمةً مشرفةً على مرحلة أو صف أو فصل. يُسجَّل نطاق إشرافها هنا؛ وعند ربط حسابها لتسجيل الدخول يُطبَّق النطاق تلقائيًا فترى بيانات ما تُشرف عليه فقط.
       </div>
 
       {canManage ? (
@@ -3413,7 +3413,7 @@ function SupervisionView({
                   <option value="class">فصل</option>
                 </select>
                 <select value={scopeId} onChange={(e) => setScopeId(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-                  <option value="">اختاري النطاق</option>
+                  <option value="">اختر النطاق</option>
                   {scopeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
               </div>
@@ -3431,7 +3431,7 @@ function SupervisionView({
               </button>
             </div>
           ) : (
-            <div className="text-[12px] text-ink/45">أضيفي مراحل ومعلمات أولًا.</div>
+            <div className="text-[12px] text-ink/45">أضف مراحل ومعلمات أولًا.</div>
           )}
         </div>
       ) : null}
@@ -3533,7 +3533,7 @@ function NotesView({
       </div>
 
       <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
-        سجّلي ملاحظة على طالبة (سلوك/متابعة) أو على معلمة (متابعة أداء). الملاحظات خاصة — تظهر للإدارة فقط، وللمشرفة ضمن نطاقها لاحقًا.
+        سجّل ملاحظة على طالبة (سلوك/متابعة) أو على معلمة (متابعة أداء). الملاحظات خاصة — تظهر للإدارة فقط، وللمشرفة ضمن نطاقها لاحقًا.
       </div>
 
       {canManage ? (
@@ -3556,7 +3556,7 @@ function NotesView({
 
           {tt === 'member' ? (
             <select value={memId} onChange={(e) => setMemId(e.target.value)} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-              <option value="">اختاري المعلمة</option>
+              <option value="">اختر المعلمة</option>
               {sortedMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           ) : (
@@ -3693,7 +3693,7 @@ function SubstitutionView({
 
       {absentList.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">
-          لا غياب (مرضي/عرضي) مسجّل لهذا اليوم. سجّلي الغياب من «دوام الهيئة» أولًا.
+          لا غياب (مرضي/عرضي) مسجّل لهذا اليوم. سجّل الغياب من «دوام الهيئة» أولًا.
         </div>
       ) : (
         absentList.map((am) => {
@@ -3725,7 +3725,7 @@ function SubstitutionView({
                               onChange={(e) => e.target.value && assignSub(L.period_id, L.class_id, L.subject_id, am.id, e.target.value)}
                               className="mt-1 w-full rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
                             >
-                              <option value="">اختاري بديلة متاحة…</option>
+                              <option value="">اختر بديلة متاحة…</option>
                               {opts.map((o) => (
                                 <option key={o.id} value={o.id}>{o.name} — احتياطها هذا الشهر: {monthCount(o.id)}</option>
                               ))}
@@ -3793,7 +3793,7 @@ function StaffView({
         <div className="text-[12px] text-ink/60">حاضرات اليوم: {present} من {members.length}</div>
       </div>
 
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحثي باسم المعلمة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحث باسم المعلمة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
 
       {shown.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/50">{q ? 'لا نتائج' : 'لا معلمات بعد.'}</div>
@@ -3870,7 +3870,7 @@ function AttendanceView({
           <div className="font-extrabold text-sage-deep flex-1">حضور المتعلمات</div>
         </div>
         {classes.length === 0 ? (
-          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (فصول) والمتعلمات أولًا.</div>
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضف الهيكل (فصول) والمتعلمات أولًا.</div>
         ) : (
           stages.map((st) => (
             <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
@@ -4045,7 +4045,7 @@ function StudentsView({
         <div className="font-extrabold text-sage-deep flex-1">الصفوف والمتعلمات</div>
       </div>
 
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحثي باسم أو رقم في كل المدرسة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحث باسم أو رقم في كل المدرسة" className="w-full rounded-xl border border-sage/25 p-2.5 text-sm bg-white focus:outline-none focus:border-sage" />
 
       {t ? (
         matches.length === 0 ? (
@@ -4062,7 +4062,7 @@ function StudentsView({
           </div>
         )
       ) : classes.length === 0 ? (
-        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضيفي الهيكل (مراحل/صفوف/فصول) أولًا من «الهيكل المدرسي».</div>
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60">أضف الهيكل (مراحل/صفوف/فصول) أولًا من «الهيكل المدرسي».</div>
       ) : (
         stages.map((st) => (
           <div key={st.id} className="card-3d bg-white rounded-2xl p-3">
@@ -4189,7 +4189,7 @@ function PermissionsView({
       </div>
 
       <div className="text-[11.5px] text-ink/55 bg-sage/5 rounded-xl p-2.5 leading-relaxed">
-        امنحي كل معلمة دورها. الأدوار الجاهزة: <b>الوكيلة</b> (كل شيء عدا الاشتراك) و<b>شؤون الطالبات</b> (الطالبات والحضور). أو أضيفي صلاحيات مفصّلة يدويًا. الصلاحيات تعمل فقط بعد <b>ربط حساب المعلمة</b> 🔗 من «الشُّعب».
+        امنح كل معلمة دورها. الأدوار الجاهزة: <b>الوكيلة</b> (كل شيء عدا الاشتراك) و<b>شؤون الطالبات</b> (الطالبات والحضور). أو أضف صلاحيات مفصّلة يدويًا. الصلاحيات تعمل فقط بعد <b>ربط حساب المعلمة</b> 🔗 من «الشُّعب».
       </div>
 
       {sorted.map((m) => {
@@ -4210,7 +4210,7 @@ function PermissionsView({
 
             {open ? (
               !m.user_id ? (
-                <div className="text-[12px] text-ink/50 mt-2 border-t border-sage/10 pt-2">اربطي حسابها أولًا من «الشُّعب» (زر 🔗) لتُفعَّل الصلاحيات.</div>
+                <div className="text-[12px] text-ink/50 mt-2 border-t border-sage/10 pt-2">اربط حسابها أولًا من «الشُّعب» (زر 🔗) لتُفعَّل الصلاحيات.</div>
               ) : (
                 <div className="mt-2 border-t border-sage/10 pt-2 space-y-2">
                   {canManage ? (
@@ -4410,10 +4410,10 @@ function SmartAttendanceView({
           </div>
           {!entry ? (
             dayEntries.length === 0 ? (
-              <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/55 text-[13px]">لا حصص لك في {WEEKDAYS[wd]} — تأكدي أن الجدول مبني.</div>
+              <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/55 text-[13px]">لا حصص لك في {WEEKDAYS[wd]} — تأكد أن الجدول مبني.</div>
             ) : (
               <div className="space-y-1.5">
-                <div className="text-[12px] text-ink/55">اختاري الحصة لتسجيل حضورها:</div>
+                <div className="text-[12px] text-ink/55">اختر الحصة لتسجيل حضورها:</div>
                 {dayEntries.map((e) => (
                   <button key={e.id} onClick={() => pickEntry(e)} className="card-3d bg-white rounded-xl p-3 w-full text-right flex items-center gap-2">
                     <div className="flex-1">
@@ -4458,13 +4458,13 @@ function SmartAttendanceView({
         <div className="space-y-2">
           <div className="card-3d bg-white rounded-2xl p-3 grid grid-cols-2 gap-1.5">
             <select value={selClass} onChange={(e) => pickDailyClass(e.target.value)} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-              <option value="">اختاري الفصل</option>
+              <option value="">اختر الفصل</option>
               {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
             </select>
             <input type="date" value={date} onChange={(e) => { setDate(e.target.value); if (selClass) loadByClassDate(selClass, e.target.value); }} className="rounded-lg border border-sage/25 bg-white text-[12px] p-2" />
           </div>
           {!selClass ? (
-            <div className="text-[12px] text-ink/40 text-center py-4">اختاري الفصل والتاريخ لعرض استثناءات اليوم.</div>
+            <div className="text-[12px] text-ink/40 text-center py-4">اختر الفصل والتاريخ لعرض استثناءات اليوم.</div>
           ) : (() => {
             const withEx = (openClass && openClass.id === selClass ? students.filter((s) => !s.archived) : [])
               .map((st) => ({ st, ex: periodAtt.filter((x) => x.student_id === st.id && x.date === date).sort((a, b) => periodSort(a.period_id) - periodSort(b.period_id)) }))
@@ -4509,7 +4509,7 @@ function SmartAttendanceView({
             </select>
           </div>
           {!selStudent ? (
-            <div className="text-[12px] text-ink/40 text-center py-4">اختاري الفصل ثم الطالبة لعرض كشفها الكامل.</div>
+            <div className="text-[12px] text-ink/40 text-center py-4">اختر الفصل ثم الطالبة لعرض كشفها الكامل.</div>
           ) : (() => {
             const rows = periodAtt.filter((x) => x.student_id === selStudent).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : periodSort(a.period_id) - periodSort(b.period_id)));
             const cnt = (s: string) => rows.filter((r) => r.status === s).length;
@@ -4550,7 +4550,7 @@ function SmartAttendanceView({
         <div className="space-y-2">
           <div className="card-3d bg-white rounded-2xl p-3 space-y-1.5">
             <select value={selClass} onChange={(e) => { const cid = e.target.value; setSelClass(cid); const cls = classes.find((c) => c.id === cid); if (cls) onOpenClass(cls); if (cid) loadByClassRange(cid, from, to); }} className="w-full rounded-lg border border-sage/25 bg-white text-[12px] p-2">
-              <option value="">اختاري الفصل</option>
+              <option value="">اختر الفصل</option>
               {openClasses.map((c) => <option key={c.id} value={c.id}>{classLabel(c.id)}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-1.5">
@@ -4559,7 +4559,7 @@ function SmartAttendanceView({
             </div>
           </div>
           {!selClass ? (
-            <div className="text-[12px] text-ink/40 text-center py-4">اختاري الفصل والمدة لعرض إحصائية الطالبات.</div>
+            <div className="text-[12px] text-ink/40 text-center py-4">اختر الفصل والمدة لعرض إحصائية الطالبات.</div>
           ) : (() => {
             const list = (openClass && openClass.id === selClass ? students.filter((s) => !s.archived) : [])
               .map((st) => {
@@ -4730,7 +4730,7 @@ function GradebookView({
 
       {!selGroup ? (
         groups.length === 0 ? (
-          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لا يوجد توزيع دراسي لك بعد — تُسند لكِ المواد من «المواد والتوزيع».</div>
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لا يوجد توزيع دراسي لك بعد — تُسند لك المواد من «المواد والتوزيع».</div>
         ) : (
           <div className="space-y-1.5">
             {groups.map((g) => (
@@ -4787,7 +4787,7 @@ function GradebookView({
                   }}
                   className="flex-1 rounded-lg border border-sage/25 bg-white text-[12px] p-1.5"
                 >
-                  <option value="">اختاري نموذجًا…</option>
+                  <option value="">اختر نموذجًا…</option>
                   {Object.entries(GB_PRESETS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
                 </select>
               </div>
@@ -4817,7 +4817,7 @@ function GradebookView({
                 </button>
               ) : (
                 <div className="rounded-lg bg-sage/5 p-2 space-y-1.5">
-                  <div className="text-[11px] text-ink/60">قُرئ {scanned.length} بندًا (المجموع {scanned.reduce((a, c) => a + c.max, 0)}) — راجعيها واحذفي الخطأ ثم اعتمدي:</div>
+                  <div className="text-[11px] text-ink/60">قُرئ {scanned.length} بندًا (المجموع {scanned.reduce((a, c) => a + c.max, 0)}) — راجعيها واحذف الخطأ ثم اعتمد:</div>
                   <div className="flex flex-wrap gap-1.5">
                     {scanned.map((c, i) => (
                       <span key={i} className="inline-flex items-center gap-1 text-[11px] bg-white border border-sage/20 rounded-full px-2 py-0.5">
@@ -4838,7 +4838,7 @@ function GradebookView({
           {rows.length === 0 ? (
             <div className="text-[12px] text-ink/40 text-center py-4">— لا طالبات في هذا الفصل —</div>
           ) : cols.length === 0 ? (
-            <div className="text-[12px] text-ink/40 text-center py-4">أضيفي بنودًا (نموذج جاهز، أو تصوير، أو يدويًا) لتبدئي التسجيل.</div>
+            <div className="text-[12px] text-ink/40 text-center py-4">أضف بنودًا (نموذج جاهز، أو تصوير، أو يدويًا) لتبدئي التسجيل.</div>
           ) : (
             <div className="gb-report card-3d bg-white rounded-2xl p-2 overflow-x-auto">
               <div className="px-1 pb-1 mb-1 border-b border-sage/15">
@@ -4910,7 +4910,7 @@ function CoordinatorHome({ name, depts, onOpen }: { name: string; depts: Dept[];
       <button onClick={onOpen} className="card-3d bg-white border border-sage/15 hover:border-sage/40 rounded-2xl p-3 text-right w-full">
         <div className="text-2xl mb-1">📊</div>
         <div className="font-extrabold text-sage-deep text-[14px]">توزيع المواد</div>
-        <div className="text-[11px] text-ink/55 mt-0.5 leading-snug">وزّعي مواد شعبتك على المعلمات وحدّدي الحصص الأسبوعية</div>
+        <div className="text-[11px] text-ink/55 mt-0.5 leading-snug">وزّع مواد شعبتك على المعلمات وحدّد الحصص الأسبوعية</div>
       </button>
     </div>
   );
@@ -5017,7 +5017,7 @@ function Dashboard({
       </div>
 
       {limited && visible.length === 0 ? (
-        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لم تُمنح لك صلاحيات بعد — تواصلي مع إدارة المدرسة.</div>
+        <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/60 text-[13px]">لم تُمنح لك صلاحيات بعد — تواصل مع إدارة المدرسة.</div>
       ) : null}
 
       {/* الأقسام */}
@@ -5123,7 +5123,7 @@ function StructureView({
 
       {stages.length === 0 ? (
         <div className="card-3d bg-white rounded-2xl p-8 text-center text-ink/60">
-          لم تُضف مراحل بعد.{canManage ? ' أضيفي أول مرحلة من الأعلى.' : ''}
+          لم تُضف مراحل بعد.{canManage ? ' أضف أول مرحلة من الأعلى.' : ''}
         </div>
       ) : (
         stages.map((st) => {

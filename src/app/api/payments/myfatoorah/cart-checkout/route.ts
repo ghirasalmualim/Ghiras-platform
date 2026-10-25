@@ -51,34 +51,34 @@ export async function POST(req: NextRequest) {
   const lines: { product: Product; scopeId?: string; qty?: number }[] = [];
   for (const it of raw) {
     const product = it?.productId ? PRODUCTS[it.productId] : undefined;
-    if (!product) return NextResponse.json({ error: 'في السلة منتج غير معروف — احذفيه وحاولي مرة ثانية' }, { status: 400 });
+    if (!product) return NextResponse.json({ error: 'في السلة منتج غير معروف — احذفه وحاول مرة ثانية' }, { status: 400 });
     const scopeId = typeof it.scopeId === 'string' && it.scopeId ? it.scopeId : undefined;
-    if (product.kind === 'games' && !scopeId) return NextResponse.json({ error: `«${product.label}» ناقصها المادة/الصف — احذفيها وأضيفيها من صفحتها` }, { status: 400 });
+    if (product.kind === 'games' && !scopeId) return NextResponse.json({ error: `«${product.label}» ناقصها المادة/الصف — احذفها وأضفها من صفحتها` }, { status: 400 });
     let qty: number | undefined;
     if (product.kind === 'att_org') {
       qty = Math.floor(Number(it.qty));
-      if (!scopeId) return NextResponse.json({ error: 'إدارة الحضور ناقصها المدرسة — أضيفيها من صفحة إدارة الحضور' }, { status: 400 });
+      if (!scopeId) return NextResponse.json({ error: 'إدارة الحضور ناقصها المدرسة — أضفها من صفحة إدارة الحضور' }, { status: 400 });
       if (!Number.isFinite(qty) || qty < product.minQty || qty > 500) return NextResponse.json({ error: `عدد الفصول أقلّه ${product.minQty}` }, { status: 400 });
-      // المشترية لازم تكون من إدارةِ المدرسة — يُسأل بجلستِها هي
+      // المشترية لازم تكون من إدارةِ المدرسة — يُسأل بجلستها هي
       const { data: isAdm } = await supabase.rpc('school_is_admin', { p_school: scopeId });
       if (!isAdm) return NextResponse.json({ error: 'اشتراك إدارة الحضور تشتريه مسؤولة المدرسة الرئيسية' }, { status: 403 });
     }
     if (product.kind === 'library') {
       // «مرحلة|صف|مادة» — نصٌّ قصيرٌ بثلاثة أجزاء، والاستوديو يقرأ المفتاحَ نفسَه
       if (!scopeId || scopeId.length > 160 || scopeId.split('|').length !== 3) {
-        return NextResponse.json({ error: 'اشتراك المكتبة ناقصه المادة — أضيفيه من مكتبة الاستوديو' }, { status: 400 });
+        return NextResponse.json({ error: 'اشتراك المكتبة ناقصه المادة — أضفه من مكتبة الاستوديو' }, { status: 400 });
       }
     }
     if (product.kind === 'workshop') {
       // معرّفُ قالبِ الورشة في الاستوديو — نصٌّ قصيرٌ آمن
       if (!scopeId || !/^[A-Za-z0-9_-]{4,64}$/.test(scopeId)) {
-        return NextResponse.json({ error: 'الورشة ناقصها التحديد — أضيفيها من صفحة ورش غراس' }, { status: 400 });
+        return NextResponse.json({ error: 'الورشة ناقصها التحديد — أضفها من صفحة ورش غراس' }, { status: 400 });
       }
     }
     if (product.kind === 'lesson') {
       // معرّفُ قالبِ العرض في مكتبة الاستوديو — نصٌّ قصيرٌ آمن
       if (!scopeId || !/^[A-Za-z0-9_-]{4,64}$/.test(scopeId)) {
-        return NextResponse.json({ error: 'العرض ناقصه التحديد — أضيفيه من مكتبة الاستوديو' }, { status: 400 });
+        return NextResponse.json({ error: 'العرض ناقصه التحديد — أضفه من مكتبة الاستوديو' }, { status: 400 });
       }
     }
     const k = `${product.id}:${scopeId ?? ''}`;

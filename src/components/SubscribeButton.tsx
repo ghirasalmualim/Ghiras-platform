@@ -43,7 +43,7 @@ export default function SubscribeButton({ productId, scopeId, scopeLabel, label,
         setCodeErr(json?.error || 'الكود غير صحيح.');
       }
     } catch {
-      setCodeErr('تعذّر التحقّق. تحقّقي من الإنترنت.');
+      setCodeErr('تعذّر التحقّق. تحقّق من الإنترنت.');
     }
     setChecking(false);
   };
@@ -60,13 +60,13 @@ export default function SubscribeButton({ productId, scopeId, scopeLabel, label,
       const json = await res.json();
       if (!res.ok || !json?.url) {
         if (res.status === 401) { window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname); return; }
-        setErr(json?.error || 'تعذّر بدء الدفع، حاولي مرة ثانية.');
+        setErr(json?.error || 'تعذّر بدء الدفع، حاول مرة ثانية.');
         setBusy(false);
         return;
       }
       window.location.href = json.url;
     } catch {
-      setErr('تعذّر الاتصال. تحقّقي من الإنترنت.');
+      setErr('تعذّر الاتصال. تحقّق من الإنترنت.');
       setBusy(false);
     }
   };
@@ -86,11 +86,11 @@ export default function SubscribeButton({ productId, scopeId, scopeLabel, label,
         onClick={() => setAdded(addToCart({ productId, scopeId, scopeLabel }) ? 'new' : 'dup')}
         className="ms-2 inline-block rounded-xl border-2 border-gold bg-gold-light px-5 py-3 font-extrabold text-gold-dark transition-all hover:-translate-y-0.5"
       >
-        🛒 أضيفي للسلة
+        🛒 أضف للسلة
       </button>
       {added ? (
         <div className="mt-2 text-[13px] font-extrabold text-sage-dark">
-          {added === 'new' ? '✅ انضاف للسلة' : 'موجود بالسلة من قبل'} — <a href="/cart" className="underline">افتحي السلة</a>
+          {added === 'new' ? '✅ انضاف للسلة' : 'موجود بالسلة من قبل'} — <a href="/cart" className="underline">افتح السلة</a>
         </div>
       ) : null}
       <div className="mt-1.5 text-[12px] text-ink/45">{hint ?? (months ? `اشتراك ${months} أشهر${product.kind === 'tool' && product.slots ? ` · ${product.slots === 2 ? 'صفّان' : `${product.slots.toLocaleString('ar')} صفوف`}` : ''} · تجديد بأي وقت` : '')}</div>
@@ -105,7 +105,7 @@ export default function SubscribeButton({ productId, scopeId, scopeLabel, label,
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void apply(); }}
-            placeholder="اكتبي كود الخصم"
+            placeholder="اكتب كود الخصم"
             className="rounded-xl border-2 border-ink/15 bg-white px-4 py-2 text-[14px] text-ink outline-none focus:border-sage"
             style={{ maxWidth: 200 }}
           />

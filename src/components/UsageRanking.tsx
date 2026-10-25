@@ -111,7 +111,7 @@ export default function UsageRanking() {
       // الدالّةُ غيرُ منشورةٍ بعدُ على القاعدة — رسالةٌ صريحةٌ لا شاشةٌ فارغة
       setErr(
         error.message.includes('admin_usage_ranking')
-          ? 'سجلّ الاستخدام غير منشور على القاعدة بعد — شغّلي ملف 2026-09-19-usage-ranking.sql.'
+          ? 'سجلّ الاستخدام غير منشور على القاعدة بعد — شغّل ملف 2026-09-19-usage-ranking.sql.'
           : error.message
       );
       setRows([]);
@@ -188,7 +188,7 @@ export default function UsageRanking() {
 
         {/* الترتيب */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-ink/55">رتّبي بـ</span>
+          <span className="text-sm font-bold text-ink/55">رتّب بـ</span>
           {SORTS.map((s) => (
             <button
               key={s.key}
@@ -218,7 +218,7 @@ export default function UsageRanking() {
               onChange={(e) => setHideIdle(e.target.checked)}
               className="h-4 w-4 accent-[#5C7F60]"
             />
-            أخفي من لم تدخل قَطّ
+            أخفِ من لم تدخل قَطّ
           </label>
           <button
             onClick={() => void load()}

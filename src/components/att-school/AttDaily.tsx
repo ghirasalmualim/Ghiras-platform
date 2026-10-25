@@ -132,13 +132,13 @@ export default function AttDaily({ sb, org, grades, classes, scopeClassIds, full
         </div>
         <div className="flex-1" />
         <button className="rounded-xl bg-sage-mist px-3 py-2 text-sm font-bold text-sage-deep" onClick={() => setAskName(true)}>
-          ✍️ تسجّل الآن: {byName || fullName || 'اختاري اسمك'}
+          ✍️ تسجّل الآن: {byName || fullName || 'اختر اسمك'}
         </button>
       </div>
 
       {!org.active && (
         <div className="mt-3 rounded-2xl bg-gold-light border border-gold/40 px-4 py-3 font-bold text-ink">
-          ⏳ التسجيل اليومي يبدأ بعد تفعيل الإدارة — يمكنكِ الاطّلاع على الفصول الآن.
+          ⏳ التسجيل اليومي يبدأ بعد تفعيل الإدارة — يمكنك الاطّلاع على الفصول الآن.
         </div>
       )}
 
@@ -181,7 +181,7 @@ function NamePrompt({ initial, onSave, onClose }: { initial: string; onSave: (n:
       <div className={`${CARD} p-6 w-full max-w-sm`} onClick={(e) => e.stopPropagation()}>
         <div className="text-3xl text-center">✍️</div>
         <h3 className="text-center font-extrabold text-lg mt-1">مَن تسجّل الآن؟</h3>
-        <p className="text-center text-sm text-ink/60 mt-1">يظهر اسمكِ في «بواسطة» وسجل التعديلات. يُحفظ على هذا الجهاز.</p>
+        <p className="text-center text-sm text-ink/60 mt-1">يظهر اسمك في «بواسطة» وسجل التعديلات. يُحفظ على هذا الجهاز.</p>
         <input autoFocus className="mt-4 w-full rounded-xl border border-sage/25 px-3 py-3 text-lg text-center" value={v} onChange={(e) => setV(e.target.value)} placeholder="مثال: أ. سارة" />
         <button className={`${BTN} bg-sage text-white w-full mt-3 py-3 text-base`} disabled={!v.trim()} onClick={() => onSave(v)}>تأكيد</button>
       </div>
@@ -454,7 +454,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
           statusRef.current = { ...statusRef.current, [s.id]: prev };
           setStatus((m) => ({ ...m, [s.id]: prev }));
         }
-        say(error.message.includes('inactive') ? '⏳ الإدارة غير مفعّلة' : error.message.includes('forbidden') ? 'غير مصرّح لكِ بهذا الفصل' : 'تعذّر الحفظ — حاولي مرة أخرى');
+        say(error.message.includes('inactive') ? '⏳ الإدارة غير مفعّلة' : error.message.includes('forbidden') ? 'غير مصرّح لك بهذا الفصل' : 'تعذّر الحفظ — حاول مرة أخرى');
       }
     }
   };
@@ -464,7 +464,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
     setBusy(true);
     const { error } = await sb.rpc('att_mark_all', { p_class: klass.id, p_date: date, p_status: s, p_by_name: byName });
     setBusy(false);
-    if (error) return say('تعذّر الحفظ — تحقّقي من الاتصال');
+    if (error) return say('تعذّر الحفظ — تحقّق من الاتصال');
     say(s === 'present' ? `✅ الكل ${girls(org) ? 'حاضرات' : 'حاضرون'}` : '🔴 الكل غياب');
     load();
   };
@@ -473,7 +473,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
     setBusy(true);
     const { error } = await sb.rpc('att_reset_day', { p_class: klass.id, p_date: date, p_by_name: byName });
     setBusy(false);
-    if (error) return say('تعذّر — تحقّقي من الاتصال');
+    if (error) return say('تعذّر — تحقّق من الاتصال');
     say('↺ تمت إعادة التعيين');
     load();
   };
@@ -484,7 +484,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
     setBusy(true);
     const { error } = await sb.rpc('att_approve', { p_class: klass.id, p_date: date, p_by_name: byName });
     setBusy(false);
-    if (error) return say('تعذّر الاعتماد — تحقّقي من الاتصال');
+    if (error) return say('تعذّر الاعتماد — تحقّق من الاتصال');
     say(`✅ اعتُمد حضور ${klass.name}`);
     onApproved();
   };
@@ -529,7 +529,7 @@ function ClassRecorder({ sb, org, date, klass, byName, word, say, onBack, onAppr
       </div>
       <div className="flex flex-wrap gap-3 text-xs font-bold text-ink/60 mt-3">
         {ORDER.map((k) => <span key={k}><span className="inline-block w-2.5 h-2.5 rounded-full ml-1" style={{ background: META[k].color }} />{word(k)}</span>)}
-        <span>— اضغطي على البطاقة للتبديل</span>
+        <span>— اضغط على البطاقة للتبديل</span>
       </div>
 
       <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mt-3">

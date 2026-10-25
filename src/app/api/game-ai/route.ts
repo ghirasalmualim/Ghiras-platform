@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   // صفحةٌ قديمةٌ مفتوحةٌ من قبلِ التحديث ما زالتْ ترسلُ التعليماتِ بنفسِها
   if (body?.messages !== undefined && body?.game === undefined) {
     return NextResponse.json(
-      { error: { message: 'تحدّثتِ الأداة — حدّثي الصفحة (Refresh) ثم أعيدي المحاولة.' } },
+      { error: { message: 'تحدّثت الأداة — حدّث الصفحة (Refresh) ثم أعد المحاولة.' } },
       { status: 400 }
     );
   }
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
   }
   const grade = String(body?.grade ?? '');
   if (!(GRADES as readonly string[]).includes(grade)) {
-    return NextResponse.json({ error: { message: 'اختاري الصف' } }, { status: 400 });
+    return NextResponse.json({ error: { message: 'اختر الصف' } }, { status: 400 });
   }
   const gender = body?.gender === 'بنين' ? 'بنين' : 'بنات';
   // سطرٌ واحدٌ قصير: العنوانُ يدخلُ التعليماتِ بين علامتي تنصيص
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
   const text = String(body?.text ?? '').trim();
   if (text.length > MAX_TEXT) {
     return NextResponse.json(
-      { error: { message: `نص الدرس طويل جدًا — الحد ${MAX_TEXT.toLocaleString('ar')} حرف. قسّميه على أكثر من لعبة.` } },
+      { error: { message: `نص الدرس طويل جدًا — الحد ${MAX_TEXT.toLocaleString('ar')} حرف. قسّمه على أكثر من لعبة.` } },
       { status: 413 }
     );
   }
@@ -151,14 +151,14 @@ export async function POST(req: NextRequest) {
     const data = String((im as { data?: unknown })?.data ?? '');
     if (!IMAGE_TYPES.has(type) || !data || data.length > MAX_IMAGE_B64 || !/^[A-Za-z0-9+/=]+$/.test(data)) {
       return NextResponse.json(
-        { error: { message: 'إحدى الصور غير صالحة أو كبيرة جدًا — جرّبي صورة أوضح بحجم أصغر.' } },
+        { error: { message: 'إحدى الصور غير صالحة أو كبيرة جدًا — جرّب صورة أوضح بحجم أصغر.' } },
         { status: 413 }
       );
     }
     images.push({ type, data });
   }
   if (images.length === 0 && !text) {
-    return NextResponse.json({ error: { message: 'ارفعي صور الدرس أو الصقي النص أولًا' } }, { status: 400 });
+    return NextResponse.json({ error: { message: 'ارفع صور الدرس أو الصق النص أولًا' } }, { status: 400 });
   }
 
   // الحجزُ اليوميُّ بعدَ الفحص: الطلبُ المرفوضُ لا يأكلُ من حدِّ اليوم
@@ -171,13 +171,13 @@ export async function POST(req: NextRequest) {
     });
     if (reserveErr || !reserve) {
       return NextResponse.json(
-        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل.' } },
+        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاول بعد قليل.' } },
         { status: 503 }
       );
     }
     if (!(reserve as { allowed?: boolean }).allowed) {
       return NextResponse.json(
-        { error: { message: 'وصلتِ الحدّ اليومي لتوليد الألعاب. جرّبي غدًا أو تواصلي مع إدارة غراس.' } },
+        { error: { message: 'وصلت الحدّ اليومي لتوليد الألعاب. جرّب غدًا أو تواصل مع إدارة غراس.' } },
         { status: 429 }
       );
     }

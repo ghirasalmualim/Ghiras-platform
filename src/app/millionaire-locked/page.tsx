@@ -39,7 +39,7 @@ export default function MillionaireLockedPage() {
           <div className="text-lg font-extrabold text-gold-dark">٣ ألعاب</div>
           <div className="text-3xl font-black text-gold-dark mt-1">٢ د.ك</div>
           <div className="mt-2 text-[12px] font-bold leading-relaxed text-ink/55">
-            رصيدٌ دائم لا ينتهي · تختارين أيَّ ٣ ألعاب من:
+            رصيدٌ دائم لا ينتهي · تختار أيَّ ٣ ألعاب من:
             <br />
             من سيربح المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات
           </div>
@@ -47,7 +47,7 @@ export default function MillionaireLockedPage() {
 
         <SubscribeButton
           productId="games_3"
-          label="فعّلي باقة الألعاب"
+          label="فعّل باقة الألعاب"
           hint="دفعٌ إلكترونيٌّ مباشر · يُضاف الرصيد فور تأكيد الدفع"
         />
 

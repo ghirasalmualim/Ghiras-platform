@@ -140,10 +140,10 @@ export default function MyFileApp({ firstName }: { firstName: string }) {
         } else if (json.error === 'too_large') {
           showToast('الملف كبير — أقصى ٨ ميجا');
         } else {
-          showToast('تعذّر الرفع، حاولي مرة ثانية');
+          showToast('تعذّر الرفع، حاول مرة ثانية');
         }
       } catch {
-        showToast('تعذّر الرفع، حاولي مرة ثانية');
+        showToast('تعذّر الرفع، حاول مرة ثانية');
       }
     }
     setBusy(false);
@@ -188,7 +188,7 @@ export default function MyFileApp({ firstName }: { firstName: string }) {
       <div className="mx-auto max-w-2xl p-4 space-y-4">
         {err ? (
           <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/70">
-            تعذّر تحميل صفحتك. جرّبي إعادة التحميل.
+            تعذّر تحميل صفحتك. جرّب إعادة التحميل.
           </div>
         ) : shares === null ? (
           <div className="text-center text-ink/50 py-16">…جارٍ التحميل</div>
@@ -265,7 +265,7 @@ export default function MyFileApp({ firstName }: { firstName: string }) {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-[12px] text-ink/35 py-2">— ما رفعتِ شيء بعد —</div>
+                          <div className="text-[12px] text-ink/35 py-2">— ما رفعت شيء بعد —</div>
                         )}
                       </div>
                     );

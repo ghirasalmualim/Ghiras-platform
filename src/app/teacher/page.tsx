@@ -13,7 +13,7 @@ export const metadata = {
  * لتصبح صفحة خاصة أنظف وأوضح. الكلاسات (home/panel/tile) عامة في globals.css.
  *
  * «سجلات رئيس الشعبة» تطبيق مكتفٍ بذاته يُفتح عبر الحارس (مسار API) لا صفحة next.
- * اجعليها null لإرجاع الخانة إلى وضع «قريبًا».
+ * اجعلها null لإرجاع الخانة إلى وضع «قريبًا».
  */
 const HEAD_RECORDS_HREF: string | null = '/api/head-records';
 
@@ -93,7 +93,7 @@ export default function TeacherPage() {
                       مكتبة حصص غراس
                       <span className="tag paid">من ٢ د.ك</span>
                     </b>
-                    <small>دروس جاهزة من المنهج بالصور والحركة والألعاب، تعرضينها في صفّك مباشرة</small>
+                    <small>دروس جاهزة من المنهج بالصور والحركة والألعاب، تعرضها في صفّك مباشرة</small>
                   </span>
                 </a>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -119,7 +119,7 @@ export default function TeacherPage() {
                       ورش غراس
                       <span className="tag paid">٥ د.ك للورشة / شهر</span>
                     </b>
-                    <small>عروض ورش عمل جاهزة تقدّمينها لزميلاتك داخل غراس</small>
+                    <small>عروض ورش عمل جاهزة تقدّمها لزميلاتك داخل غراس</small>
                   </span>
                 </a>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

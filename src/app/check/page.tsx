@@ -99,8 +99,8 @@ function copyAll(){
   var t=el('out'); t.style.display='block';
   t.value='تقرير فحص غراس\\n'+LINES.join('\\n')+'\\nUA: '+ua;
   t.select();
-  try{ document.execCommand('copy'); el('msg').innerHTML='تم نسخ التقرير — أرسليه لإدارة غراس'; }
-  catch(e){ el('msg').innerHTML='انسخي النص في المربّع وأرسليه لإدارة غراس'; }
+  try{ document.execCommand('copy'); el('msg').innerHTML='تم نسخ التقرير — أرسله لإدارة غراس'; }
+  catch(e){ el('msg').innerHTML='انسخ النص في المربّع وأرسله لإدارة غراس'; }
 }
 if(window.addEventListener) window.addEventListener('load',start); else window.attachEvent('onload',start);
 `;
@@ -109,9 +109,9 @@ export default function CheckPage() {
   const body = `
 <div class="wrap">
   <h1>🩺 فحص الجهاز — غراس المعلم</h1>
-  <p class="sub">إذا كانت المنصّة لا تفتح عندك، افتحي هذه الصفحة واضغطي «انسخي التقرير» وأرسليه لإدارة غراس.</p>
+  <p class="sub">إذا كانت المنصّة لا تفتح عندك، افتح هذه الصفحة واضغط «انسخ التقرير» وأرسله لإدارة غراس.</p>
   <div class="card" id="list"></div>
-  <button onclick="copyAll()">📋 انسخي التقرير</button>
+  <button onclick="copyAll()">📋 انسخ التقرير</button>
   <p id="msg" class="sub" style="margin-top:10px"></p>
   <textarea id="out" style="display:none"></textarea>
 </div>`;

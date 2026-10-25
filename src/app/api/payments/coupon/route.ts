@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!check.ok) {
     const error =
       check.reason === 'early'
-        ? `هذا الكود يبدأ ${startLabel(check.coupon)} — جرّبيه في حينه.`
+        ? `هذا الكود يبدأ ${startLabel(check.coupon)} — جرّبه في حينه.`
         : check.reason === 'expired'
           ? 'انتهت مدّة هذا الكود.'
           : 'الكود غير صحيح أو انتهت مدّته.';

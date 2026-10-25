@@ -932,7 +932,7 @@ function TodayView({
         <textarea
           defaultValue={note}
           onBlur={(e) => onSetNote(today, e.target.value)}
-          placeholder="سطر سريع تحبّين تتذكّرينه اليوم…"
+          placeholder="سطر سريع تحب تتذكّره اليوم…"
           rows={2}
           className="w-full resize-none rounded-soft border border-sage/20 bg-cream/60 p-3 text-sm text-ink placeholder:text-sage/50 focus:outline-none focus:border-sage"
         />
@@ -1042,7 +1042,7 @@ function TaskRow({
 
 function EmptyTasks({ onAdd, filter }: { onAdd: () => void; filter: string }) {
   const msg =
-    filter === 'done' ? 'ما فيه مهام مكتملة بعد.' : filter === 'up' ? 'ما فيه مهام قادمة.' : 'يومك صافٍ — أضيفي أول مهمة.';
+    filter === 'done' ? 'ما فيه مهام مكتملة بعد.' : filter === 'up' ? 'ما فيه مهام قادمة.' : 'يومك صافٍ — أضف أول مهمة.';
   return (
     <div className="card-3d p-6 text-center">
       <div className="text-3xl mb-2">🌿</div>
@@ -1239,7 +1239,7 @@ function WeekView({
                 defaultValue={priorities[i] || ''}
                 key={start + i}
                 onBlur={(e) => savePr(i, e.target.value)}
-                placeholder="اكتبي أولوية…"
+                placeholder="اكتب أولوية…"
                 className="flex-1 rounded-soft border border-sage/20 bg-cream/60 px-3 py-2 text-sm text-ink placeholder:text-sage/45 focus:outline-none focus:border-sage"
               />
             </div>
@@ -1382,7 +1382,7 @@ function MonthView({ data, onOpenDay }: { data: AgendaData; onOpenDay: (d: strin
           )}
         </div>
       </div>
-      <p className="text-center text-[12px] text-sage/70 font-bold">اضغطي أي يوم لعرض تفاصيله أو إضافة موعد وحدث 🌿</p>
+      <p className="text-center text-[12px] text-sage/70 font-bold">اضغط أي يوم لعرض تفاصيله أو إضافة موعد وحدث 🌿</p>
     </div>
   );
 }
@@ -1608,7 +1608,7 @@ function AchView({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 ابحثي في إنجازاتك…"
+            placeholder="🔍 ابحث في إنجازاتك…"
             className="w-full rounded-card border border-sage/20 bg-white/80 px-4 py-3 text-sm text-ink placeholder:text-sage/50 focus:outline-none focus:border-sage"
           />
           <div className="flex gap-1.5 flex-wrap">
@@ -1635,8 +1635,8 @@ function AchView({
       {data.achievements.length === 0 ? (
         <div className="card-3d p-8 text-center mt-4">
           <div className="text-4xl mb-3">🌿</div>
-          <h2 className="text-lg font-extrabold text-sage-deep">ابدئي بتوثيق أول إنجاز لك</h2>
-          <p className="text-sage font-bold mt-1.5 leading-relaxed">احتفظي بلحظات نجاحك وجهودك في مكان واحد.</p>
+          <h2 className="text-lg font-extrabold text-sage-deep">ابدأ بتوثيق أول إنجاز لك</h2>
+          <p className="text-sage font-bold mt-1.5 leading-relaxed">احتفظ بلحظات نجاحك وجهودك في مكان واحد.</p>
           <button onClick={onAdd} className="mt-5 rounded-card bg-sage-deep text-white font-extrabold px-7 py-3 shadow-soft">
             ＋ أضف إنجازًا
           </button>
@@ -1790,14 +1790,14 @@ function AchForm({
     const wasAdded = addedRef.current.some((x) => x.id === img.id);
     if (wasAdded) {
       addedRef.current = addedRef.current.filter((x) => x.id !== img.id);
-      removeImage(img); // جديدة → احذفيها فورًا من التخزين
+      removeImage(img); // جديدة → احذفها فورًا من التخزين
     } else {
       removedRef.current.push(img); // موجودة → تُحذف عند الحفظ
     }
   };
 
   const close = async () => {
-    // إلغاء: احذفي ما رُفع هذه الجلسة ولم يُحفظ
+    // إلغاء: احذف ما رُفع هذه الجلسة ولم يُحفظ
     for (const img of addedRef.current) await removeImage(img);
     onClose();
   };
@@ -1957,7 +1957,7 @@ function HarvestView({
                 </div>
               </div>
             )}
-            <div className="text-[12px] font-bold text-sage-deep mb-1.5">اختاري الأبرز:</div>
+            <div className="text-[12px] font-bold text-sage-deep mb-1.5">اختر الأبرز:</div>
             <div className="flex gap-2 flex-wrap">
               {achs.map((a) => (
                 <button
@@ -1982,7 +1982,7 @@ function HarvestView({
             key={mk + '-p'}
             onBlur={(e) => onSetHarvest(mk, { proud: e.target.value })}
             rows={2}
-            placeholder="اكتبي هنا…"
+            placeholder="اكتب هنا…"
             className="w-full resize-none rounded-soft border border-sage/20 bg-cream/60 p-3 text-sm text-ink placeholder:text-sage/45 focus:outline-none focus:border-sage"
           />
         </div>
@@ -1993,7 +1993,7 @@ function HarvestView({
             key={mk + '-i'}
             onBlur={(e) => onSetHarvest(mk, { improve: e.target.value })}
             rows={2}
-            placeholder="اكتبي هنا…"
+            placeholder="اكتب هنا…"
             className="w-full resize-none rounded-soft border border-sage/20 bg-cream/60 p-3 text-sm text-ink placeholder:text-sage/45 focus:outline-none focus:border-sage"
           />
         </div>
@@ -2349,14 +2349,14 @@ function SearchSheet({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 ابحثي في مهامك ومواعيدك وإنجازاتك…"
+            placeholder="🔍 ابحث في مهامك ومواعيدك وإنجازاتك…"
             className="flex-1 rounded-card border border-sage/25 bg-white px-4 py-3 text-ink placeholder:text-sage/50 focus:outline-none focus:border-sage"
           />
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-white border border-sage/25 text-sage-deep font-bold">✕</button>
         </div>
 
         {!s ? (
-          <p className="text-sage/60 font-bold text-center py-6">اكتبي كلمة للبحث — مثال: «مسابقة القرآن»</p>
+          <p className="text-sage/60 font-bold text-center py-6">اكتب كلمة للبحث — مثال: «مسابقة القرآن»</p>
         ) : total === 0 ? (
           <p className="text-sage-deep font-bold text-center py-6">لا نتائج لـ «{s}».</p>
         ) : (

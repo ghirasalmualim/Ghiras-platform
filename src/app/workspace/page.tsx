@@ -149,7 +149,7 @@ export default async function WorkspacePage({
 
       <header className="max-w-5xl mx-auto mb-7">
         <h1 className="text-2xl md:text-3xl font-extrabold text-sage-dark">مرحبًا، {name} 🌿</h1>
-        <p className="text-gray-500 mt-1 text-sm md:text-base">اختصاراتك التي اخترتِها في مكانٍ واحد.</p>
+        <p className="text-gray-500 mt-1 text-sm md:text-base">اختصاراتك التي اخترتها في مكانٍ واحد.</p>
       </header>
 
       {cards.length === 0 ? (
@@ -158,7 +158,7 @@ export default async function WorkspacePage({
             <span className="text-4xl">🌱</span>
             <p className="text-gray-600 mt-3 font-bold">مساحتك فارغة حتى الآن.</p>
             <p className="text-gray-500 mt-1 text-sm">
-              أضيفي أدواتك وموادّك من صفحاتها بزرّ «أضف إلى مساحتي» لتظهر هنا.
+              أضف أدواتك وموادّك من صفحاتها بزرّ «أضف إلى مساحتي» لتظهر هنا.
             </p>
             <Link href="/" className="inline-block mt-4 text-sage-dark font-bold hover:text-sage-deep">تصفّح غراس ←</Link>
           </div>

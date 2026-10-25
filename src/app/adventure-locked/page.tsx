@@ -26,10 +26,10 @@ export default function AdventureLockedPage() {
           مغامرة المجموعات التفاعلية — خاص بالمشتركات
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
-          حوّلي حصصك إلى مغامرة ممتدة: كل مجموعة تتقدّم في رحلتها مع كل مشاركة
+          حوّل حصصك إلى مغامرة ممتدة: كل مجموعة تتقدّم في رحلتها مع كل مشاركة
           وتعاون وإنجاز، وكل تقدّم يُحفظ سحابيًا ويُستأنف في الحصة القادمة.
           <br />
-          فعّلي اشتراكك للبدء.
+          فعّل اشتراكك للبدء.
         </p>
 
         <div className="mt-6 rounded-2xl border border-sage/25 bg-sage-light/40 p-4 text-right">

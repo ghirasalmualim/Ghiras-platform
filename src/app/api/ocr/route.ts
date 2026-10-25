@@ -48,13 +48,13 @@ export async function POST(req: NextRequest) {
     });
     if (reserveErr || !reserve) {
       return NextResponse.json(
-        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاولي بعد قليل.' } },
+        { error: { message: 'تعذّر التحقق من حدّ الاستخدام اليومي — حاول بعد قليل.' } },
         { status: 503 }
       );
     }
     if (!(reserve as { allowed?: boolean }).allowed) {
       return NextResponse.json(
-        { error: { message: 'وصلتِ الحدّ اليومي لقراءة الكشوف. جرّبي غدًا أو تواصلي مع إدارة غراس.' } },
+        { error: { message: 'وصلت الحدّ اليومي لقراءة الكشوف. جرّب غدًا أو تواصل مع إدارة غراس.' } },
         { status: 429 }
       );
     }

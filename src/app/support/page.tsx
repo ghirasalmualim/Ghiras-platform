@@ -138,7 +138,7 @@ export default function SupportPage() {
 
   const closeConvo = async () => {
     if (!open) return;
-    if (!confirm('إغلاق المحادثة؟ تقدرين تفتحين محادثة جديدة متى شئت.')) return;
+    if (!confirm('إغلاق المحادثة؟ تقدر تفتح محادثة جديدة متى شئت.')) return;
     await fetch('/api/support/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,7 +155,7 @@ export default function SupportPage() {
     return (
       <main className="min-h-dvh flex flex-col items-center justify-center px-5 text-center">
         <Logo size={72} />
-        <p className="mt-4 font-bold text-ink/70">سجّلي دخولك أولًا لفتح الدعم</p>
+        <p className="mt-4 font-bold text-ink/70">سجّل دخولك أولًا لفتح الدعم</p>
         <Link href="/login?next=/support" className="mt-4 rounded-xl bg-sage text-white font-extrabold px-6 py-3">تسجيل الدخول</Link>
         <div className="mt-6 flex items-center gap-2 text-sm">
           <span className="font-extrabold text-sage-deep">📞 للتواصل المباشر:</span>
@@ -198,7 +198,7 @@ export default function SupportPage() {
           <div className="mt-5 space-y-3">
             {convos === null && <p className="text-center text-ink/50 font-bold">جارِ التحميل…</p>}
             {convos?.length === 0 && (
-              <p className="text-center text-ink/50 font-bold mt-8">ما عندك محادثات بعد — اكتبي سؤالك ونساعدك 🌿</p>
+              <p className="text-center text-ink/50 font-bold mt-8">ما عندك محادثات بعد — اكتب سؤالك ونساعدك 🌿</p>
             )}
             {convos?.map((c) => (
               <button
@@ -234,7 +234,7 @@ export default function SupportPage() {
           <div className="mt-3 flex-1 rounded-2xl border border-sage/25 bg-white p-4 overflow-y-auto min-h-[45dvh] max-h-[62dvh] space-y-3">
             {msgs.length === 0 && open.id === '' && (
               <p className="text-ink/50 font-bold text-sm leading-relaxed">
-                اكتبي سؤالك أو مشكلتك وبنساعدك فورًا — وإذا احتاج الموضوع الإدارة نحوّله لهم مباشرة 🌿
+                اكتب سؤالك أو مشكلتك وبنساعدك فورًا — وإذا احتاج الموضوع الإدارة نحوّله لهم مباشرة 🌿
               </p>
             )}
             {msgs.map((m) => (
@@ -260,7 +260,7 @@ export default function SupportPage() {
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
                 maxLength={2000}
-                placeholder="اكتبي رسالتك…"
+                placeholder="اكتب رسالتك…"
                 className="flex-1 rounded-xl border border-sage/30 px-4 py-3 font-semibold focus:outline-none focus:border-sage"
               />
               <button onClick={() => void send()} disabled={busy || !text.trim()}
@@ -269,7 +269,7 @@ export default function SupportPage() {
               </button>
             </div>
           ) : (
-            <p className="mt-3 text-center text-ink/50 font-bold text-sm">محادثة مغلقة — افتحي محادثة جديدة إذا احتجتِ</p>
+            <p className="mt-3 text-center text-ink/50 font-bold text-sm">محادثة مغلقة — افتح محادثة جديدة إذا احتجت</p>
           )}
         </section>
       )}

@@ -24,7 +24,7 @@ export default function WorkshopsLockedPage() {
           ورش غراس — صارت في صفحتها الجديدة
         </h1>
         <p className="mt-3 text-ink/60 leading-relaxed">
-          عروض ورش عمل جاهزة تقدّمينها لزميلاتك داخل غراس.
+          عروض ورش عمل جاهزة تقدّمها لزميلاتك داخل غراس.
           <br />
           كل ورشة ٥ د.ك وتنفتح لك شهرًا كاملًا.
         </p>
@@ -34,7 +34,7 @@ export default function WorkshopsLockedPage() {
             href="https://studio.ghiras-edu.com/workshops"
             className="inline-block rounded-xl bg-sage hover:bg-sage-dark text-white font-extrabold px-8 py-3 shadow-soft transition-all"
           >
-            🎓 تصفّحي الورش
+            🎓 تصفّح الورش
           </a>
           <Link
             href="/support"

@@ -29,12 +29,12 @@ export default function AttendanceLockedPage() {
           سجّل الحضور والغياب بضغطة، وتقارير ونسب لكل طالبة، وبياناتك محفوظة
           سحابيًا لا تضيع أبدًا.
           <br />
-          فعّلي اشتراكك للبدء.
+          فعّل اشتراكك للبدء.
         </p>
 
         <div className="mt-6 rounded-2xl border border-sage/25 bg-sage-light/40 p-4">
-          <div className="text-lg font-extrabold text-sage-deep">اختاري باقتك — ٤ أشهر</div>
-          <div className="text-sm text-ink/55 mt-1">كل صف (سجل) معه ١٠ صور لرفع الكشوف، وتقدرين تضيفين صفًّا بـ٤ د.ك متى احتجتِ</div>
+          <div className="text-lg font-extrabold text-sage-deep">اختر باقتك — ٤ أشهر</div>
+          <div className="text-sm text-ink/55 mt-1">كل صف (سجل) معه ١٠ صور لرفع الكشوف، وتقدر تضيف صفًّا بـ٤ د.ك متى احتجت</div>
         </div>
 
         <SubscribeButton productId="attendance" label="٤ صفوف" hint="اشتراك ٤ أشهر · ٤ صفوف · تجديد بأي وقت" />

@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
   // حاجز الفاتورة اليومي (الأدمِن يتخطّى)
   if (!isAdmin) {
     const { data: reserve, error: rErr } = await supabase.rpc('ai_reserve_daily', { p_kind: 'ocr', p_limit: OCR_DAILY });
-    if (rErr || !reserve) return NextResponse.json({ error: { message: 'تعذّر التحقق من حدّ الاستخدام — حاولي بعد قليل.' } }, { status: 503 });
-    if (!(reserve as { allowed?: boolean }).allowed) return NextResponse.json({ error: { message: 'وصلتِ الحدّ اليومي. جرّبي غدًا.' } }, { status: 429 });
+    if (rErr || !reserve) return NextResponse.json({ error: { message: 'تعذّر التحقق من حدّ الاستخدام — حاول بعد قليل.' } }, { status: 503 });
+    if (!(reserve as { allowed?: boolean }).allowed) return NextResponse.json({ error: { message: 'وصلت الحدّ اليومي. جرّب غدًا.' } }, { status: 429 });
   }
 
   const key = process.env.ANTHROPIC_API_KEY;

@@ -19,9 +19,9 @@ const monthsOf = (id: string) => {
   if (p.kind === 'tool' && p.extra) return 'صفٌّ إضافيٌّ مع اشتراكك · ومعه ١٠ صور للمسح';
   if (p.kind === 'tool' && p.slots) return `${p.months.toLocaleString('ar')} أشهر · ${p.slots === 2 ? 'صفّان' : `${p.slots.toLocaleString('ar')} صفوف`}`;
   if (p.kind === 'tool' || p.kind === 'games' || p.kind === 'bundle') return `${p.months.toLocaleString('ar')} أشهر`;
-  if (p.kind === 'library') return `كل حصص المادة في الاستوديو · تنسخينها خلال ${p.months.toLocaleString('ar')} أشهر وتبقى لكِ للأبد`;
-  if (p.kind === 'workshop') return 'شهر واحد · عرضٌ تقديميٌّ تقدّمينه داخل غراس';
-  if (p.kind === 'lesson') return 'هذا العرضُ وحدَه من مكتبة الاستوديو · يبقى لكِ للأبد';
+  if (p.kind === 'library') return `كل حصص المادة في الاستوديو · تنسخها خلال ${p.months.toLocaleString('ar')} أشهر وتبقى لك للأبد`;
+  if (p.kind === 'workshop') return 'شهر واحد · عرضٌ تقديميٌّ تقدّمه داخل غراس';
+  if (p.kind === 'lesson') return 'هذا العرضُ وحدَه من مكتبة الاستوديو · يبقى لك للأبد';
   if (p.kind === 'att_org') return `${p.months.toLocaleString('ar')} أشهر · ${fmtKwd(p.priceKwd)} لكل فصل`;
   if (p.kind === 'studio') return `رصيد ${p.credits.toLocaleString('ar')} ${p.credits === 1 ? 'حصة' : 'حصص'}`;
   if (p.kind === 'game_credits') return `رصيد ${p.credits.toLocaleString('ar')} ألعاب — لا ينتهي`;
@@ -77,7 +77,7 @@ export default function CartApp() {
       if (json?.ok) setDeal({ code: json.code, percent: json.percent });
       else { setDeal(null); setCodeErr(json?.error || 'الكود غير صحيح.'); }
     } catch {
-      setCodeErr('تعذّر التحقّق. تحقّقي من الإنترنت.');
+      setCodeErr('تعذّر التحقّق. تحقّق من الإنترنت.');
     }
     setChecking(false);
   };
@@ -94,13 +94,13 @@ export default function CartApp() {
       if (res.status === 401) { window.location.href = '/login?next=/cart'; return; }
       const json = await res.json();
       if (!res.ok || !json?.url) {
-        setErr(json?.error || 'تعذّر بدء الدفع، حاولي مرة ثانية.');
+        setErr(json?.error || 'تعذّر بدء الدفع، حاول مرة ثانية.');
         setBusy(false);
         return;
       }
       window.location.href = json.url;
     } catch {
-      setErr('تعذّر الاتصال. تحقّقي من الإنترنت.');
+      setErr('تعذّر الاتصال. تحقّق من الإنترنت.');
       setBusy(false);
     }
   };
@@ -116,7 +116,7 @@ export default function CartApp() {
         <div>
           {!ready ? null : items.length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-ink/15 bg-white p-10 text-center text-ink/55">
-              السلة فاضية — أضيفي من صفحات الأدوات والألعاب والمواد، أو من الاقتراحات تحت.
+              السلة فاضية — أضف من صفحات الأدوات والألعاب والمواد، أو من الاقتراحات تحت.
             </div>
           ) : (
             items.map((i) => {
@@ -130,7 +130,7 @@ export default function CartApp() {
                     {p.kind === 'att_org' ? (
                       <div className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-ink/70">
                         <span>عدد الفصول:</span>
-                        <button onClick={() => setQty(itemKey(i), Math.max(p.minQty, (i.qty ?? p.minQty) - 1))} className="h-7 w-7 rounded-lg border-2 border-ink/15" aria-label="أنقصي فصلًا">−</button>
+                        <button onClick={() => setQty(itemKey(i), Math.max(p.minQty, (i.qty ?? p.minQty) - 1))} className="h-7 w-7 rounded-lg border-2 border-ink/15" aria-label="أنقص فصلًا">−</button>
                         <input type="number" min={p.minQty} value={i.qty ?? p.minQty}
                           onChange={(e) => setQty(itemKey(i), Math.max(p.minQty, Math.floor(Number(e.target.value) || p.minQty)))}
                           className="w-16 rounded-lg border-2 border-ink/15 px-2 py-0.5 text-center" />
@@ -140,13 +140,13 @@ export default function CartApp() {
                     ) : null}
                   </div>
                   <div className="whitespace-nowrap text-lg font-black text-ink">{fmtKwd(linePrice(p, i.qty))}</div>
-                  <button onClick={() => removeFromCart(itemKey(i))} className="px-2 text-xl text-red-500" aria-label={`احذفي ${p.label}`}>✕</button>
+                  <button onClick={() => removeFromCart(itemKey(i))} className="px-2 text-xl text-red-500" aria-label={`احذف ${p.label}`}>✕</button>
                 </div>
               );
             })
           )}
 
-          <h2 className="mt-8 text-lg font-black text-sage-deep">أضيفي أيضًا</h2>
+          <h2 className="mt-8 text-lg font-black text-sage-deep">أضف أيضًا</h2>
           <p className="text-[13px] text-ink/50">ألعاب المادة والصف تنضاف من صفحة المادة أو الصف نفسها.</p>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {SUGGEST.filter((id) => !inCart.has(id)).map((id) => {
@@ -158,7 +158,7 @@ export default function CartApp() {
                   <div className="text-[12px] text-ink/50">{monthsOf(id)}</div>
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <b className="text-ink">{fmtKwd(p.priceKwd)}</b>
-                    <button onClick={() => addToCart({ productId: id })} className="rounded-lg bg-gold-light px-3 py-1 text-[13px] font-extrabold text-gold-dark">+ أضيفي</button>
+                    <button onClick={() => addToCart({ productId: id })} className="rounded-lg bg-gold-light px-3 py-1 text-[13px] font-extrabold text-gold-dark">+ أضف</button>
                   </div>
                 </div>
               );
@@ -183,7 +183,7 @@ export default function CartApp() {
           <div className="mt-3 flex justify-between border-t-2 border-ink/10 pt-3 text-xl font-black"><span>الإجمالي</span><span>{fmtKwd(total)}</span></div>
           <button onClick={pay} disabled={busy || !items.length}
             className="mt-4 w-full rounded-xl bg-sage py-3 font-extrabold text-white shadow-soft transition hover:bg-sage-dark disabled:opacity-50">
-            {busy ? '…جارٍ التحويل للدفع' : '💳 ادفعي مرة وحدة'}
+            {busy ? '…جارٍ التحويل للدفع' : '💳 ادفع مرة وحدة'}
           </button>
           {err ? <div className="mt-2 text-[13px] text-red-500">{err}</div> : null}
           <p className="mt-2 text-[12px] leading-relaxed text-ink/45">الدفع من صفحة MyFatoorah الكويتية (كي نت والبطاقات)، وبعده يتفعّل كل شي بالسلة مرة وحدة.</p>

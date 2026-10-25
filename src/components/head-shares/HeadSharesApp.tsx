@@ -59,7 +59,7 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
   const submitAdd = async () => {
     setMsg('');
     if (!login.trim()) {
-      setMsg('اكتبي اسم المستخدم أو الإيميل');
+      setMsg('اكتب اسم المستخدم أو الإيميل');
       return;
     }
     setBusy(true);
@@ -79,14 +79,14 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
       } else if (json.result === 'not_found') {
         setMsg('ما لقينا حساب بهذا الاسم/الإيميل. لازم المعلمة تسجّل في غراس أول.');
       } else if (json.result === 'self') {
-        setMsg('هذا حسابك انتِ 🙂');
+        setMsg('هذا حسابك انت 🙂');
       } else if (json.error === 'forbidden') {
         setMsg('اشتراك «سجلات رئيس الشعبة» غير سارٍ.');
       } else {
-        setMsg('تعذّرت المشاركة، حاولي مرة ثانية.');
+        setMsg('تعذّرت المشاركة، حاول مرة ثانية.');
       }
     } catch {
-      setMsg('تعذّرت المشاركة، حاولي مرة ثانية.');
+      setMsg('تعذّرت المشاركة، حاول مرة ثانية.');
     }
     setBusy(false);
   };
@@ -110,7 +110,7 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
     const link = `${window.location.origin}/my-file`;
     try {
       await navigator.clipboard.writeText(link);
-      showToast('تم نسخ الرابط ✅ أرسليه للمعلمة');
+      showToast('تم نسخ الرابط ✅ أرسله للمعلمة');
     } catch {
       // متصفّحات قديمة / سياق غير آمن — طريقة بديلة
       const ta = document.createElement('textarea');
@@ -121,9 +121,9 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
       ta.select();
       try {
         document.execCommand('copy');
-        showToast('تم نسخ الرابط ✅ أرسليه للمعلمة');
+        showToast('تم نسخ الرابط ✅ أرسله للمعلمة');
       } catch {
-        window.prompt('انسخي هذا الرابط وأرسليه للمعلمة:', link);
+        window.prompt('انسخ هذا الرابط وأرسله للمعلمة:', link);
       }
       document.body.removeChild(ta);
     }
@@ -154,7 +154,7 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
         <div className="rounded-2xl bg-sage-light/40 border border-sage/15 p-3 flex items-center gap-3">
           <div className="flex-1">
             <div className="text-[12.5px] font-bold text-sage-deep">رابط صفحة المعلمة</div>
-            <div className="text-[11.5px] text-ink/55 leading-relaxed">أرسليه لأي معلمة شاركتِها — كل وحدة تدخل بحسابها وتشوف صفحتها فقط.</div>
+            <div className="text-[11.5px] text-ink/55 leading-relaxed">أرسله لأي معلمة شاركتها — كل وحدة تدخل بحسابها وتشوف صفحتها فقط.</div>
           </div>
           <button onClick={copyLink} className="shrink-0 rounded-xl bg-sage-deep text-white font-bold text-[12.5px] px-4 py-2.5 shadow-soft">
             📋 نسخ الرابط
@@ -214,14 +214,14 @@ export default function HeadSharesApp({ firstName }: { firstName: string }) {
 
         {/* القائمة */}
         {err ? (
-          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/70">تعذّر التحميل. جرّبي إعادة التحميل.</div>
+          <div className="card-3d bg-white rounded-2xl p-6 text-center text-ink/70">تعذّر التحميل. جرّب إعادة التحميل.</div>
         ) : shares === null ? (
           <div className="text-center text-ink/50 py-12">…جارٍ التحميل</div>
         ) : shares.length === 0 ? (
           <div className="card-3d bg-white rounded-2xl p-8 text-center">
             <div className="text-4xl mb-3" aria-hidden="true">🤝</div>
-            <div className="font-extrabold text-sage-deep mb-1">ما شاركتِ أي معلمة بعد</div>
-            <div className="text-[13px] text-ink/60">اضغطي «مشاركة مع معلمة» وابدئي.</div>
+            <div className="font-extrabold text-sage-deep mb-1">ما شاركت أي معلمة بعد</div>
+            <div className="text-[13px] text-ink/60">اضغط «مشاركة مع معلمة» وابدأ.</div>
           </div>
         ) : (
           shares.map((sh) => (

@@ -43,7 +43,7 @@ export default function HomeSections() {
               مكتبة حصص غراس
               <span className="tag gold">من ٢ د.ك</span>
             </h2>
-            <p>دروس جاهزة من المنهج بالصور والحركة والألعاب — اعرضيها في صفّك مباشرة</p>
+            <p>دروس جاهزة من المنهج بالصور والحركة والألعاب — اعرضها في صفّك مباشرة</p>
             <div className="chips">
               <a className="chip" href={`${LIBRARY}?stage=primary`}>ابتدائي</a>
               <a className="chip" href={`${LIBRARY}?stage=middle`}>متوسط</a>

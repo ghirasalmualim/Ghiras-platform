@@ -667,7 +667,7 @@ export default function AdminPanel() {
               كلمة مرور مؤقتة لحساب «{tempPw.name}»
             </h2>
             <p className="mt-1.5 text-sm text-ink/55">
-              أرسليها للمعلمة، واطلب منها تغييرها بعد الدخول.
+              أرسلها للمعلمة، واطلب منها تغييرها بعد الدخول.
             </p>
 
             <div
@@ -678,7 +678,7 @@ export default function AdminPanel() {
             </div>
 
             <p className="mt-3 text-xs text-ink/50">
-              ⚠️ لن تظهر مرة أخرى — انسخيها الآن. وكلمة المرور القديمة لم تعد تعمل.
+              ⚠️ لن تظهر مرة أخرى — انسخها الآن. وكلمة المرور القديمة لم تعد تعمل.
             </p>
 
             <div className="mt-6 flex gap-2 justify-center">

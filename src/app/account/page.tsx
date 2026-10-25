@@ -334,7 +334,7 @@ export default async function AccountPage() {
               )}
             </Card>
 
-            {/* رصيدُ الألعابِ انتقلَ لبطاقتِه الخاصّةِ أدناه — هنا الإضافاتُ فقط */}
+            {/* رصيدُ الألعابِ انتقلَ لبطاقته الخاصّةِ أدناه — هنا الإضافاتُ فقط */}
             {extra > 0 && (
               <Card title="الاستخدام والإضافات">
                 <ul className="flex flex-col gap-3 text-sm">
@@ -354,7 +354,7 @@ export default async function AccountPage() {
             */}
             <Card title="ألعاب غراس التفاعلية">
               <p className="text-sm leading-relaxed text-ink/70">
-                باقةٌ واحدةٌ تفتح لك <b>٣ ألعاب</b> تختارينها من: من سيربح
+                باقةٌ واحدةٌ تفتح لك <b>٣ ألعاب</b> تختارها من: من سيربح
                 المليون · اكس او · سين جيم · السلم والثعبان · صيد البالونات.
                 الرصيد دائمٌ لا ينتهي، ويُخصم عند توليد أسئلة لعبةٍ بالذكاء (والتشغيل بعده مجاني)، أو عند تشغيل لعبةٍ مكتوبةٍ يدويًا. وإعادة التوليد خلال ١٠ دقائق مجانية.
               </p>
@@ -381,12 +381,12 @@ export default async function AccountPage() {
                     <li key={l.label} className="flex items-baseline justify-between gap-2">
                       <span className="font-bold text-ink">{l.label}</span>
                       <span className={l.active ? 'text-sage-dark' : 'text-ink/50'}>
-                        {l.active ? `تنسخين حتى ${fmtDate(l.until)}` : `انتهت فترة النسخ ${fmtDate(l.until)}`}
+                        {l.active ? `تنسخ حتى ${fmtDate(l.until)}` : `انتهت فترة النسخ ${fmtDate(l.until)}`}
                       </span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-[12.5px] text-ink/50">كل حصة نسختِها تبقى لكِ للأبد. ولتمديد فترة النسخ: من مكتبة الحصص في الاستوديو ← المادة ← «مدّدي فترة النسخ».</p>
+                <p className="mt-3 text-[12.5px] text-ink/50">كل حصة نسختها تبقى لك للأبد. ولتمديد فترة النسخ: من مكتبة الحصص في الاستوديو ← المادة ← «مدّد فترة النسخ».</p>
               </Card>
             )}
 

@@ -207,7 +207,7 @@ export default function CreativePlanner({ canvas, onCommit }: { canvas: Canvas; 
       {/* أدراج */}
       {drawer === 'sticker' && (
         <div className="bg-white rounded-2xl p-3 border border-sage/15 shadow-soft">
-          <div className="text-[12px] font-bold text-sage-deep mb-2">اختاري ملصقًا:</div>
+          <div className="text-[12px] font-bold text-sage-deep mb-2">اختر ملصقًا:</div>
           <div className="grid grid-cols-6 gap-2">
             {STICKERS.map((s) => (
               <button key={s.k} onClick={() => addEl({ type: 'sticker', shape: s.k, w: 84, h: 84 })} title={s.name} className="aspect-square rounded-xl bg-sage-light/50 hover:bg-sage-light p-2">
@@ -288,7 +288,7 @@ export default function CreativePlanner({ canvas, onCommit }: { canvas: Canvas; 
         {els.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-6">
             <div className="text-3xl mb-2">✨</div>
-            <p className="text-sage-deep font-bold">صفحتك الإبداعية — أضيفي قصاصات ونصوصًا وملصقات ورتّبيها كما تحبّين.</p>
+            <p className="text-sage-deep font-bold">صفحتك الإبداعية — أضف قصاصات ونصوصًا وملصقات ورتّبها كما تحب.</p>
           </div>
         )}
       </div>
@@ -327,7 +327,7 @@ export default function CreativePlanner({ canvas, onCommit }: { canvas: Canvas; 
           </div>
         </div>
       )}
-      <p className="text-center text-[11.5px] text-sage/60 font-bold">اسحبي العنصر لتحريكه · اضغطيه ثم اكتبي فوقه · المقبض السفلي للتكبير والعلوي للتدوير 🌿</p>
+      <p className="text-center text-[11.5px] text-sage/60 font-bold">اسحب العنصر لتحريكه · اضغطه ثم اكتب فوقه · المقبض السفلي للتكبير والعلوي للتدوير 🌿</p>
     </div>
   );
 }
