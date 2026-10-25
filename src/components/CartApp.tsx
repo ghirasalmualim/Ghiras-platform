@@ -50,6 +50,23 @@ export default function CartApp() {
         if (PRODUCTS[add]) setNote(ok ? `انضاف للسلة: ${PRODUCTS[add].label}` : 'هذا المنتج موجود بالسلة من قبل');
         window.history.replaceState(null, '', '/cart');
       }
+      // عدّةُ عناصرٍ دفعةً واحدة من سلّة الاستوديو: /cart?items=[{productId,scopeId,scopeLabel}]
+      // (الاستوديو نطاقٌ آخر لا يكتب في سلّتنا، فيجمع الاختيارات عنده ثم ينقلها هنا مرّةً واحدة)
+      const many = u.searchParams.get('items');
+      if (many) {
+        const list = JSON.parse(many) as unknown;
+        let added = 0;
+        if (Array.isArray(list)) {
+          for (const it of list.slice(0, 50)) {
+            if (!it || typeof it !== 'object') continue;
+            const { productId, scopeId, scopeLabel } = it as Record<string, unknown>;
+            if (typeof productId !== 'string' || !PRODUCTS[productId]) continue;
+            if (addToCart({ productId, scopeId: typeof scopeId === 'string' ? scopeId : undefined, scopeLabel: typeof scopeLabel === 'string' ? scopeLabel : undefined })) added++;
+          }
+        }
+        setNote(added ? `انضاف للسلة ${added.toLocaleString('ar-u-nu-arab')} من الاستوديو` : 'كل العناصر موجودة بالسلة من قبل');
+        window.history.replaceState(null, '', '/cart');
+      }
     } catch {}
     const sync = () => setItems(getCart());
     sync();
