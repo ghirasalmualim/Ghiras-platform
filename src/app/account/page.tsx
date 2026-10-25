@@ -45,9 +45,9 @@ const STATUS_LABEL: Record<string, string> = {
   suspended: 'موقوف',
 };
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
   return (
-    <section className="card-3d mt-5 p-6">
+    <section id={id} className="card-3d mt-5 p-6 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-ink">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
@@ -390,7 +390,7 @@ export default async function AccountPage() {
               </Card>
             )}
 
-            <Card title="استوديو الحصة الذكية">
+            <Card id="studio-credits" title="استوديو الحصة الذكية">
               <p className="text-sm leading-relaxed text-ink/70">
                 اشترِ رصيد حصص لبناء عروض الحصص في الاستوديو — كل حصة تُخصم عند
                 البناء، والرصيد يبقى دائمًا بلا انتهاء.
