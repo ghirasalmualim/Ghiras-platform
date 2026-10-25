@@ -19,9 +19,9 @@ const monthsOf = (id: string) => {
   if (p.kind === 'tool' && p.extra) return 'صفٌّ إضافيٌّ مع اشتراكك · ومعه ١٠ صور للمسح';
   if (p.kind === 'tool' && p.slots) return `${p.months.toLocaleString('ar')} أشهر · ${p.slots === 2 ? 'صفّان' : `${p.slots.toLocaleString('ar')} صفوف`}`;
   if (p.kind === 'tool' || p.kind === 'games' || p.kind === 'bundle') return `${p.months.toLocaleString('ar')} أشهر`;
-  if (p.kind === 'library') return `${p.months.toLocaleString('ar')} أشهر · كل حصص المادة في الاستوديو`;
+  if (p.kind === 'library') return `كل حصص المادة في الاستوديو · تنسخينها خلال ${p.months.toLocaleString('ar')} أشهر وتبقى لكِ للأبد`;
   if (p.kind === 'workshop') return 'شهر واحد · عرضٌ تقديميٌّ تقدّمينه داخل غراس';
-  if (p.kind === 'lesson') return `${p.months.toLocaleString('ar')} أشهر · هذا العرضُ وحدَه في مكتبة الاستوديو`;
+  if (p.kind === 'lesson') return 'هذا العرضُ وحدَه من مكتبة الاستوديو · يبقى لكِ للأبد';
   if (p.kind === 'att_org') return `${p.months.toLocaleString('ar')} أشهر · ${fmtKwd(p.priceKwd)} لكل فصل`;
   if (p.kind === 'studio') return `رصيد ${p.credits.toLocaleString('ar')} ${p.credits === 1 ? 'حصة' : 'حصص'}`;
   if (p.kind === 'game_credits') return `رصيد ${p.credits.toLocaleString('ar')} ألعاب — لا ينتهي`;

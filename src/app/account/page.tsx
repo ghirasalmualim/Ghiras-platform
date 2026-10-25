@@ -375,18 +375,18 @@ export default async function AccountPage() {
               عن admin_set_tool/admin_grant. الرصيد يبقى دائمًا ويُخصم عند التوليد بالذكاء.
             */}
             {librarySubs.length > 0 && (
-              <Card title="📚 اشتراكات مكتبة حصص غراس">
+              <Card title="📚 مكتبة حصص غراس — فترات النسخ">
                 <ul className="space-y-2 text-sm">
                   {librarySubs.map((l) => (
                     <li key={l.label} className="flex items-baseline justify-between gap-2">
                       <span className="font-bold text-ink">{l.label}</span>
-                      <span className={l.active ? 'text-sage-dark' : 'text-red-500'}>
-                        {l.active ? `حتى ${fmtDate(l.until)}` : `انتهى ${fmtDate(l.until)}`}
+                      <span className={l.active ? 'text-sage-dark' : 'text-ink/50'}>
+                        {l.active ? `تنسخين حتى ${fmtDate(l.until)}` : `انتهت فترة النسخ ${fmtDate(l.until)}`}
                       </span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-[12.5px] text-ink/50">للتجديد: من مكتبة الحصص في الاستوديو ← المادة ← «جدّدي».</p>
+                <p className="mt-3 text-[12.5px] text-ink/50">كل حصة نسختِها تبقى لكِ للأبد. ولتمديد فترة النسخ: من مكتبة الحصص في الاستوديو ← المادة ← «مدّدي فترة النسخ».</p>
               </Card>
             )}
 
