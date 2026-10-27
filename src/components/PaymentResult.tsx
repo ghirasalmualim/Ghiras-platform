@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PRODUCTS } from '@/lib/pricing';
-import { clearCart } from '@/lib/cart';
+import { clearCart, getCart } from '@/lib/cart';
 
 /**
  * رسالةُ ما بعد الدفع في «مساحتي».
@@ -16,6 +16,18 @@ import { clearCart } from '@/lib/cart';
  */
 export default function PaymentResult({ pay, product }: { pay?: string; product?: string }) {
   const [open, setOpen] = useState(pay === 'ok' || pay === 'fail');
+  // حصصُ مكتبةٍ مشتراة؟ تُنسخ تلقائيًّا إلى «حصصي» في الاستوديو — فنعطي زرًّا إليها.
+  // تُقرأ السلّةُ هنا قبل أن يفرّغها الأثرُ أدناه.
+  const [boughtLessons] = useState(() => {
+    if (pay !== 'ok') return false;
+    if (product === 'library' || product === 'lesson') return true;
+    if (product !== 'cart') return false;
+    try {
+      return getCart().some((i) => i.productId === 'library' || i.productId === 'lesson');
+    } catch {
+      return false;
+    }
+  });
 
   // نزعُ العلامةِ من الرابط كي لا تعودَ الرسالةُ عند التحديثِ أو المشاركة
   useEffect(() => {
@@ -83,9 +95,18 @@ export default function PaymentResult({ pay, product }: { pay?: string; product?
           </div>
         )}
 
+        {boughtLessons && (
+          <a
+            href="https://studio.ghiras-edu.com/studio/lessons"
+            className="mt-6 block w-full rounded-xl bg-gold py-3 font-extrabold text-white shadow-soft transition hover:bg-gold-dark"
+          >
+            📚 حصصك صارت في «حصصي» — افتحها
+          </a>
+        )}
+
         <button
           onClick={() => setOpen(false)}
-          className="mt-6 w-full rounded-xl bg-sage py-3 font-extrabold text-white shadow-soft transition hover:bg-sage-dark"
+          className={`${boughtLessons ? 'mt-3' : 'mt-6'} w-full rounded-xl bg-sage py-3 font-extrabold text-white shadow-soft transition hover:bg-sage-dark`}
         >
           تمام
         </button>
