@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, toEnglishDigits } from '@/lib/supabase/client';
 import SupportWaitingBadge from '@/components/SupportWaitingBadge';
 
 type Row = {
@@ -56,6 +56,24 @@ const TOOL_COLS = [
   'agenda_until',
 ] as const;
 
+/**
+ * Supabase يقصّ أي استعلام عند ١٠٠٠ صف بصمت، فلمّا تعدّى الحسابات الألف اختفى الأحدث
+ * من القائمة والبحث. نقرأ صفحةً صفحةً حتى آخر صف.
+ */
+const PAGE = 1000;
+async function fetchAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) return { data: out, error };
+    const batch = (data as T[]) || [];
+    out.push(...batch);
+    if (batch.length < PAGE) return { data: out, error: null };
+  }
+}
+
 type TabKey = 'all' | 'active' | 'soon' | 'expired' | 'suspended' | 'none';
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -92,23 +110,29 @@ export default function AdminPanel() {
     setLoading(true);
     setMsg(null);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc('admin_list_users');
+    const { data, error } = await fetchAll<Row>((from, to) =>
+      supabase.rpc('admin_list_users').order('id').range(from, to)
+    );
     if (error) {
       setMsg('تعذّر تحميل القائمة: ' + error.message);
       setRows([]);
     } else {
-      setRows((data as Row[]) || []);
+      setRows(data);
     }
 
     // حالة الأدوات المدفوعة — تُقرأ من profiles مباشرة.
     // سياسة «own profile read» تسمح للأدمِن بقراءة كل الملفات، فلا حاجة لدالة جديدة.
     // فشلها لا يعطّل اللوحة: تظهر الحسابات بلا شارات الأدوات فقط.
-    const { data: tdata } = await supabase
-      .from('profiles')
-      .select(['id', 'game_credits', 'lesson_credits', ...TOOL_COLS].join(','));
-    if (tdata) {
+    const { data: tdata } = await fetchAll<ToolState & { id: string }>((from, to) =>
+      supabase
+        .from('profiles')
+        .select(['id', 'game_credits', 'lesson_credits', ...TOOL_COLS].join(','))
+        .order('id')
+        .range(from, to)
+    );
+    if (tdata.length) {
       const map: Record<string, ToolState> = {};
-      for (const rec of tdata as unknown as (ToolState & { id: string })[]) {
+      for (const rec of tdata) {
         map[rec.id] = rec;
       }
       setTools(map);
@@ -117,12 +141,16 @@ export default function AdminPanel() {
     // تفاصيل الصلاحيات — الملخّص القادم من admin_list_users يقول «subject»
     // بلا تحديد أي مادة أو صف. سياسة «own permissions read» تتيح للأدمِن قراءة
     // الجدول كاملًا، فنفكّ المعرّفات إلى أسماء عبر الكتالوج.
-    const { data: pdata } = await supabase
-      .from('permissions')
-      .select('id, user_id, scope, stage_id, grade_id, subject_id');
-    if (pdata) {
+    const { data: pdata } = await fetchAll<Perm>((from, to) =>
+      supabase
+        .from('permissions')
+        .select('id, user_id, scope, stage_id, grade_id, subject_id')
+        .order('id')
+        .range(from, to)
+    );
+    if (pdata.length) {
       const map: Record<string, Perm[]> = {};
-      for (const p of pdata as unknown as Perm[]) {
+      for (const p of pdata) {
         (map[p.user_id] = map[p.user_id] || []).push(p);
       }
       setPerms(map);
@@ -553,13 +581,14 @@ export default function AdminPanel() {
     return true;
   };
 
+  // كيبورد الجوال العربي يكتب ٩٨٨… ويضيف مسافة بعد الكلمة — نوحّدهما قبل المقارنة
+  const needle = toEnglishDigits(q).trim().toLowerCase();
   const filtered = rows.filter(
     (r) =>
-      !q ||
-      (r.full_name || '').includes(q) ||
-      (r.username || '').includes(q) ||
-      (r.phone || '').includes(q) ||
-      (r.email || '').includes(q)
+      !needle ||
+      [r.full_name, r.username, r.phone, r.email].some((v) =>
+        toEnglishDigits(v || '').toLowerCase().includes(needle)
+      )
   );
   const teachers = filtered
     .filter((r) => r.role !== 'admin')
